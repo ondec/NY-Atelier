@@ -15,7 +15,9 @@ No hosted service account, paid subscription or payment provider is required to 
 
 The Laravel API serves four seeded demo orders: Ready-to-Wear, Alterations, a three-outfit Custom order, and one completed order. The app's Orders area shows Active and History lists and an order detail view. The staff portal reads the same records and shows an order overview. The Custom order correctly shows one of three outfits complete while collection remains unavailable.
 
-The app's other tabs are clearly labelled previews. The portal is read-only. Customer sign-in, staff permissions, approvals, catalogue, booking, checkout and messaging are not connected yet. Payment labels in sample data are simulated.
+The app's Home, Shop, Atelier and Account tabs now use the approved NY Atelier editorial direction. Home has a photographic collection carousel. Shop shows a small static preview of verified public-store products and a product-view overlay; the Women's tab explicitly says its catalogue is pending. Atelier presents the custom clothing journey and lets viewers choose an in-person or virtual consultation before explaining the account requirement. Account is a designed preview of the future customer space. The portal remains read-only. Customer sign-in, staff permissions, approvals, live catalogue sync, booking requests, bag, checkout and messaging are not connected yet. Payment labels in sample data are simulated.
+
+Home and Atelier photography comes from [NY Atelier's main website](https://thenyatelier.com/). The sample product images, names and prices were checked against the [public ready-to-wear store](https://rtw.thenyatelier.com/) on 3 November 2026; they are bundled design-preview content, not live inventory. The provisional display and interface fonts are Alfa Slab One and Josefin Sans, as specified in the design plan; their SIL Open Font licenses are included under `apps/mobile/assets/fonts/`.
 
 Expo SDK 57 is being used for the immediate Expo Go phone demo during the SDK 58 transition. The current SDK 57 dependency audit reports advisories whose available fixes require SDK 58. This prototype uses fictional data only; upgrade and recheck dependencies before any production release or real customer data.
 
@@ -93,7 +95,7 @@ This reset deletes records in the configured database. Confirm the API `.env` po
 ```sh
 cd codebase/apps/api && php artisan test --compact
 cd codebase/apps/portal && npm run build
-cd codebase/apps/mobile && npx tsc --noEmit && npx expo export --platform all
+cd codebase/apps/mobile && npx expo lint && npx tsc --noEmit && npx expo export --platform all
 ```
 
 The next connected slice is staff authentication and stage approval: a staff submission should remain private until a manager or owner approves it, then the customer Orders view should show the approved update.

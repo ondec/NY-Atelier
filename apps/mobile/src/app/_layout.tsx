@@ -1,8 +1,16 @@
 import { Tabs } from 'expo-router';
+import { useFonts } from 'expo-font';
 import { SymbolView } from 'expo-symbols';
 import { atelier } from '@/atelier-theme';
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    AlfaSlabOne: require('../../assets/fonts/AlfaSlabOne-Regular.ttf'),
+    JosefinSans: require('../../assets/fonts/JosefinSans-Variable.ttf'),
+  });
+
+  if (!fontsLoaded && !fontError) return null;
+
   return (
     <Tabs
       screenOptions={{
@@ -10,7 +18,7 @@ export default function RootLayout() {
         tabBarActiveTintColor: atelier.petrol,
         tabBarInactiveTintColor: atelier.muted,
         tabBarStyle: { backgroundColor: atelier.white, borderTopColor: atelier.line },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarLabelStyle: { fontFamily: atelier.body, fontSize: 11, fontWeight: '600' },
       }}>
       <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: ({ color, size }) => <SymbolView name={{ ios: 'house', android: 'home', web: 'home' }} tintColor={color} size={size} /> }} />
       <Tabs.Screen name="shop" options={{ title: 'Shop', tabBarIcon: ({ color, size }) => <SymbolView name={{ ios: 'bag', android: 'shopping_bag', web: 'shopping_bag' }} tintColor={color} size={size} /> }} />
