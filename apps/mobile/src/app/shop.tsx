@@ -31,7 +31,7 @@ const products: Product[] = [
     colors: [{ id: 'white', name: 'White', swatch: '#EDEDEB', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-arctic.png') }] }],
   },
 ];
-const filters = ['All', 'Men', 'Women', 'Collections'] as const;
+const filters = ['All', 'New Arrivals', 'Men', 'Women', 'Collections'] as const;
 const previewSizes = ['S', 'M', 'L', 'XL', 'XXL'];
 type PriceRange = 'all' | 'under1200' | '1200plus';
 type SortBy = 'featured' | 'low' | 'high';
@@ -68,7 +68,7 @@ export default function ShopScreen() {
   const [sortBy, setSortBy] = useState<SortBy>('featured');
   const [filterOpen, setFilterOpen] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
-  const visibleProducts = (filter === 'Women' ? [] : products)
+  const visibleProducts = (filter === 'Women' || filter === 'New Arrivals' ? [] : products)
     .filter((product) => priceRange === 'all' || (priceRange === 'under1200' ? product.priceValue < 1200 : product.priceValue >= 1200))
     .sort((a, b) => sortBy === 'low' ? a.priceValue - b.priceValue : sortBy === 'high' ? b.priceValue - a.priceValue : 0);
   const bagEntries = Object.entries(bag);
@@ -137,7 +137,6 @@ export default function ShopScreen() {
           </View>
         </View>
         <View style={styles.intro}>
-          <Text style={styles.eyebrow}>THE NY EDIT</Text>
           <Text style={styles.title}>The collection</Text>
           <Text style={styles.subtitle}>Expression, made effortless.</Text>
         </View>
@@ -150,7 +149,19 @@ export default function ShopScreen() {
           ))}
         </ScrollView>
 
-        {filter === 'Women' ? (
+        {filter === 'New Arrivals' ? (
+          <View style={styles.newArrivals}>
+            <View style={styles.newArrivalsPanel}>
+              <Text style={styles.newArrivalsLabel}>NEW ARRIVALS</Text>
+              <Text style={styles.newArrivalsTitle}>A fresh edit is coming.</Text>
+              <Text style={styles.newArrivalsCopy}>New pieces will appear here when NY Atelier confirms their release.</Text>
+              <Pressable accessibilityRole="button" onPress={() => setFilter('All')} style={styles.newArrivalsButton}>
+                <Text style={styles.newArrivalsButtonText}>EXPLORE THE COLLECTION</Text>
+                <Text style={styles.newArrivalsArrow}>↗</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : filter === 'Women' ? (
           <View style={styles.womenPreview}>
             <View style={[styles.listHeading, styles.womenListHeading]}>
               <Text style={styles.listTitle}>Womenswear</Text>
@@ -177,7 +188,7 @@ export default function ShopScreen() {
               <View style={styles.collectionFeature}>
                 <ImageBackground source={require('../../assets/ny/home-blue.jpg')} resizeMode="cover" imageStyle={styles.coverImage} style={styles.collectionImage}>
                   <View style={styles.collectionShade}>
-                    <Text style={styles.collectionEyebrow}>THE NY EDIT  /  01</Text>
+                    <Text style={styles.collectionEyebrow}>COLLECTIONS  /  01</Text>
                     <Text style={styles.collectionTitle}>Dress with intention.</Text>
                   </View>
                 </ImageBackground>
@@ -207,11 +218,9 @@ export default function ShopScreen() {
                       <Pressable accessibilityRole="button" accessibilityLabel={`${saved ? 'Remove' : 'Add'} ${product.name} ${saved ? 'from' : 'to'} wishlist`} accessibilityState={{ selected: saved }} onPress={() => toggleSaved(product.id)} style={[styles.imageAction, styles.heartAction]}>
                         <ShopActionIcon name="heart" color={saved ? atelier.cognac : atelier.petrol} filled={saved} size={21} />
                       </Pressable>
-                      <View accessible accessibilityLabel={`${product.name}: ${visibleColors.map((color) => `${color.name}${color.concept ? ' visual preview' : ' photographed colour'}`).join(', ')}`} style={styles.cardColors}>
+                      <View accessible accessibilityLabel={`${product.name}: ${visibleColors.map((color) => `${color.name}${color.concept ? ' visual preview' : ' colour'}`).join(', ')}`} style={styles.cardColors}>
                         {visibleColors.slice(0, 3).map((color, index) => (
-                          <View key={color.id} style={[styles.cardColorSwatch, index > 0 && styles.cardColorOverlap, { backgroundColor: color.swatch }]}>
-                            <Image source={color.photos[0].image} resizeMode="cover" style={styles.cardColorImage} />
-                          </View>
+                          <View key={color.id} style={[styles.cardColorSwatch, index > 0 && styles.cardColorOverlap, { backgroundColor: color.swatch }]} />
                         ))}
                         {visibleColors.length > 3 ? <Text style={styles.cardColorMore}>+{visibleColors.length - 3}</Text> : null}
                       </View>
@@ -418,6 +427,14 @@ const styles = StyleSheet.create({
   listCount: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1.4 },
   filterButton: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: atelier.line, backgroundColor: atelier.white, alignItems: 'center', justifyContent: 'center' },
   filterDot: { position: 'absolute', top: 3, right: 3, width: 6, height: 6, borderRadius: 3, backgroundColor: atelier.cognac },
+  newArrivals: { paddingHorizontal: 24, paddingBottom: 32 },
+  newArrivalsPanel: { minHeight: 330, borderRadius: 20, backgroundColor: atelier.petrol, padding: 26, justifyContent: 'flex-end' },
+  newArrivalsLabel: { color: atelier.brass, fontFamily: atelier.body, fontSize: 10, fontWeight: '700', letterSpacing: 2, marginBottom: 15 },
+  newArrivalsTitle: { color: atelier.white, fontFamily: atelier.display, fontSize: 30, lineHeight: 38, marginBottom: 13 },
+  newArrivalsCopy: { color: atelier.alabaster, fontFamily: atelier.body, fontSize: 14, lineHeight: 21, marginBottom: 24 },
+  newArrivalsButton: { minHeight: 50, borderRadius: atelier.buttonRadius, backgroundColor: atelier.alabaster, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  newArrivalsButtonText: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 11, fontWeight: '700', letterSpacing: 1 },
+  newArrivalsArrow: { color: atelier.petrol, fontSize: 20 },
   grid: { width: '100%', maxWidth: 820, alignSelf: 'center', paddingHorizontal: 18, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   product: { width: '49%', paddingHorizontal: 5, marginBottom: 30 },
   productVisual: { width: '100%', aspectRatio: 3 / 4, marginBottom: 12, borderRadius: 16, overflow: 'hidden', backgroundColor: '#E8E7E2' },
@@ -425,11 +442,10 @@ const styles = StyleSheet.create({
   productImage: { width: '100%', height: '100%' },
   imageAction: { position: 'absolute', width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(250,248,244,0.94)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)' },
   heartAction: { top: 9, right: 9 },
-  cardColors: { position: 'absolute', right: 7, bottom: 7, minWidth: 27, paddingHorizontal: 3, paddingVertical: 5, alignItems: 'center', borderRadius: 15, backgroundColor: 'rgba(28,35,38,0.52)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.46)' },
-  cardColorSwatch: { width: 20, height: 20, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: atelier.white },
-  cardColorImage: { width: '100%', height: '100%' },
-  cardColorOverlap: { marginTop: -3 },
-  cardColorMore: { color: atelier.white, fontFamily: atelier.body, fontSize: 9, fontWeight: '700', marginTop: 3 },
+  cardColors: { position: 'absolute', right: 6, bottom: 6, minWidth: 22, paddingHorizontal: 2, paddingVertical: 3, alignItems: 'center', borderRadius: 12, backgroundColor: 'rgba(28,35,38,0.48)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)' },
+  cardColorSwatch: { width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: atelier.white },
+  cardColorOverlap: { marginTop: -2 },
+  cardColorMore: { color: atelier.white, fontFamily: atelier.body, fontSize: 8, fontWeight: '700', marginTop: 2 },
   productDetails: { minHeight: 70 },
   productCategory: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1.3, marginBottom: 7 },
   productName: { color: atelier.slate, fontFamily: atelier.body, fontWeight: '700', fontSize: 16, marginBottom: 5 },

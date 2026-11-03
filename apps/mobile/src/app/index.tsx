@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ImageBackground, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, Easing, ImageBackground, Platform, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { atelier } from '@/atelier-theme';
@@ -16,10 +16,13 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const carouselRef = useRef<ScrollViewInstance>(null);
   const activeStoryRef = useRef(0);
+  const [copyEntrance] = useState(() => new Animated.Value(1));
   const [activeStory, setActiveStory] = useState(0);
+  const story = stories[activeStory];
   const heroHeight = Math.max(590, height);
 
   function showStory(index: number) {
+    if (index === activeStoryRef.current) return;
     activeStoryRef.current = index;
     setActiveStory(index);
     carouselRef.current?.scrollTo({ x: index * width, animated: true });
@@ -28,6 +31,18 @@ export default function HomeScreen() {
   useEffect(() => {
     carouselRef.current?.scrollTo({ x: activeStoryRef.current * width, animated: false });
   }, [width]);
+
+  useEffect(() => {
+    copyEntrance.stopAnimation();
+    copyEntrance.setValue(0);
+    Animated.timing(copyEntrance, {
+      toValue: 1,
+      duration: 480,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
+    return () => copyEntrance.stopAnimation();
+  }, [activeStory, copyEntrance]);
 
   useFocusEffect(useCallback(() => {
     const timer = setTimeout(() => {
@@ -42,54 +57,60 @@ export default function HomeScreen() {
   return (
     <View style={styles.screen}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <ScrollView
-          ref={carouselRef}
-          horizontal
-          pagingEnabled
-          decelerationRate="fast"
-          directionalLockEnabled
-          showsHorizontalScrollIndicator={false}
-          style={{ height: heroHeight }}
-          onMomentumScrollEnd={(event) => {
-            const index = Math.round(event.nativeEvent.contentOffset.x / width);
-            if (index >= 0 && index < stories.length) {
-              activeStoryRef.current = index;
-              setActiveStory(index);
-            }
-          }}>
-          {stories.map((story, storyIndex) => (
-            <ImageBackground key={story.number} source={story.image} resizeMode="cover" imageStyle={styles.coverImage} style={[styles.hero, { width, height: heroHeight }]}>
-              <View style={styles.heroShade}>
-                <View style={[styles.topLine, { marginTop: insets.top + 24 }]}>
-                  <View style={styles.brand}>
-                    <NyMark color={atelier.white} size={28} />
-                    <Text style={styles.wordmark}>NY ATELIER</Text>
-                  </View>
-                  <Text style={styles.edition}>THE NY EDIT  /  {String(storyIndex + 1).padStart(2, '0')}</Text>
-                </View>
-                <View style={{ paddingBottom: insets.bottom + 86 }}>
-                  <Text style={styles.heroEyebrow}>{story.caption}</Text>
-                  <Text style={styles.heroTitle}>{story.title}</Text>
-                  <Pressable accessibilityRole="button" onPress={() => router.push('/shop')} style={styles.shopButton}>
-                    <Text style={styles.shopButtonText}>SHOP THE COLLECTION</Text>
-                    <Text style={styles.shopArrow}>↗</Text>
-                  </Pressable>
-                  <View style={styles.storyFoot}>
-                    <Text style={styles.storyNumber}>{story.number}</Text>
-                    <View style={styles.storyDots}>
-                      {stories.map((_, index) => (
-                        <Pressable key={index} accessibilityRole="button" accessibilityLabel={`Show story ${index + 1}`} accessibilityState={{ selected: index === activeStory }} onPress={() => showStory(index)} style={[styles.storyDot, index === activeStory && styles.storyDotActive]} />
-                      ))}
-                    </View>
-                    <Pressable accessibilityRole="button" accessibilityLabel="Next story" onPress={() => showStory((storyIndex + 1) % stories.length)}>
-                      <Text style={styles.nextStory}>NEXT  →</Text>
-                    </Pressable>
-                  </View>
-                </View>
+        <View style={[styles.hero, { height: heroHeight }]}>
+          <ScrollView
+            ref={carouselRef}
+            horizontal
+            pagingEnabled
+            decelerationRate="fast"
+            directionalLockEnabled
+            showsHorizontalScrollIndicator={false}
+            style={StyleSheet.absoluteFill}
+            onMomentumScrollEnd={(event) => {
+              const index = Math.round(event.nativeEvent.contentOffset.x / width);
+              if (index >= 0 && index < stories.length && index !== activeStoryRef.current) {
+                activeStoryRef.current = index;
+                setActiveStory(index);
+              }
+            }}>
+            {stories.map((slide) => (
+              <ImageBackground key={slide.number} source={slide.image} resizeMode="cover" imageStyle={styles.coverImage} style={{ width, height: heroHeight }}>
+                <View pointerEvents="none" style={styles.imageShade} />
+              </ImageBackground>
+            ))}
+          </ScrollView>
+          <View pointerEvents="box-none" style={styles.heroOverlay}>
+            <View pointerEvents="none" style={[styles.topLine, { marginTop: insets.top + 24 }]}>
+              <View style={styles.brand}>
+                <NyMark color={atelier.white} size={28} />
+                <Text style={styles.wordmark}>NY ATELIER</Text>
               </View>
-            </ImageBackground>
-          ))}
-        </ScrollView>
+            </View>
+            <View pointerEvents="box-none" style={{ paddingBottom: insets.bottom + 86 }}>
+              <Animated.View
+                pointerEvents="none"
+                style={[styles.storyCopy, { opacity: copyEntrance, transform: [{ translateX: copyEntrance.interpolate({ inputRange: [0, 1], outputRange: [activeStory === 0 ? -24 : 24, 0] }) }] }]}>
+                <Text style={styles.heroEyebrow}>{story.caption}</Text>
+                <Text style={styles.heroTitle}>{story.title}</Text>
+              </Animated.View>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/shop')} style={styles.shopButton}>
+                <Text style={styles.shopButtonText}>SHOP THE COLLECTION</Text>
+                <Text style={styles.shopArrow}>↗</Text>
+              </Pressable>
+              <View style={styles.storyFoot}>
+                <Text style={styles.storyNumber}>{story.number}</Text>
+                <View style={styles.storyDots}>
+                  {stories.map((_, index) => (
+                    <Pressable key={index} accessibilityRole="button" accessibilityLabel={`Show story ${index + 1}`} accessibilityState={{ selected: index === activeStory }} onPress={() => showStory(index)} style={[styles.storyDot, index === activeStory && styles.storyDotActive]} />
+                  ))}
+                </View>
+                <Pressable accessibilityRole="button" accessibilityLabel="Next story" onPress={() => showStory((activeStoryRef.current + 1) % stories.length)}>
+                  <Text style={styles.nextStory}>NEXT  →</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </View>
 
         <View style={styles.intro}>
           <Text style={styles.sectionEyebrow}>A WARDROBE WITH INTENTION</Text>
@@ -125,13 +146,14 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: atelier.alabaster },
   content: { paddingBottom: 115 },
-  hero: { overflow: 'hidden' },
+  hero: { width: '100%', overflow: 'hidden' },
   coverImage: { width: '100%', height: '100%' },
-  heroShade: { flex: 1, backgroundColor: 'rgba(6, 20, 24, 0.42)', paddingHorizontal: 24, justifyContent: 'space-between' },
+  imageShade: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(6, 20, 24, 0.42)' },
+  heroOverlay: { ...StyleSheet.absoluteFill, paddingHorizontal: 24, justifyContent: 'space-between' },
   topLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   wordmark: { color: atelier.white, fontFamily: atelier.body, fontWeight: '700', letterSpacing: 3.5, fontSize: 16 },
-  edition: { color: atelier.white, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1.2 },
+  storyCopy: { minHeight: 151 },
   heroEyebrow: { color: atelier.brass, fontFamily: atelier.body, fontSize: 11, fontWeight: '700', letterSpacing: 2.2, marginBottom: 15 },
   heroTitle: { color: atelier.white, fontFamily: atelier.display, fontSize: 42, lineHeight: 49, marginBottom: 27 },
   shopButton: { backgroundColor: atelier.alabaster, paddingVertical: 17, paddingHorizontal: 19, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 54, borderRadius: atelier.buttonRadius },
