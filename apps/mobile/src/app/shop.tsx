@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { atelier } from '@/atelier-theme';
 import { ShopActionIcon } from '@/components/shop-action-icon';
 
-type ProductPhoto = { id: string; label: string; image: ImageSourcePropType; fit?: 'contain' | 'cover' };
+type ProductPhoto = { id: string; label: string; image: ImageSourcePropType };
 type ProductColor = { id: string; name: string; swatch: string; photos: ProductPhoto[]; concept?: boolean };
 type Product = { id: string; name: string; price: string; priceValue: number; image: ImageSourcePropType; category: string; colors: ProductColor[] };
 type BagEntry = { productId: string; colorId: string; size: string | null; quantity: number };
@@ -19,7 +19,7 @@ const products: Product[] = [
     colors: [
       { id: 'cream', name: 'Cream', swatch: '#DCCB9B', photos: [
         { id: 'front', label: 'Front', image: require('../../assets/ny/product-amani.jpg') },
-        { id: 'detail', label: 'Fabric detail', image: require('../../assets/ny/product-amani-cream-detail.jpg'), fit: 'cover' },
+        { id: 'detail', label: 'Fabric detail', image: require('../../assets/ny/product-amani-cream-detail.jpg') },
         { id: 'side', label: 'Side', image: require('../../assets/ny/product-amani-cream-side.jpg') },
       ] },
       { id: 'black-preview', name: 'Black', swatch: '#242424', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-amani-black-preview.jpg') }], concept: true },
@@ -47,9 +47,9 @@ const sortOptions: { value: SortBy; label: string }[] = [
 
 export default function ShopScreen() {
   const galleryRef = useRef<ScrollView>(null);
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const galleryWidth = Math.min(width, 560) - 24;
-  const detailImageHeight = Math.min(Math.min(width, 560) * 1.16, height * 0.53, 520);
+  const detailImageHeight = galleryWidth * 4 / 3;
   const [filter, setFilter] = useState<(typeof filters)[number]>('All');
   const [selected, setSelected] = useState<Product | null>(null);
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
@@ -295,7 +295,7 @@ export default function ShopScreen() {
                   }}
                   style={{ width: galleryWidth, height: detailImageHeight }}
                 >
-                  {selectedPhotos.map((photo) => <Image key={photo.id} source={photo.image} resizeMode={photo.fit || 'contain'} style={[styles.detailImage, { width: galleryWidth, height: detailImageHeight }]} />)}
+                  {selectedPhotos.map((photo) => <Image key={photo.id} source={photo.image} resizeMode="contain" style={[styles.detailImage, { width: galleryWidth, height: detailImageHeight }]} />)}
                 </ScrollView> : null}
                 <View style={styles.detailTop}>
                   <Pressable accessibilityRole="button" accessibilityLabel="Back to Shop" onPress={() => setSelected(null)} style={styles.detailTopButton}>
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
   detailSafe: { flex: 1, backgroundColor: atelier.alabaster, alignItems: 'center' },
   detailShell: { flex: 1, width: '100%', maxWidth: 560 },
   detailScrollContent: { paddingBottom: 18 },
-  detailHero: { marginHorizontal: 12, borderRadius: 18, overflow: 'hidden', backgroundColor: '#E8E7E2' },
+  detailHero: { marginHorizontal: 12, borderRadius: 18, overflow: 'hidden', backgroundColor: atelier.white },
   galleryArrow: { position: 'absolute', top: '46%', width: 39, height: 39, borderRadius: 20, backgroundColor: 'rgba(250,248,244,0.94)', alignItems: 'center', justifyContent: 'center' },
   galleryArrowLeft: { left: 13 },
   galleryArrowRight: { right: 13 },
