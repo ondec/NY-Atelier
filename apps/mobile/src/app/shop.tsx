@@ -196,7 +196,7 @@ export default function ShopScreen() {
             <View style={styles.grid}>
               {visibleProducts.map((product) => {
                 const saved = savedIds.includes(product.id);
-                const availableColors = product.colors.filter((color) => !color.concept);
+                const visibleColors = product.colors;
                 return (
                   <View key={product.id} style={styles.product}>
                     <View style={styles.productVisual}>
@@ -206,9 +206,12 @@ export default function ShopScreen() {
                       <Pressable accessibilityRole="button" accessibilityLabel={`${saved ? 'Remove' : 'Add'} ${product.name} ${saved ? 'from' : 'to'} wishlist`} accessibilityState={{ selected: saved }} onPress={() => toggleSaved(product.id)} style={[styles.imageAction, styles.heartAction]}>
                         <ShopActionIcon name="heart" color={saved ? atelier.cognac : atelier.petrol} filled={saved} size={21} />
                       </Pressable>
-                      <View accessibilityLabel={`${product.name}: ${availableColors.map((color) => color.name).join(', ')} available`} style={styles.cardColors}>
-                        {availableColors.slice(0, 3).map((color) => <View key={color.id} style={[styles.cardColorSwatch, { backgroundColor: color.swatch }]} />)}
-                        {availableColors.length > 3 ? <Text style={styles.cardColorMore}>+{availableColors.length - 3}</Text> : null}
+                      <View accessible accessibilityLabel={`${product.name}: ${visibleColors.map((color) => `${color.name}${color.concept ? ' visual preview' : ' photographed colour'}`).join(', ')}`} style={styles.cardColors}>
+                        {visibleColors.slice(0, 3).map((color, index) => (
+                          <View key={color.id} style={[styles.cardColorSwatch, index > 0 && styles.cardColorOverlap, { backgroundColor: color.swatch }]} />
+                        ))}
+                        {visibleColors.length > 3 ? <Text style={styles.cardColorMore}>+{visibleColors.length - 3}</Text> : null}
+                        {visibleColors.some((color) => color.concept) ? <Text style={styles.cardColorPreview}>PREVIEW</Text> : null}
                       </View>
                     </View>
                     <Pressable accessibilityRole="button" accessibilityLabel={`View ${product.name}, ${product.price}`} onPress={() => openProduct(product)} style={styles.productDetails}>
@@ -419,9 +422,11 @@ const styles = StyleSheet.create({
   productImage: { width: '100%', height: '100%' },
   imageAction: { position: 'absolute', width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(250,248,244,0.94)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)' },
   heartAction: { top: 9, right: 9 },
-  cardColors: { position: 'absolute', right: 9, bottom: 9, padding: 7, gap: 6, alignItems: 'center', borderRadius: 18, backgroundColor: 'rgba(250,248,244,0.94)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)' },
-  cardColorSwatch: { width: 17, height: 17, borderRadius: 9, borderWidth: 1, borderColor: 'rgba(18,60,69,0.2)' },
+  cardColors: { position: 'absolute', right: 9, bottom: 9, paddingHorizontal: 7, paddingVertical: 7, alignItems: 'center', borderRadius: 18, backgroundColor: 'rgba(250,248,244,0.94)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)' },
+  cardColorSwatch: { width: 21, height: 21, borderRadius: 11, borderWidth: 2, borderColor: 'rgba(250,248,244,0.98)' },
+  cardColorOverlap: { marginTop: -8 },
   cardColorMore: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 10, fontWeight: '700' },
+  cardColorPreview: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 6, fontWeight: '700', letterSpacing: 0.2, marginTop: 3 },
   productDetails: { minHeight: 70 },
   productCategory: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1.3, marginBottom: 7 },
   productName: { color: atelier.slate, fontFamily: atelier.body, fontWeight: '700', fontSize: 16, marginBottom: 5 },
