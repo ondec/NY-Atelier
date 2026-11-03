@@ -4,7 +4,7 @@ This folder contains the first connected prototype foundation. The customer app,
 
 ## Selected stack
 
-- Customer app: Expo SDK 57, React Native, TypeScript and Expo Router. SDK 57 was chosen for Expo Go phone previews during the SDK 58 transition.
+- Customer app: Expo SDK 58, React Native, TypeScript and Expo Router.
 - Staff portal: React, Next.js and TypeScript.
 - API: Laravel 13 with Sanctum installed for the later authentication slice.
 - Database: PostgreSQL 17 for local development.
@@ -19,7 +19,7 @@ The app's Home, Shop, Atelier and Account tabs now use the approved NY Atelier e
 
 Home and Atelier photography comes from [NY Atelier's main website](https://thenyatelier.com/). The sample product images, names and prices were checked against the [public ready-to-wear store](https://rtw.thenyatelier.com/) on 3 November 2026; they are bundled design-preview content, not live inventory. The provisional display and interface fonts are Alfa Slab One and Josefin Sans, as specified in the design plan; their SIL Open Font licenses are included under `apps/mobile/assets/fonts/`.
 
-Expo SDK 57 is being used for the immediate Expo Go phone demo during the SDK 58 transition. The current SDK 57 dependency audit reports advisories whose available fixes require SDK 58. This prototype uses fictional data only; upgrade and recheck dependencies before any production release or real customer data.
+The mobile app uses Expo SDK 58 to match the current Expo Go phone preview. Expo Doctor and the SDK dependency check pass. This prototype uses fictional data only; review dependencies again before any production release or real customer data.
 
 ## Local setup on a Mac
 
@@ -73,7 +73,7 @@ cd codebase/apps/mobile
 npx expo start --lan
 ```
 
-Open the staff portal at `http://127.0.0.1:3000`. For a phone preview, install the SDK 57 compatible Expo Go version, keep the phone and Mac on the same network, and scan Expo's QR code. In `apps/mobile/.env.local`, set `EXPO_PUBLIC_API_BASE_URL` to the Mac's current LAN address, for example `http://192.168.x.x:8000`. On Wi-Fi, `ipconfig getifaddr en0` often prints that address. Restart Expo after changing the file. Physical iPhones may require Expo CLI and Expo Go to be signed in to the same free Expo account. The API is bound to the local network for this demo and contains fictional data only.
+Open the staff portal at `http://127.0.0.1:3000`. For a phone preview, use Expo Go for SDK 58, keep the phone and Mac on the same network, and scan Expo's QR code. In `apps/mobile/.env.local`, set `EXPO_PUBLIC_API_BASE_URL` to the Mac's current LAN address, for example `http://192.168.x.x:8000`. On Wi-Fi, `ipconfig getifaddr en0` often prints that address. Restart Expo after changing the file. Physical iPhones may require Expo CLI and Expo Go to be signed in to the same free Expo account. The API is bound to the local network for this demo and contains fictional data only.
 
 The app and portal can also run in a browser for development. The app's web preview is available from Expo at `http://localhost:8081/orders` when its web mode is started.
 

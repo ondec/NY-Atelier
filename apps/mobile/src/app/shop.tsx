@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Image, ImageBackground, ImageSourcePropType, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Image, ImageBackground, ImageSourcePropType, Modal, Pressable, ScrollView, ScrollViewInstance, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { atelier } from '@/atelier-theme';
@@ -46,7 +46,7 @@ const sortOptions: { value: SortBy; label: string }[] = [
 ];
 
 export default function ShopScreen() {
-  const galleryRef = useRef<ScrollView>(null);
+  const galleryRef = useRef<ScrollViewInstance>(null);
   const { width } = useWindowDimensions();
   const galleryWidth = Math.min(width, 560) - 24;
   const detailImageHeight = galleryWidth * 4 / 3;
