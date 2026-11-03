@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 24, height: 70, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   wordmark: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 16, fontWeight: '700', letterSpacing: 3.7 },
   headerIndex: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1 },
-  hero: { height: 270 },
+  hero: { height: 270, marginHorizontal: 14, borderRadius: 18, overflow: 'hidden' },
   heroImage: { width: '100%', height: '100%' },
   heroOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(6, 20, 24, 0.15)', padding: 24 },
   heroCaption: { color: atelier.white, fontFamily: atelier.body, fontWeight: '700', fontSize: 10, letterSpacing: 1.8 },

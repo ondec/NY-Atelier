@@ -4,6 +4,7 @@ import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, useWindowDime
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { atelier } from '@/atelier-theme';
+import { NyMark } from '@/components/ny-mark';
 
 const stories = [
   { image: require('../../assets/ny/home-green.jpg'), number: '01 / 02', title: 'The art of\nbeing seen.', caption: 'READY-TO-WEAR · NY ATELIER' },
@@ -21,7 +22,10 @@ export default function HomeScreen() {
         <ImageBackground source={story.image} resizeMode="cover" imageStyle={styles.coverImage} style={[styles.hero, { height: Math.max(590, height - 125) }]}>
           <View style={styles.heroShade}>
             <View style={styles.topLine}>
-              <Text style={styles.wordmark}>NY ATELIER</Text>
+              <View style={styles.brand}>
+                <NyMark color={atelier.white} size={28} />
+                <Text style={styles.wordmark}>NY ATELIER</Text>
+              </View>
               <Text style={styles.edition}>THE NY EDIT  /  01</Text>
             </View>
             <View style={styles.heroBottom}>
@@ -84,7 +88,8 @@ const styles = StyleSheet.create({
   coverImage: { width: '100%', height: '100%' },
   heroShade: { flex: 1, backgroundColor: 'rgba(6, 20, 24, 0.42)', paddingHorizontal: 24, justifyContent: 'space-between' },
   topLine: { marginTop: 23, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  wordmark: { color: atelier.white, fontFamily: atelier.body, fontWeight: '700', letterSpacing: 4.2, fontSize: 17 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  wordmark: { color: atelier.white, fontFamily: atelier.body, fontWeight: '700', letterSpacing: 3.5, fontSize: 16 },
   edition: { color: atelier.white, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1.2 },
   heroBottom: { paddingBottom: 32 },
   heroEyebrow: { color: atelier.brass, fontFamily: atelier.body, fontSize: 11, fontWeight: '700', letterSpacing: 2.2, marginBottom: 15 },
@@ -103,7 +108,7 @@ const styles = StyleSheet.create({
   sectionTitle: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 29, lineHeight: 38, marginBottom: 15 },
   sectionCopy: { color: atelier.muted, fontFamily: atelier.body, fontSize: 15, lineHeight: 23 },
   feature: { marginHorizontal: 24, marginBottom: 30 },
-  featureImage: { height: 238, alignItems: 'flex-start', justifyContent: 'flex-start' },
+  featureImage: { height: 238, alignItems: 'flex-start', justifyContent: 'flex-start', borderRadius: 18, overflow: 'hidden' },
   featureTag: { backgroundColor: atelier.alabaster, paddingHorizontal: 13, paddingVertical: 10, margin: 12 },
   featureTagText: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 10, letterSpacing: 1.4 },
   featureText: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 15 },
