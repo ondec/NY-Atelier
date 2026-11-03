@@ -1,0 +1,55 @@
+:root {
+  --petrol: #123c45;
+  --alabaster: #f6f3ec;
+  --cognac: #a85c32;
+  --slate: #1c2326;
+  --brass: #c5a059;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { background: var(--alabaster); color: var(--slate); font-family: Arial, Helvetica, sans-serif; }
+
+.site-header { background: var(--petrol); color: #fff; }
+.header-inner { max-width: 1180px; margin: auto; padding: 22px 28px; display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+.brand { display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 700; letter-spacing: .27em; }
+.brand-mark { border: 1px solid var(--brass); color: var(--brass); padding: 9px 7px 7px 10px; font-family: Georgia, serif; font-size: 19px; letter-spacing: -.04em; }
+.preview-badge { color: #d4e0dc; font-size: 12px; letter-spacing: .04em; }
+.main-content { max-width: 1180px; margin: auto; padding: 48px 28px 88px; }
+.eyebrow { color: var(--cognac); font-size: 12px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
+.page-heading { display: flex; justify-content: space-between; align-items: end; gap: 30px; margin: 12px 0 48px; }
+h1, h2, h3, p { margin-top: 0; }
+h1, h2, h3 { font-family: Georgia, 'Times New Roman', serif; font-weight: 400; }
+h1 { font-size: clamp(40px, 5vw, 64px); letter-spacing: -.045em; margin-bottom: 11px; }
+.page-heading p { font-size: 16px; color: #53605f; margin-bottom: 0; }
+.count-panel { min-width: 132px; padding: 16px 20px; border-left: 1px solid #b9b3a7; display: grid; gap: 3px; }
+.count-panel strong { color: var(--petrol); font-family: Georgia, serif; font-size: 40px; font-weight: 400; line-height: 1; }
+.count-panel span { color: #596361; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; }
+.section-title { display: flex; align-items: baseline; gap: 15px; border-bottom: 1px solid #cfc9bc; margin: 0 0 20px; }
+.section-title h2 { font-size: 27px; margin: 0 0 12px; }
+.section-title span { color: #69706b; font-size: 12px; }
+section + section { margin-top: 52px; }
+.order-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+.order-card { background: #fff; border: 1px solid #e5e0d6; padding: 24px; box-shadow: 0 4px 20px #1c232608; }
+.card-topline { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.category { color: var(--cognac); font-size: 11px; letter-spacing: .13em; font-weight: 700; text-transform: uppercase; }
+.reference { color: #717a78; font-size: 11px; white-space: nowrap; }
+.order-card h3 { font-size: 25px; line-height: 1.2; margin: 17px 0 5px; }
+.customer { color: #6b7774; font-size: 13px; margin-bottom: 24px; }
+.order-meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 16px 0; border-top: 1px solid #eee9df; border-bottom: 1px solid #eee9df; }
+.order-meta div { display: grid; gap: 6px; }
+.order-meta span { font-size: 10px; color: #747e7a; text-transform: uppercase; letter-spacing: .07em; }
+.order-meta strong { font-size: 12px; font-weight: 600; line-height: 1.35; }
+.completion-note { color: var(--petrol); background: #e9efeb; padding: 11px 13px; margin: 18px 0 0; font-size: 12px; line-height: 1.5; }
+.garment-list { margin-top: 18px; }
+.garment-row { display: flex; justify-content: space-between; gap: 20px; padding: 10px 0; font-size: 12px; border-bottom: 1px solid #f1eee7; }
+.garment-row span:last-child { text-align: right; color: #61706c; }
+.empty-state { background: #fff; border: 1px solid #e5e0d6; padding: 32px; }
+@media (max-width: 640px) {
+  .header-inner { padding: 17px 20px; }
+  .preview-badge { max-width: 128px; text-align: right; line-height: 1.4; }
+  .main-content { padding: 34px 20px 70px; }
+  .page-heading { align-items: start; margin-bottom: 36px; }
+  .count-panel { min-width: 74px; padding: 8px 0 8px 13px; }
+  .order-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

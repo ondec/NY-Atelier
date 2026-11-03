@@ -1,0 +1,11 @@
+.DS_Store
+.env
+.env.local
+.env.*.local
+**/node_modules/
+**/vendor/
+**/.next/
+**/.expo/
+**/dist/
+**/database/*.sqlite
+**/storage/logs/*.log
