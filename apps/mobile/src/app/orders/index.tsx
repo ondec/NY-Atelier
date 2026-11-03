@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, T
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { atelier } from '@/atelier-theme';
+import { NyMark } from '@/components/ny-mark';
 import { DemoOrder, formatDate, getDemoOrders } from '@/lib/orders';
 
 export default function OrdersScreen() {
@@ -49,7 +50,7 @@ export default function OrdersScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void loadOrders(); }} />}>
-        <Text style={styles.brand}>NY ATELIER</Text>
+        <View style={styles.brandLockup}><NyMark color={atelier.petrol} size={25} /><Text style={styles.brand}>NY ATELIER</Text></View>
         <Text style={styles.eyebrow}>YOUR JOURNEY</Text>
         <Text style={styles.title}>Orders</Text>
         <Text style={styles.subtitle}>Every piece, from first step to final handover.</Text>
@@ -113,7 +114,8 @@ export default function OrdersScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: atelier.alabaster },
   content: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 130 },
-  brand: { color: atelier.petrol, fontFamily: atelier.body, letterSpacing: 3.7, fontSize: 16, fontWeight: '700', marginBottom: 34 },
+  brandLockup: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 34 },
+  brand: { color: atelier.petrol, fontFamily: atelier.body, letterSpacing: 3.7, fontSize: 16, fontWeight: '700' },
   eyebrow: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 10, fontWeight: '700', letterSpacing: 2, marginBottom: 10 },
   title: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 39, marginBottom: 8 },
   subtitle: { color: atelier.muted, fontFamily: atelier.body, fontSize: 15, lineHeight: 22, marginBottom: 14 },

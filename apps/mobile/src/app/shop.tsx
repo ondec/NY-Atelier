@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
-import { Image, ImageBackground, ImageSourcePropType, Modal, Pressable, ScrollView, ScrollViewInstance, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image, ImageBackground, ImageSourcePropType, Modal, Platform, Pressable, ScrollView, ScrollViewInstance, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { atelier } from '@/atelier-theme';
 import { ShopActionIcon } from '@/components/shop-action-icon';
+import { NyMark } from '@/components/ny-mark';
 
 type ProductPhoto = { id: string; label: string; image: ImageSourcePropType };
 type ProductColor = { id: string; name: string; swatch: string; photos: ProductPhoto[]; concept?: boolean };
@@ -47,9 +48,12 @@ const sortOptions: { value: SortBy; label: string }[] = [
 
 export default function ShopScreen() {
   const galleryRef = useRef<ScrollViewInstance>(null);
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const galleryWidth = Math.min(width, 560) - 24;
   const detailImageHeight = galleryWidth * 4 / 3;
+  const detailTopPadding = (Platform.OS === 'web' ? 34 : Math.max(insets.top, Platform.OS === 'ios' ? 44 : 24)) + 16;
+  const detailBottomPadding = Math.max(insets.bottom, Platform.OS === 'web' ? 0 : 24) + 12;
   const [filter, setFilter] = useState<(typeof filters)[number]>('All');
   const [selected, setSelected] = useState<Product | null>(null);
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
@@ -57,6 +61,7 @@ export default function ShopScreen() {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [sizeError, setSizeError] = useState(false);
   const [detailAdded, setDetailAdded] = useState(false);
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [bag, setBag] = useState<Record<string, BagEntry>>({});
   const [priceRange, setPriceRange] = useState<PriceRange>('all');
@@ -78,6 +83,7 @@ export default function ShopScreen() {
     setSelectedSize(null);
     setSizeError(false);
     setDetailAdded(false);
+    setSizeGuideOpen(false);
     setSelected(product);
   }
 
@@ -121,7 +127,7 @@ export default function ShopScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.wordmark}>NY ATELIER</Text>
+          <View style={styles.brandLockup}><NyMark color={atelier.petrol} size={25} /><Text style={styles.wordmark}>NY ATELIER</Text></View>
           <View style={styles.headerRight}>
             <Text style={styles.headerIndex}>READY-TO-WEAR  /  01</Text>
             <Pressable accessibilityRole="button" accessibilityLabel={`Open bag, ${bagCount} ${bagCount === 1 ? 'item' : 'items'}`} onPress={() => setBagOpen(true)} style={styles.headerBag}>
@@ -190,7 +196,7 @@ export default function ShopScreen() {
             <View style={styles.grid}>
               {visibleProducts.map((product) => {
                 const saved = savedIds.includes(product.id);
-                const quantity = bagEntries.reduce((total, [, entry]) => total + (entry.productId === product.id ? entry.quantity : 0), 0);
+                const availableColors = product.colors.filter((color) => !color.concept);
                 return (
                   <View key={product.id} style={styles.product}>
                     <View style={styles.productVisual}>
@@ -200,9 +206,10 @@ export default function ShopScreen() {
                       <Pressable accessibilityRole="button" accessibilityLabel={`${saved ? 'Remove' : 'Add'} ${product.name} ${saved ? 'from' : 'to'} wishlist`} accessibilityState={{ selected: saved }} onPress={() => toggleSaved(product.id)} style={[styles.imageAction, styles.heartAction]}>
                         <ShopActionIcon name="heart" color={saved ? atelier.cognac : atelier.petrol} filled={saved} size={21} />
                       </Pressable>
-                      <Pressable accessibilityRole="button" accessibilityLabel={`Add ${product.name} to bag${quantity ? `, ${quantity} already in bag` : ''}`} onPress={() => addToBag(product.id)} style={[styles.imageAction, styles.bagAction, quantity > 0 && styles.bagActionAdded]}>
-                        <ShopActionIcon name="bag" color={quantity > 0 ? atelier.white : atelier.petrol} size={21} />
-                      </Pressable>
+                      <View accessibilityLabel={`${product.name}: ${availableColors.map((color) => color.name).join(', ')} available`} style={styles.cardColors}>
+                        {availableColors.slice(0, 3).map((color) => <View key={color.id} style={[styles.cardColorSwatch, { backgroundColor: color.swatch }]} />)}
+                        {availableColors.length > 3 ? <Text style={styles.cardColorMore}>+{availableColors.length - 3}</Text> : null}
+                      </View>
                     </View>
                     <Pressable accessibilityRole="button" accessibilityLabel={`View ${product.name}, ${product.price}`} onPress={() => openProduct(product)} style={styles.productDetails}>
                       <Text style={styles.productCategory}>{product.category}  /  READY-TO-WEAR</Text>
@@ -222,7 +229,7 @@ export default function ShopScreen() {
       <Modal visible={filterOpen} transparent animationType="slide" onRequestClose={() => setFilterOpen(false)}>
         <View style={styles.sheetFrame}>
           <Pressable accessibilityRole="button" accessibilityLabel="Close filters" onPress={() => setFilterOpen(false)} style={styles.sheetScrim} />
-          <SafeAreaView style={styles.sheet} edges={['bottom']}>
+          <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
             <View style={styles.sheetTop}>
               <Text style={styles.sheetTitle}>Filter & sort</Text>
               <Pressable accessibilityRole="button" accessibilityLabel="Close filters" onPress={() => setFilterOpen(false)} style={styles.closeButton}><Text style={styles.closeText}>×</Text></Pressable>
@@ -239,14 +246,14 @@ export default function ShopScreen() {
               <Pressable accessibilityRole="button" accessibilityLabel="Clear filters" onPress={() => { setPriceRange('all'); setSortBy('featured'); }}><Text style={styles.clearText}>Clear</Text></Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel={`Show ${visibleProducts.length} ${visibleProducts.length === 1 ? 'piece' : 'pieces'}`} onPress={() => setFilterOpen(false)} style={styles.showButton}><Text style={styles.showText}>SHOW {String(visibleProducts.length).padStart(2, '0')} {visibleProducts.length === 1 ? 'PIECE' : 'PIECES'}</Text></Pressable>
             </View>
-          </SafeAreaView>
+          </View>
         </View>
       </Modal>
 
       <Modal visible={bagOpen} transparent animationType="slide" onRequestClose={() => setBagOpen(false)}>
         <View style={styles.sheetFrame}>
           <Pressable accessibilityRole="button" accessibilityLabel="Close bag" onPress={() => setBagOpen(false)} style={styles.sheetScrim} />
-          <SafeAreaView style={styles.sheet} edges={['bottom']}>
+          <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
             <View style={styles.sheetTop}>
               <Text style={styles.sheetTitle}>Your bag · {bagCount}</Text>
               <Pressable accessibilityRole="button" accessibilityLabel="Close bag" onPress={() => setBagOpen(false)} style={styles.closeButton}><Text style={styles.closeText}>×</Text></Pressable>
@@ -272,12 +279,12 @@ export default function ShopScreen() {
                 <Text style={styles.bagFootnote}>Bag contents are held in this preview only. Checkout is not connected yet.</Text>
               </>
             )}
-          </SafeAreaView>
+          </View>
         </View>
       </Modal>
 
       <Modal visible={selected !== null} animationType="slide" onRequestClose={() => setSelected(null)}>
-        <SafeAreaView style={styles.detailSafe} edges={['top', 'bottom']}>
+        <View style={[styles.detailSafe, { paddingTop: detailTopPadding, paddingBottom: detailBottomPadding }]}>
           <View style={styles.detailShell}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.detailScrollContent}>
               <View style={styles.detailHero}>
@@ -320,7 +327,7 @@ export default function ShopScreen() {
                 </> : null}
               </View>
               <View style={styles.detailBody}>
-                <Text style={styles.detailEyebrow}>NY ATELIER  /  READY-TO-WEAR</Text>
+                <View style={styles.detailBrandLine}><NyMark color={atelier.cognac} size={18} /><Text style={styles.detailEyebrow}>NY ATELIER  /  READY-TO-WEAR</Text></View>
                 <Text style={styles.detailTitle}>{selected?.name}</Text>
                 <Text style={styles.detailPrice}>{selected?.price}</Text>
                 <View style={styles.detailRule} />
@@ -340,6 +347,20 @@ export default function ShopScreen() {
                 </View>
                 {sizeError ? <Text style={styles.sizeError}>Select a size to add this piece.</Text> : null}
                 <Text style={styles.detailNote}>Size choices are for this preview. Confirm availability with NY Atelier before purchase.</Text>
+                <Pressable accessibilityRole="button" accessibilityState={{ expanded: sizeGuideOpen }} onPress={() => setSizeGuideOpen((open) => !open)} style={styles.sizeGuideToggle}>
+                  <Text style={styles.sizeGuideTitle}>SIZE CHART & FIT GUIDE</Text>
+                  <Text style={styles.sizeGuideSymbol}>{sizeGuideOpen ? '−' : '+'}</Text>
+                </Pressable>
+                {sizeGuideOpen ? <View style={styles.sizeGuideContent}>
+                  <Text style={styles.sizeGuideNote}>NY Atelier has not provided verified measurements for these sizes yet. Confirm the garment measurements before ordering.</Text>
+                  <View style={styles.sizeChart}>
+                    <View style={styles.sizeChartRow}><Text style={styles.sizeChartHeading}>SIZE</Text><Text style={styles.sizeChartHeading}>CHEST</Text><Text style={styles.sizeChartHeading}>WAIST</Text><Text style={styles.sizeChartHeading}>HIPS</Text></View>
+                    {previewSizes.map((size) => <View key={size} style={styles.sizeChartRow}><Text style={styles.sizeChartSize}>{size}</Text><Text style={styles.sizeChartCell}>—</Text><Text style={styles.sizeChartCell}>—</Text><Text style={styles.sizeChartCell}>—</Text></View>)}
+                  </View>
+                  <View style={styles.sizeGuideRow}><Text style={styles.sizeGuideMeasure}>Chest</Text><Text style={styles.sizeGuideHow}>Measure around the fullest part.</Text></View>
+                  <View style={styles.sizeGuideRow}><Text style={styles.sizeGuideMeasure}>Waist</Text><Text style={styles.sizeGuideHow}>Measure around your natural waist.</Text></View>
+                  <View style={styles.sizeGuideRow}><Text style={styles.sizeGuideMeasure}>Hips</Text><Text style={styles.sizeGuideHow}>Measure around the fullest part.</Text></View>
+                </View> : null}
               </View>
             </ScrollView>
             <View style={styles.detailFooter}>
@@ -358,7 +379,7 @@ export default function ShopScreen() {
               </View>
             </View>
           </View>
-        </SafeAreaView>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -368,6 +389,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: atelier.alabaster },
   content: { paddingBottom: 125 },
   header: { paddingHorizontal: 24, height: 70, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  brandLockup: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   wordmark: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 16, fontWeight: '700', letterSpacing: 3.7 },
   headerIndex: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1 },
@@ -397,8 +419,9 @@ const styles = StyleSheet.create({
   productImage: { width: '100%', height: '100%' },
   imageAction: { position: 'absolute', width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(250,248,244,0.94)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)' },
   heartAction: { top: 9, right: 9 },
-  bagAction: { bottom: 9, right: 9 },
-  bagActionAdded: { backgroundColor: atelier.petrol, borderColor: atelier.petrol },
+  cardColors: { position: 'absolute', right: 9, bottom: 9, padding: 7, gap: 6, alignItems: 'center', borderRadius: 18, backgroundColor: 'rgba(250,248,244,0.94)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)' },
+  cardColorSwatch: { width: 17, height: 17, borderRadius: 9, borderWidth: 1, borderColor: 'rgba(18,60,69,0.2)' },
+  cardColorMore: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 10, fontWeight: '700' },
   productDetails: { minHeight: 70 },
   productCategory: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1.3, marginBottom: 7 },
   productName: { color: atelier.slate, fontFamily: atelier.body, fontWeight: '700', fontSize: 16, marginBottom: 5 },
@@ -459,7 +482,8 @@ const styles = StyleSheet.create({
   closeText: { color: atelier.petrol, fontSize: 28 },
   detailImage: { width: '100%' },
   detailBody: { paddingHorizontal: 24, paddingTop: 25 },
-  detailEyebrow: { color: atelier.cognac, fontFamily: atelier.body, fontWeight: '700', fontSize: 10, letterSpacing: 1.5, marginBottom: 10 },
+  detailBrandLine: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  detailEyebrow: { color: atelier.cognac, fontFamily: atelier.body, fontWeight: '700', fontSize: 10, letterSpacing: 1.5 },
   detailTitle: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 27, lineHeight: 35, marginBottom: 6 },
   detailPrice: { color: atelier.slate, fontFamily: atelier.body, fontSize: 18 },
   detailRule: { height: 1, backgroundColor: atelier.line, marginVertical: 18 },
@@ -482,6 +506,19 @@ const styles = StyleSheet.create({
   sizeTextSelected: { color: atelier.white },
   sizeError: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 12, marginBottom: 9 },
   detailNote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 12, lineHeight: 18 },
+  sizeGuideToggle: { marginTop: 23, paddingVertical: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: atelier.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sizeGuideTitle: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 11, fontWeight: '700', letterSpacing: 1.3 },
+  sizeGuideSymbol: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 22, lineHeight: 22 },
+  sizeGuideContent: { paddingTop: 17, paddingBottom: 8 },
+  sizeGuideNote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 12, lineHeight: 19, marginBottom: 17 },
+  sizeChart: { borderWidth: 1, borderColor: atelier.line, borderRadius: 14, overflow: 'hidden', marginBottom: 20 },
+  sizeChartRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: atelier.line, paddingVertical: 10, paddingHorizontal: 7 },
+  sizeChartHeading: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 9, fontWeight: '700', textAlign: 'center', flex: 1 },
+  sizeChartSize: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 12, fontWeight: '700', textAlign: 'center', flex: 1 },
+  sizeChartCell: { color: atelier.muted, fontFamily: atelier.body, fontSize: 12, textAlign: 'center', flex: 1 },
+  sizeGuideRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 16, borderTopWidth: 1, borderTopColor: atelier.line, paddingVertical: 12 },
+  sizeGuideMeasure: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 13, fontWeight: '700' },
+  sizeGuideHow: { color: atelier.muted, fontFamily: atelier.body, fontSize: 12, flex: 1, textAlign: 'right' },
   detailFooter: { paddingHorizontal: 24, paddingTop: 13, paddingBottom: 14, borderTopWidth: 1, borderTopColor: atelier.line, backgroundColor: atelier.alabaster },
   detailFooterActions: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   detailHeartButton: { width: 52, height: 52, borderRadius: 26, backgroundColor: atelier.white, borderWidth: 1, borderColor: atelier.line, alignItems: 'center', justifyContent: 'center' },

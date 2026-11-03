@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { atelier } from '@/atelier-theme';
+import { NyMark } from '@/components/ny-mark';
 
 const sections = [
   { number: '01', title: 'Your details', note: 'Personal information, addresses and preferences' },
@@ -15,7 +16,7 @@ export default function AccountScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.wordmark}>NY ATELIER</Text>
+          <View style={styles.brandLockup}><NyMark color={atelier.petrol} size={25} /><Text style={styles.wordmark}>NY ATELIER</Text></View>
           <Text style={styles.headerIndex}>YOUR SPACE  /  01</Text>
         </View>
         <View style={styles.intro}>
@@ -53,6 +54,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: atelier.alabaster },
   content: { paddingBottom: 125 },
   header: { paddingHorizontal: 24, height: 70, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  brandLockup: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   wordmark: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 16, fontWeight: '700', letterSpacing: 3.7 },
   headerIndex: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1 },
   intro: { paddingHorizontal: 24, paddingTop: 38, paddingBottom: 38 },

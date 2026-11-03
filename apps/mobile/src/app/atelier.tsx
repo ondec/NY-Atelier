@@ -4,6 +4,7 @@ import { ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Text, View }
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { atelier } from '@/atelier-theme';
+import { NyMark } from '@/components/ny-mark';
 
 const services = [
   { number: '01', title: 'Measurements & fittings', note: 'A fit that belongs to you.' },
@@ -19,7 +20,7 @@ export default function AtelierScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.wordmark}>NY ATELIER</Text>
+          <View style={styles.brandLockup}><NyMark color={atelier.petrol} size={25} /><Text style={styles.wordmark}>NY ATELIER</Text></View>
           <Text style={styles.headerIndex}>THE ATELIER  /  01</Text>
         </View>
 
@@ -99,6 +100,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: atelier.alabaster },
   content: { paddingBottom: 115 },
   header: { paddingHorizontal: 24, height: 70, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  brandLockup: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   wordmark: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 16, fontWeight: '700', letterSpacing: 3.7 },
   headerIndex: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1 },
   hero: { height: 270, marginHorizontal: 14, borderRadius: 18, overflow: 'hidden' },

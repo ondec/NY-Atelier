@@ -10,7 +10,7 @@ import { TabIcon } from '@/components/tab-icon';
 export default function RootLayout() {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const barWidth = Math.min(width - 28, 560);
+  const barSideInset = Math.max(14, (width - 560) / 2);
   const [fontsLoaded, fontError] = useFonts({
     AlfaSlabOne: require('../../assets/fonts/AlfaSlabOne-Regular.ttf'),
     JosefinSans: require('../../assets/fonts/JosefinSans-Variable.ttf'),
@@ -28,10 +28,9 @@ export default function RootLayout() {
         tabBarInactiveTintColor: atelier.muted,
         tabBarStyle: {
           position: 'absolute',
-          width: barWidth,
-          left: '50%',
-          transform: [{ translateX: -barWidth / 2 }],
-          bottom: insets.bottom + 14,
+          left: barSideInset,
+          right: barSideInset,
+          bottom: Math.max(insets.bottom, Platform.OS === 'web' ? 0 : 24) + 14,
           height: 70,
           paddingTop: 8,
           borderRadius: 35,
