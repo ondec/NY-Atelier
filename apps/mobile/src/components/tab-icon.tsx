@@ -16,7 +16,7 @@ export function TabIcon({ name, focused, color, size }: TabIconProps) {
   const line = { stroke: color, strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 
   return (
-    <View style={[styles.iconFrame, focused && styles.iconFrameActive]}>
+    <View style={styles.iconFrame}>
       {name === 'atelier' ? (
         <NyMark color={color} size={size} />
       ) : (
@@ -56,5 +56,4 @@ export function TabIcon({ name, focused, color, size }: TabIconProps) {
 
 const styles = StyleSheet.create({
   iconFrame: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  iconFrameActive: { backgroundColor: 'rgba(18,60,69,0.12)' },
 });

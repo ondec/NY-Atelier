@@ -23,6 +23,8 @@ export default function RootLayout() {
         headerShown: false,
         tabBarActiveTintColor: atelier.petrol,
         tabBarInactiveTintColor: atelier.muted,
+        tabBarActiveBackgroundColor: 'rgba(18,60,69,0.13)',
+        tabBarItemStyle: { borderRadius: 22, overflow: 'hidden', marginHorizontal: 2, marginVertical: 5 },
         tabBarStyle: {
           position: 'absolute',
           width: barWidth,
@@ -33,7 +35,7 @@ export default function RootLayout() {
           borderRadius: 35,
           borderWidth: 1,
           borderColor: 'rgba(255,255,255,0.82)',
-          backgroundColor: 'rgba(246,243,236,0.74)',
+          backgroundColor: 'rgba(246,243,236,0.38)',
           shadowColor: atelier.slate,
           shadowOffset: { width: 0, height: 10 },
           shadowOpacity: 0.18,
@@ -65,6 +67,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     borderRadius: 35,
     overflow: 'hidden',
-    backgroundColor: 'rgba(246,243,236,0.70)',
+    backgroundColor: 'rgba(246,243,236,0.55)',
   },
 });
