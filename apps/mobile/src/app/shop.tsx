@@ -8,7 +8,7 @@ import { NyMark } from '@/components/ny-mark';
 
 type ProductPhoto = { id: string; label: string; image: ImageSourcePropType };
 type ProductColor = { id: string; name: string; swatch: string; photos: ProductPhoto[]; concept?: boolean };
-type Product = { id: string; name: string; description: string; price: string; priceValue: number; image: ImageSourcePropType; category: string; colors: ProductColor[]; newArrivalPreview?: boolean; promotionPreviewPrice?: string };
+type Product = { id: string; name: string; description: string; price: string; priceValue: number; image: ImageSourcePropType; category: string; colors: ProductColor[]; newArrivalPreview?: boolean; promotionPreviewPrice?: string; stockStateExample?: boolean };
 type BagEntry = { productId: string; colorId: string; size: string | null; quantity: number };
 const products: Product[] = [
   {
@@ -32,6 +32,10 @@ const products: Product[] = [
     colors: [{ id: 'navy', name: 'Navy', swatch: '#202431', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-aegis.png') }] }],
   },
   {
+    id: 'milano-pants', name: 'Milano Pleated Pants', description: 'Brown pleated trousers with a gathered waist, roomy legs and a relaxed finish.', price: 'GH₵ 500', priceValue: 500, image: require('../../assets/ny/product-milano-pants.png'), category: 'MEN', stockStateExample: true,
+    colors: [{ id: 'brown', name: 'Brown', swatch: '#9A673E', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-milano-pants.png') }] }],
+  },
+  {
     id: 'amani', name: 'Amani Set', description: 'A coordinated set with a button-front top and patterned pocket accents. Its simple lines let the details stand out.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-amani.jpg'), category: 'MEN',
     colors: [
       { id: 'cream', name: 'Cream', swatch: '#DCCB9B', photos: [
@@ -49,10 +53,6 @@ const products: Product[] = [
   {
     id: 'aurel-tunic', name: 'The Aurel Signature Tunic', description: 'A white longline tunic with a clean front and gold-toned chest detail.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-aurel-tunic.jpg'), category: 'MEN',
     colors: [{ id: 'white', name: 'White', swatch: '#E9E9E7', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-aurel-tunic.jpg') }] }],
-  },
-  {
-    id: 'milano-pants', name: 'Milano Pleated Pants', description: 'Brown pleated trousers with a gathered waist, roomy legs and a relaxed finish.', price: 'GH₵ 500', priceValue: 500, image: require('../../assets/ny/product-milano-pants.png'), category: 'MEN',
-    colors: [{ id: 'brown', name: 'Brown', swatch: '#9A673E', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-milano-pants.png') }] }],
   },
 ];
 const filters = ['All', 'New Arrivals', 'Men', 'Women', 'Collections'] as const;
@@ -141,6 +141,7 @@ export default function ShopScreen() {
 
   function addSelectedToBag() {
     if (!selected) return;
+    if (selected.stockStateExample) return;
     if (!selectedSize) {
       setSizeError(true);
       return;
@@ -200,7 +201,7 @@ export default function ShopScreen() {
         ) : (
           <>
             {filter === 'New Arrivals' ? <View style={styles.arrivalsIntro}>
-              <Text style={styles.arrivalsIntroLabel}>NEW ARRIVALS · PREVIEW</Text>
+              <Text style={styles.arrivalsIntroLabel}>NEW ARRIVALS</Text>
               <Text style={styles.arrivalsIntroCopy}>Recently listed pieces from NY Atelier’s store. Launch dates are still to be confirmed.</Text>
             </View> : null}
             {filter === 'Collections' ? (
@@ -230,11 +231,11 @@ export default function ShopScreen() {
                 return (
                   <View key={product.id} style={styles.product}>
                     <View style={styles.productVisual}>
-                      <Pressable accessibilityRole="button" accessibilityLabel={`View ${product.name}`} onPress={() => openProduct(product)} style={styles.imageButton}>
-                        <Image source={product.image} resizeMode="cover" style={styles.productImage} />
+                      <Pressable accessibilityRole="button" accessibilityLabel={`View ${product.name}${product.stockStateExample ? ', out-of-stock design example' : ''}`} onPress={() => openProduct(product)} style={styles.imageButton}>
+                        <Image source={product.image} resizeMode="cover" style={[styles.productImage, product.stockStateExample && styles.productImageMuted]} />
                       </Pressable>
-                      {product.newArrivalPreview || product.promotionPreviewPrice ? <View style={[styles.productTag, product.promotionPreviewPrice && styles.productTagOffer]}>
-                        <Text numberOfLines={1} style={styles.productTagText}>{product.newArrivalPreview ? 'NEW · PREVIEW' : 'OFFER · DEMO'}</Text>
+                      {product.newArrivalPreview || product.promotionPreviewPrice || product.stockStateExample ? <View style={[styles.productTag, product.promotionPreviewPrice && styles.productTagOffer, product.stockStateExample && styles.productTagStock]}>
+                        <Text numberOfLines={1} style={styles.productTagText}>{product.stockStateExample ? 'OUT OF STOCK' : product.newArrivalPreview ? 'NEW' : 'OFFER'}</Text>
                       </View> : null}
                       <Pressable accessibilityRole="button" accessibilityLabel={`${saved ? 'Remove' : 'Add'} ${product.name} ${saved ? 'from' : 'to'} wishlist`} accessibilityState={{ selected: saved }} onPress={() => toggleSaved(product.id)} style={[styles.imageAction, styles.heartAction]}>
                         <ShopActionIcon name="heart" color={saved ? atelier.cognac : atelier.petrol} filled={saved} size={21} />
@@ -246,7 +247,7 @@ export default function ShopScreen() {
                         {visibleColors.length > 3 ? <Text style={styles.cardColorMore}>+{visibleColors.length - 3}</Text> : null}
                       </View>
                     </View>
-                    <Pressable accessibilityRole="button" accessibilityLabel={`View ${product.name}, ${product.price}${product.promotionPreviewPrice ? ', promotion layout demo' : ''}`} onPress={() => openProduct(product)} style={styles.productDetails}>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`View ${product.name}, ${product.price}${product.promotionPreviewPrice ? ', promotion layout example' : ''}${product.stockStateExample ? ', out-of-stock design example' : ''}`} onPress={() => openProduct(product)} style={[styles.productDetails, product.stockStateExample && styles.productDetailsMuted]}>
                       <Text style={styles.productCategory}>{product.category}  /  READY-TO-WEAR</Text>
                       <Text style={styles.productName}>{product.name}</Text>
                       <View style={styles.productPriceRow}>
@@ -259,7 +260,7 @@ export default function ShopScreen() {
               })}
             </View>
             {visibleProducts.length === 0 ? <Text style={styles.emptyNote}>No pieces match this price range. Try another filter.</Text> : null}
-            <Text style={styles.previewNote}>Catalogue preview from NY Atelier’s public store. New arrival badges and the example offer are design previews, not confirmed launch dates or an active discount. Check prices and availability before purchase. Checkout is not connected here yet.</Text>
+            <Text style={styles.previewNote}>Catalogue design example using NY Atelier store images and listed prices. New, offer and out-of-stock treatments are illustrative; launch dates, discounts and stock states have not been confirmed. Checkout is not connected yet.</Text>
           </>
         )}
       </ScrollView>
@@ -371,7 +372,8 @@ export default function ShopScreen() {
                   <Text style={styles.detailPrice}>{selected?.price}</Text>
                   {selected?.promotionPreviewPrice ? <Text style={styles.detailPriceWas}>{selected.promotionPreviewPrice}</Text> : null}
                 </View>
-                {selected?.promotionPreviewPrice ? <Text style={styles.promotionPreviewNote}>Offer display preview only. NY Atelier has not listed an active discount for this item.</Text> : null}
+                {selected?.promotionPreviewPrice ? <Text style={styles.promotionPreviewNote}>Example offer styling. NY Atelier has not listed an active discount for this item.</Text> : null}
+                {selected?.stockStateExample ? <Text style={styles.stockDetailNote}>Out-of-stock styling example. Check current availability with NY Atelier.</Text> : null}
                 <View style={styles.detailRule} />
                 <Text style={styles.detailLabel}>COLOUR <Text style={styles.detailLabelLight}>· {selectedColor?.name.toUpperCase()}{selectedColor?.concept ? ' PREVIEW' : ''}</Text></Text>
                 <View style={styles.colorRow}>
@@ -432,7 +434,7 @@ export default function ShopScreen() {
                 <Pressable accessibilityRole="button" accessibilityLabel={`${selected && savedIds.includes(selected.id) ? 'Remove' : 'Add'} ${selected?.name || 'piece'} ${selected && savedIds.includes(selected.id) ? 'from' : 'to'} wishlist`} accessibilityState={{ selected: selected ? savedIds.includes(selected.id) : false }} onPress={() => selected && toggleSaved(selected.id)} style={styles.detailHeartButton}>
                   <ShopActionIcon name="heart" color={selected && savedIds.includes(selected.id) ? atelier.cognac : atelier.petrol} filled={selected ? savedIds.includes(selected.id) : false} size={23} />
                 </Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel={`Add ${selected?.name || 'piece'} to bag`} onPress={addSelectedToBag} style={styles.detailAddButton}><Text style={styles.detailAddText}>ADD TO BAG</Text></Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel={selected?.stockStateExample ? 'Out of stock design example' : `Add ${selected?.name || 'piece'} to bag`} accessibilityState={{ disabled: !!selected?.stockStateExample }} disabled={!!selected?.stockStateExample} onPress={addSelectedToBag} style={[styles.detailAddButton, selected?.stockStateExample && styles.detailAddButtonDisabled]}><Text style={styles.detailAddText}>{selected?.stockStateExample ? 'OUT OF STOCK' : 'ADD TO BAG'}</Text></Pressable>
               </View>
             </View>
           </View>
@@ -477,8 +479,10 @@ const styles = StyleSheet.create({
   productVisual: { width: '100%', aspectRatio: 3 / 4, marginBottom: 12, borderRadius: 16, overflow: 'hidden', backgroundColor: '#E8E7E2' },
   imageButton: { width: '100%', height: '100%' },
   productImage: { width: '100%', height: '100%' },
+  productImageMuted: { opacity: 0.38 },
   productTag: { position: 'absolute', top: 10, left: 10, maxWidth: '65%', borderRadius: atelier.buttonRadius, backgroundColor: atelier.petrol, paddingHorizontal: 9, paddingVertical: 6 },
   productTagOffer: { backgroundColor: atelier.cognac },
+  productTagStock: { backgroundColor: atelier.muted },
   productTagText: { color: atelier.white, fontFamily: atelier.body, fontSize: 8, fontWeight: '700', letterSpacing: 0.5 },
   imageAction: { position: 'absolute', width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(250,248,244,0.94)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)' },
   heartAction: { top: 9, right: 9 },
@@ -487,6 +491,7 @@ const styles = StyleSheet.create({
   cardColorOverlap: { marginTop: -2 },
   cardColorMore: { color: atelier.white, fontFamily: atelier.body, fontSize: 8, fontWeight: '700', marginTop: 2 },
   productDetails: { minHeight: 70 },
+  productDetailsMuted: { opacity: 0.58 },
   productCategory: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1.3, marginBottom: 7 },
   productName: { color: atelier.slate, fontFamily: atelier.body, fontWeight: '700', fontSize: 16, marginBottom: 5 },
   productPriceRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 7 },
@@ -555,6 +560,7 @@ const styles = StyleSheet.create({
   detailPrice: { color: atelier.slate, fontFamily: atelier.body, fontSize: 18 },
   detailPriceWas: { color: atelier.muted, fontFamily: atelier.body, fontSize: 14, textDecorationLine: 'line-through' },
   promotionPreviewNote: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 11, lineHeight: 16, marginTop: 8 },
+  stockDetailNote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 11, lineHeight: 16, marginTop: 8 },
   detailRule: { height: 1, backgroundColor: atelier.line, marginVertical: 18 },
   detailLabel: { color: atelier.petrol, fontFamily: atelier.body, fontWeight: '700', fontSize: 11, letterSpacing: 1.3, marginBottom: 12 },
   detailLabelLight: { color: atelier.muted, fontWeight: '400' },
@@ -601,6 +607,7 @@ const styles = StyleSheet.create({
   detailFooterActions: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   detailHeartButton: { width: 52, height: 52, borderRadius: 26, backgroundColor: atelier.white, borderWidth: 1, borderColor: atelier.line, alignItems: 'center', justifyContent: 'center' },
   detailAddButton: { flex: 1, height: 52, borderRadius: atelier.buttonRadius, backgroundColor: atelier.petrol, alignItems: 'center', justifyContent: 'center' },
+  detailAddButtonDisabled: { backgroundColor: atelier.muted },
   detailAddText: { color: atelier.white, fontFamily: atelier.body, fontSize: 12, fontWeight: '700', letterSpacing: 1.5 },
   detailConfirmation: { paddingBottom: 13 },
   addedText: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 14, fontWeight: '700', marginBottom: 9 },
