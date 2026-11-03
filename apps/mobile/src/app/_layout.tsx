@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { BlurView } from 'expo-blur';
+import { StatusBar } from 'expo-status-bar';
 import { Platform, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { atelier } from '@/atelier-theme';
@@ -18,7 +19,9 @@ export default function RootLayout() {
   if (!fontsLoaded && !fontError) return null;
 
   return (
-    <Tabs
+    <>
+      <StatusBar style="dark" />
+      <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: atelier.petrol,
@@ -26,8 +29,9 @@ export default function RootLayout() {
         tabBarStyle: {
           position: 'absolute',
           width: barWidth,
-          left: (width - barWidth) / 2,
-          bottom: Math.max(insets.bottom, 14),
+          left: '50%',
+          transform: [{ translateX: -barWidth / 2 }],
+          bottom: insets.bottom + 14,
           height: 70,
           paddingTop: 8,
           borderRadius: 35,
@@ -56,7 +60,8 @@ export default function RootLayout() {
       <Tabs.Screen name="atelier" options={{ title: 'Atelier', tabBarIcon: ({ color, size, focused }) => <TabIcon name="atelier" color={color} size={size} focused={focused} /> }} />
       <Tabs.Screen name="orders" options={{ title: 'Orders', tabBarIcon: ({ color, size, focused }) => <TabIcon name="orders" color={color} size={size} focused={focused} /> }} />
       <Tabs.Screen name="account" options={{ title: 'Account', tabBarIcon: ({ color, size, focused }) => <TabIcon name="account" color={color} size={size} focused={focused} /> }} />
-    </Tabs>
+      </Tabs>
+    </>
   );
 }
 

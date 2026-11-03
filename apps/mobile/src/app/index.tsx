@@ -82,7 +82,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: atelier.alabaster },
+  safe: { flex: 1, backgroundColor: atelier.alabaster, paddingTop: 16 },
   content: { paddingBottom: 115 },
   hero: { width: '100%' },
   coverImage: { width: '100%', height: '100%' },

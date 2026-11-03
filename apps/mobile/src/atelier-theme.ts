@@ -8,7 +8,7 @@ export const atelier = {
   muted: '#63716E',
   line: '#DCD6CB',
   white: '#FFFFFF',
-  buttonRadius: 16,
+  buttonRadius: 999,
   display: 'AlfaSlabOne',
   body: 'JosefinSans',
 };
