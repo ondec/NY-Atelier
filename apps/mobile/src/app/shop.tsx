@@ -1,28 +1,33 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Image, ImageBackground, ImageSourcePropType, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { atelier } from '@/atelier-theme';
 import { ShopActionIcon } from '@/components/shop-action-icon';
 
-type ProductColor = { id: string; name: string; swatch: string; image: ImageSourcePropType; concept?: boolean };
+type ProductPhoto = { id: string; label: string; image: ImageSourcePropType; fit?: 'contain' | 'cover' };
+type ProductColor = { id: string; name: string; swatch: string; photos: ProductPhoto[]; concept?: boolean };
 type Product = { id: string; name: string; price: string; priceValue: number; image: ImageSourcePropType; category: string; colors: ProductColor[] };
 type BagEntry = { productId: string; colorId: string; size: string | null; quantity: number };
 const products: Product[] = [
   {
     id: 'aegis', name: 'Aegis Set', price: 'GH₵ 1,150', priceValue: 1150, image: require('../../assets/ny/product-aegis.png'), category: 'MEN',
-    colors: [{ id: 'navy', name: 'Navy', swatch: '#202431', image: require('../../assets/ny/product-aegis.png') }],
+    colors: [{ id: 'navy', name: 'Navy', swatch: '#202431', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-aegis.png') }] }],
   },
   {
     id: 'amani', name: 'Amani Set', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-amani.jpg'), category: 'MEN',
     colors: [
-      { id: 'cream', name: 'Cream', swatch: '#DCCB9B', image: require('../../assets/ny/product-amani.jpg') },
-      { id: 'black-preview', name: 'Black', swatch: '#242424', image: require('../../assets/ny/product-amani-black-preview.jpg'), concept: true },
+      { id: 'cream', name: 'Cream', swatch: '#DCCB9B', photos: [
+        { id: 'front', label: 'Front', image: require('../../assets/ny/product-amani.jpg') },
+        { id: 'detail', label: 'Fabric detail', image: require('../../assets/ny/product-amani-cream-detail.jpg'), fit: 'cover' },
+        { id: 'side', label: 'Side', image: require('../../assets/ny/product-amani-cream-side.jpg') },
+      ] },
+      { id: 'black-preview', name: 'Black', swatch: '#242424', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-amani-black-preview.jpg') }], concept: true },
     ],
   },
   {
     id: 'arctic', name: 'Arctic Edge Set', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-arctic.png'), category: 'MEN',
-    colors: [{ id: 'white', name: 'White', swatch: '#EDEDEB', image: require('../../assets/ny/product-arctic.png') }],
+    colors: [{ id: 'white', name: 'White', swatch: '#EDEDEB', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-arctic.png') }] }],
   },
 ];
 const filters = ['All', 'Men', 'Women', 'Collections'] as const;
@@ -41,11 +46,14 @@ const sortOptions: { value: SortBy; label: string }[] = [
 ];
 
 export default function ShopScreen() {
+  const galleryRef = useRef<ScrollView>(null);
   const { width, height } = useWindowDimensions();
+  const galleryWidth = Math.min(width, 560) - 24;
   const detailImageHeight = Math.min(Math.min(width, 560) * 1.16, height * 0.53, 520);
   const [filter, setFilter] = useState<(typeof filters)[number]>('All');
   const [selected, setSelected] = useState<Product | null>(null);
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [sizeError, setSizeError] = useState(false);
   const [detailAdded, setDetailAdded] = useState(false);
@@ -60,15 +68,23 @@ export default function ShopScreen() {
     .sort((a, b) => sortBy === 'low' ? a.priceValue - b.priceValue : sortBy === 'high' ? b.priceValue - a.priceValue : 0);
   const bagEntries = Object.entries(bag);
   const selectedColor = selected?.colors.find((color) => color.id === selectedColorId) || selected?.colors[0];
+  const selectedPhotos = selectedColor?.photos || [];
   const bagCount = bagEntries.reduce((total, [, entry]) => total + entry.quantity, 0);
   const bagTotal = bagEntries.reduce((total, [, entry]) => total + (products.find((product) => product.id === entry.productId)?.priceValue || 0) * entry.quantity, 0);
 
   function openProduct(product: Product) {
     setSelectedColorId(product.colors[0].id);
+    setSelectedPhotoIndex(0);
     setSelectedSize(null);
     setSizeError(false);
     setDetailAdded(false);
     setSelected(product);
+  }
+
+  function goToPhoto(index: number) {
+    if (index < 0 || index >= selectedPhotos.length) return;
+    setSelectedPhotoIndex(index);
+    galleryRef.current?.scrollTo({ x: index * galleryWidth, animated: true });
   }
 
   function toggleSaved(id: string) {
@@ -242,7 +258,7 @@ export default function ShopScreen() {
                   if (!product) return null;
                   const color = product.colors.find((item) => item.id === entry.colorId) || product.colors[0];
                   return <View key={key} style={styles.bagItem}>
-                    <Image source={color.image} resizeMode="cover" style={styles.bagImage} />
+                    <Image source={color.photos[0].image} resizeMode="cover" style={styles.bagImage} />
                     <View style={styles.bagItemText}>
                       <Text style={styles.productName}>{product.name}</Text>
                       <Text style={styles.productPrice}>{product.price} · Qty {entry.quantity}</Text>
@@ -265,7 +281,22 @@ export default function ShopScreen() {
           <View style={styles.detailShell}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.detailScrollContent}>
               <View style={styles.detailHero}>
-                {selectedColor ? <Image source={selectedColor.image} resizeMode="contain" style={[styles.detailImage, { height: detailImageHeight }]} /> : null}
+                {selectedColor ? <ScrollView
+                  key={`${selected?.id}-${selectedColor.id}`}
+                  ref={galleryRef}
+                  horizontal
+                  pagingEnabled
+                  bounces={false}
+                  showsHorizontalScrollIndicator={false}
+                  scrollEventThrottle={16}
+                  onScroll={(event) => {
+                    const index = Math.round(event.nativeEvent.contentOffset.x / galleryWidth);
+                    if (index !== selectedPhotoIndex && index >= 0 && index < selectedPhotos.length) setSelectedPhotoIndex(index);
+                  }}
+                  style={{ width: galleryWidth, height: detailImageHeight }}
+                >
+                  {selectedPhotos.map((photo) => <Image key={photo.id} source={photo.image} resizeMode={photo.fit || 'contain'} style={[styles.detailImage, { width: galleryWidth, height: detailImageHeight }]} />)}
+                </ScrollView> : null}
                 <View style={styles.detailTop}>
                   <Pressable accessibilityRole="button" accessibilityLabel="Back to Shop" onPress={() => setSelected(null)} style={styles.detailTopButton}>
                     <ShopActionIcon name="back" color={atelier.petrol} size={20} />
@@ -275,6 +306,18 @@ export default function ShopScreen() {
                     {bagCount > 0 ? <View style={styles.bagBadge}><Text style={styles.bagBadgeText}>{bagCount}</Text></View> : null}
                   </Pressable>
                 </View>
+                {selectedPhotos.length > 1 ? <>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Previous photo" accessibilityState={{ disabled: selectedPhotoIndex === 0 }} disabled={selectedPhotoIndex === 0} onPress={() => goToPhoto(selectedPhotoIndex - 1)} style={[styles.galleryArrow, styles.galleryArrowLeft, selectedPhotoIndex === 0 && styles.galleryArrowDisabled]}>
+                    <ShopActionIcon name="back" color={atelier.petrol} size={18} />
+                  </Pressable>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Next photo" accessibilityState={{ disabled: selectedPhotoIndex === selectedPhotos.length - 1 }} disabled={selectedPhotoIndex === selectedPhotos.length - 1} onPress={() => goToPhoto(selectedPhotoIndex + 1)} style={[styles.galleryArrow, styles.galleryArrowRight, selectedPhotoIndex === selectedPhotos.length - 1 && styles.galleryArrowDisabled]}>
+                    <ShopActionIcon name="forward" color={atelier.petrol} size={18} />
+                  </Pressable>
+                  <View style={styles.galleryMeta} pointerEvents="none">
+                    <Text style={styles.galleryMetaText}>{selectedPhotos[selectedPhotoIndex]?.label.toUpperCase()}</Text>
+                    <Text style={styles.galleryMetaText}>{String(selectedPhotoIndex + 1).padStart(2, '0')} / {String(selectedPhotos.length).padStart(2, '0')}</Text>
+                  </View>
+                </> : null}
               </View>
               <View style={styles.detailBody}>
                 <Text style={styles.detailEyebrow}>NY ATELIER  /  READY-TO-WEAR</Text>
@@ -283,9 +326,9 @@ export default function ShopScreen() {
                 <View style={styles.detailRule} />
                 <Text style={styles.detailLabel}>COLOUR <Text style={styles.detailLabelLight}>· {selectedColor?.name.toUpperCase()}{selectedColor?.concept ? ' PREVIEW' : ''}</Text></Text>
                 <View style={styles.colorRow}>
-                  {selected?.colors.map((color) => <Pressable key={color.id} accessibilityRole="button" accessibilityLabel={`${color.name}${color.concept ? ' visual preview' : ''}`} accessibilityState={{ selected: selectedColorId === color.id }} onPress={() => { setSelectedColorId(color.id); setDetailAdded(false); }} style={styles.colorOption}>
+                  {selected?.colors.map((color) => <Pressable key={color.id} accessibilityRole="button" accessibilityLabel={`${color.name}${color.concept ? ' visual preview' : ''}`} accessibilityState={{ selected: selectedColorId === color.id }} onPress={() => { setSelectedColorId(color.id); setSelectedPhotoIndex(0); setDetailAdded(false); }} style={styles.colorOption}>
                     <View style={[styles.colorImageFrame, selectedColorId === color.id && styles.colorImageFrameSelected]}>
-                      <Image source={color.image} resizeMode="cover" style={styles.colorImage} />
+                      <Image source={color.photos[0].image} resizeMode="cover" style={styles.colorImage} />
                     </View>
                     <View style={styles.colorCaption}><View style={[styles.colorSwatch, { backgroundColor: color.swatch }]} /><Text style={[styles.colorName, selectedColorId === color.id && styles.colorNameSelected]}>{color.name}</Text></View>
                   </Pressable>)}
@@ -404,6 +447,12 @@ const styles = StyleSheet.create({
   detailShell: { flex: 1, width: '100%', maxWidth: 560 },
   detailScrollContent: { paddingBottom: 18 },
   detailHero: { marginHorizontal: 12, borderRadius: 18, overflow: 'hidden', backgroundColor: '#E8E7E2' },
+  galleryArrow: { position: 'absolute', top: '46%', width: 39, height: 39, borderRadius: 20, backgroundColor: 'rgba(250,248,244,0.94)', alignItems: 'center', justifyContent: 'center' },
+  galleryArrowLeft: { left: 13 },
+  galleryArrowRight: { right: 13 },
+  galleryArrowDisabled: { opacity: 0.38 },
+  galleryMeta: { position: 'absolute', bottom: 13, left: 14, right: 14, height: 29, borderRadius: 15, backgroundColor: 'rgba(250,248,244,0.9)', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  galleryMetaText: { color: atelier.petrol, fontFamily: atelier.body, fontWeight: '700', fontSize: 10, letterSpacing: 1 },
   detailTop: { position: 'absolute', left: 14, right: 14, top: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   detailTopButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(250,248,244,0.94)', alignItems: 'center', justifyContent: 'center' },
   closeButton: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: atelier.white },

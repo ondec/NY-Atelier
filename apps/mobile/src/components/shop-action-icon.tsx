@@ -2,7 +2,7 @@ import Svg, { Path } from 'react-native-svg';
 import type { ColorValue } from 'react-native';
 
 type ShopActionIconProps = {
-  name: 'heart' | 'bag' | 'filter' | 'back';
+  name: 'heart' | 'bag' | 'filter' | 'back' | 'forward';
   color: ColorValue;
   filled?: boolean;
   size?: number;
@@ -34,6 +34,9 @@ export function ShopActionIcon({ name, color, filled = false, size = 20 }: ShopA
       ) : null}
       {name === 'back' ? (
         <Path d="m14.5 4.5-7.5 7.5 7.5 7.5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      ) : null}
+      {name === 'forward' ? (
+        <Path d="m9.5 4.5 7.5 7.5-7.5 7.5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
       ) : null}
     </Svg>
   );
