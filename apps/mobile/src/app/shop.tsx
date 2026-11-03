@@ -197,6 +197,7 @@ export default function ShopScreen() {
               {visibleProducts.map((product) => {
                 const saved = savedIds.includes(product.id);
                 const visibleColors = product.colors;
+                const conceptColors = visibleColors.filter((color) => color.concept);
                 return (
                   <View key={product.id} style={styles.product}>
                     <View style={styles.productVisual}>
@@ -208,16 +209,18 @@ export default function ShopScreen() {
                       </Pressable>
                       <View accessible accessibilityLabel={`${product.name}: ${visibleColors.map((color) => `${color.name}${color.concept ? ' visual preview' : ' photographed colour'}`).join(', ')}`} style={styles.cardColors}>
                         {visibleColors.slice(0, 3).map((color, index) => (
-                          <View key={color.id} style={[styles.cardColorSwatch, index > 0 && styles.cardColorOverlap, { backgroundColor: color.swatch }]} />
+                          <View key={color.id} style={[styles.cardColorSwatch, index > 0 && styles.cardColorOverlap, { backgroundColor: color.swatch }]}>
+                            <Image source={color.photos[0].image} resizeMode="cover" style={styles.cardColorImage} />
+                          </View>
                         ))}
                         {visibleColors.length > 3 ? <Text style={styles.cardColorMore}>+{visibleColors.length - 3}</Text> : null}
-                        {visibleColors.some((color) => color.concept) ? <Text style={styles.cardColorPreview}>PREVIEW</Text> : null}
                       </View>
                     </View>
                     <Pressable accessibilityRole="button" accessibilityLabel={`View ${product.name}, ${product.price}`} onPress={() => openProduct(product)} style={styles.productDetails}>
                       <Text style={styles.productCategory}>{product.category}  /  READY-TO-WEAR</Text>
                       <Text style={styles.productName}>{product.name}</Text>
                       <Text style={styles.productPrice}>{product.price}</Text>
+                      {conceptColors.length > 0 ? <Text style={styles.productPreviewLabel}>{conceptColors.map((color) => color.name).join(', ').toUpperCase()} · VISUAL PREVIEW</Text> : null}
                     </Pressable>
                   </View>
                 );
@@ -422,15 +425,16 @@ const styles = StyleSheet.create({
   productImage: { width: '100%', height: '100%' },
   imageAction: { position: 'absolute', width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(250,248,244,0.94)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)' },
   heartAction: { top: 9, right: 9 },
-  cardColors: { position: 'absolute', right: 9, bottom: 9, paddingHorizontal: 7, paddingVertical: 7, alignItems: 'center', borderRadius: 18, backgroundColor: 'rgba(250,248,244,0.94)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)' },
-  cardColorSwatch: { width: 21, height: 21, borderRadius: 11, borderWidth: 2, borderColor: 'rgba(250,248,244,0.98)' },
-  cardColorOverlap: { marginTop: -8 },
-  cardColorMore: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 10, fontWeight: '700' },
-  cardColorPreview: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 6, fontWeight: '700', letterSpacing: 0.2, marginTop: 3 },
+  cardColors: { position: 'absolute', right: 7, bottom: 7, minWidth: 27, paddingHorizontal: 3, paddingVertical: 5, alignItems: 'center', borderRadius: 15, backgroundColor: 'rgba(28,35,38,0.52)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.46)' },
+  cardColorSwatch: { width: 20, height: 20, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: atelier.white },
+  cardColorImage: { width: '100%', height: '100%' },
+  cardColorOverlap: { marginTop: -3 },
+  cardColorMore: { color: atelier.white, fontFamily: atelier.body, fontSize: 9, fontWeight: '700', marginTop: 3 },
   productDetails: { minHeight: 70 },
   productCategory: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1.3, marginBottom: 7 },
   productName: { color: atelier.slate, fontFamily: atelier.body, fontWeight: '700', fontSize: 16, marginBottom: 5 },
   productPrice: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 14 },
+  productPreviewLabel: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 8, fontWeight: '700', letterSpacing: 0.7, marginTop: 5 },
   emptyNote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 14, paddingHorizontal: 24, paddingVertical: 30 },
   previewNote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 11, lineHeight: 17, paddingHorizontal: 24 },
   coverImage: { width: '100%', height: '100%' },
