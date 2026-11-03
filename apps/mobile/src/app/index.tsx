@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ImageBackground, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { atelier } from '@/atelier-theme';
@@ -12,44 +12,84 @@ const stories = [
 ] as const;
 
 export default function HomeScreen() {
-  const { height } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const carouselRef = useRef<ScrollViewInstance>(null);
+  const activeStoryRef = useRef(0);
   const [activeStory, setActiveStory] = useState(0);
-  const story = stories[activeStory];
+  const heroHeight = Math.max(590, height);
+
+  function showStory(index: number) {
+    activeStoryRef.current = index;
+    setActiveStory(index);
+    carouselRef.current?.scrollTo({ x: index * width, animated: true });
+  }
+
+  useEffect(() => {
+    carouselRef.current?.scrollTo({ x: activeStoryRef.current * width, animated: false });
+  }, [width]);
+
+  useFocusEffect(useCallback(() => {
+    const timer = setTimeout(() => {
+      const next = (activeStory + 1) % stories.length;
+      activeStoryRef.current = next;
+      setActiveStory(next);
+      carouselRef.current?.scrollTo({ x: next * width, animated: true });
+    }, 5500);
+    return () => clearTimeout(timer);
+  }, [activeStory, width]));
 
   return (
     <View style={styles.screen}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <ImageBackground source={story.image} resizeMode="cover" imageStyle={styles.coverImage} style={[styles.hero, { height: Math.max(590, height) }]}>
-          <View style={styles.heroShade}>
-            <View style={[styles.topLine, { marginTop: insets.top + 24 }]}>
-              <View style={styles.brand}>
-                <NyMark color={atelier.white} size={28} />
-                <Text style={styles.wordmark}>NY ATELIER</Text>
-              </View>
-              <Text style={styles.edition}>THE NY EDIT  /  01</Text>
-            </View>
-            <View style={{ paddingBottom: insets.bottom + 86 }}>
-              <Text style={styles.heroEyebrow}>{story.caption}</Text>
-              <Text style={styles.heroTitle}>{story.title}</Text>
-              <Pressable accessibilityRole="button" onPress={() => router.push('/shop')} style={styles.shopButton}>
-                <Text style={styles.shopButtonText}>SHOP THE COLLECTION</Text>
-                <Text style={styles.shopArrow}>↗</Text>
-              </Pressable>
-              <View style={styles.storyFoot}>
-                <Text style={styles.storyNumber}>{story.number}</Text>
-                <View style={styles.storyDots}>
-                  {stories.map((_, index) => (
-                    <Pressable key={index} accessibilityRole="button" accessibilityLabel={`Show story ${index + 1}`} onPress={() => setActiveStory(index)} style={[styles.storyDot, index === activeStory && styles.storyDotActive]} />
-                  ))}
+        <ScrollView
+          ref={carouselRef}
+          horizontal
+          pagingEnabled
+          decelerationRate="fast"
+          directionalLockEnabled
+          showsHorizontalScrollIndicator={false}
+          style={{ height: heroHeight }}
+          onMomentumScrollEnd={(event) => {
+            const index = Math.round(event.nativeEvent.contentOffset.x / width);
+            if (index >= 0 && index < stories.length) {
+              activeStoryRef.current = index;
+              setActiveStory(index);
+            }
+          }}>
+          {stories.map((story, storyIndex) => (
+            <ImageBackground key={story.number} source={story.image} resizeMode="cover" imageStyle={styles.coverImage} style={[styles.hero, { width, height: heroHeight }]}>
+              <View style={styles.heroShade}>
+                <View style={[styles.topLine, { marginTop: insets.top + 24 }]}>
+                  <View style={styles.brand}>
+                    <NyMark color={atelier.white} size={28} />
+                    <Text style={styles.wordmark}>NY ATELIER</Text>
+                  </View>
+                  <Text style={styles.edition}>THE NY EDIT  /  {String(storyIndex + 1).padStart(2, '0')}</Text>
                 </View>
-                <Pressable accessibilityRole="button" accessibilityLabel="Next story" onPress={() => setActiveStory((current) => (current + 1) % stories.length)}>
-                  <Text style={styles.nextStory}>NEXT  →</Text>
-                </Pressable>
+                <View style={{ paddingBottom: insets.bottom + 86 }}>
+                  <Text style={styles.heroEyebrow}>{story.caption}</Text>
+                  <Text style={styles.heroTitle}>{story.title}</Text>
+                  <Pressable accessibilityRole="button" onPress={() => router.push('/shop')} style={styles.shopButton}>
+                    <Text style={styles.shopButtonText}>SHOP THE COLLECTION</Text>
+                    <Text style={styles.shopArrow}>↗</Text>
+                  </Pressable>
+                  <View style={styles.storyFoot}>
+                    <Text style={styles.storyNumber}>{story.number}</Text>
+                    <View style={styles.storyDots}>
+                      {stories.map((_, index) => (
+                        <Pressable key={index} accessibilityRole="button" accessibilityLabel={`Show story ${index + 1}`} accessibilityState={{ selected: index === activeStory }} onPress={() => showStory(index)} style={[styles.storyDot, index === activeStory && styles.storyDotActive]} />
+                      ))}
+                    </View>
+                    <Pressable accessibilityRole="button" accessibilityLabel="Next story" onPress={() => showStory((storyIndex + 1) % stories.length)}>
+                      <Text style={styles.nextStory}>NEXT  →</Text>
+                    </Pressable>
+                  </View>
+                </View>
               </View>
-            </View>
-          </View>
-        </ImageBackground>
+            </ImageBackground>
+          ))}
+        </ScrollView>
 
         <View style={styles.intro}>
           <Text style={styles.sectionEyebrow}>A WARDROBE WITH INTENTION</Text>
@@ -85,7 +125,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: atelier.alabaster },
   content: { paddingBottom: 115 },
-  hero: { width: '100%' },
+  hero: { overflow: 'hidden' },
   coverImage: { width: '100%', height: '100%' },
   heroShade: { flex: 1, backgroundColor: 'rgba(6, 20, 24, 0.42)', paddingHorizontal: 24, justifyContent: 'space-between' },
   topLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -100,7 +140,7 @@ const styles = StyleSheet.create({
   storyFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 27 },
   storyNumber: { color: atelier.white, fontFamily: atelier.body, letterSpacing: 2, fontSize: 10 },
   storyDots: { flexDirection: 'row', gap: 8 },
-  storyDot: { height: 4, width: 17, backgroundColor: 'rgba(255,255,255,0.42)' },
+  storyDot: { height: 4, width: 17, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.42)' },
   storyDotActive: { width: 33, backgroundColor: atelier.white },
   nextStory: { color: atelier.white, fontFamily: atelier.body, fontSize: 10, letterSpacing: 1.6 },
   intro: { paddingHorizontal: 25, paddingTop: 47, paddingBottom: 38 },
