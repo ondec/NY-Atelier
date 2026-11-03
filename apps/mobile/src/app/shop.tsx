@@ -8,15 +8,15 @@ import { NyMark } from '@/components/ny-mark';
 
 type ProductPhoto = { id: string; label: string; image: ImageSourcePropType };
 type ProductColor = { id: string; name: string; swatch: string; photos: ProductPhoto[]; concept?: boolean };
-type Product = { id: string; name: string; price: string; priceValue: number; image: ImageSourcePropType; category: string; colors: ProductColor[] };
+type Product = { id: string; name: string; description: string; price: string; priceValue: number; image: ImageSourcePropType; category: string; colors: ProductColor[] };
 type BagEntry = { productId: string; colorId: string; size: string | null; quantity: number };
 const products: Product[] = [
   {
-    id: 'aegis', name: 'Aegis Set', price: 'GH₵ 1,150', priceValue: 1150, image: require('../../assets/ny/product-aegis.png'), category: 'MEN',
+    id: 'aegis', name: 'Aegis Set', description: 'A deep navy matching set with a longline top, offset button detail and a neat chest pocket. A clean, confident look for the moments that call for it.', price: 'GH₵ 1,150', priceValue: 1150, image: require('../../assets/ny/product-aegis.png'), category: 'MEN',
     colors: [{ id: 'navy', name: 'Navy', swatch: '#202431', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-aegis.png') }] }],
   },
   {
-    id: 'amani', name: 'Amani Set', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-amani.jpg'), category: 'MEN',
+    id: 'amani', name: 'Amani Set', description: 'A coordinated set with a button-front top and patterned pocket accents. Its simple lines let the details stand out.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-amani.jpg'), category: 'MEN',
     colors: [
       { id: 'cream', name: 'Cream', swatch: '#DCCB9B', photos: [
         { id: 'front', label: 'Front', image: require('../../assets/ny/product-amani.jpg') },
@@ -27,7 +27,7 @@ const products: Product[] = [
     ],
   },
   {
-    id: 'arctic', name: 'Arctic Edge Set', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-arctic.png'), category: 'MEN',
+    id: 'arctic', name: 'Arctic Edge Set', description: 'A white matching set with dark contrast trim and a clean half-placket neckline. A sharp, understated finish from top to trouser.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-arctic.png'), category: 'MEN',
     colors: [{ id: 'white', name: 'White', swatch: '#EDEDEB', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-arctic.png') }] }],
   },
 ];
@@ -361,7 +361,10 @@ export default function ShopScreen() {
                   {previewSizes.map((size) => <Pressable key={size} accessibilityRole="button" accessibilityLabel={`Size ${size}`} accessibilityState={{ selected: selectedSize === size }} onPress={() => { setSelectedSize(size); setSizeError(false); setDetailAdded(false); }} style={[styles.sizeOption, selectedSize === size && styles.sizeOptionSelected]}><Text style={[styles.sizeText, selectedSize === size && styles.sizeTextSelected]}>{size}</Text></Pressable>)}
                 </View>
                 {sizeError ? <Text style={styles.sizeError}>Select a size to add this piece.</Text> : null}
-                <Text style={styles.detailNote}>Size choices are for this preview. Confirm availability with NY Atelier before purchase.</Text>
+                <View style={styles.descriptionSection}>
+                  <Text style={styles.descriptionHeading}>DESCRIPTION</Text>
+                  <Text style={styles.descriptionText}>{selected?.description}</Text>
+                </View>
                 <Pressable accessibilityRole="button" accessibilityState={{ expanded: sizeGuideOpen }} onPress={() => setSizeGuideOpen((open) => !open)} style={styles.sizeGuideToggle}>
                   <Text style={styles.sizeGuideTitle}>SIZE CHART & FIT GUIDE</Text>
                   <Text style={styles.sizeGuideSymbol}>{sizeGuideOpen ? '−' : '+'}</Text>
@@ -530,7 +533,9 @@ const styles = StyleSheet.create({
   sizeText: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 14, fontWeight: '700' },
   sizeTextSelected: { color: atelier.white },
   sizeError: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 12, marginBottom: 9 },
-  detailNote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 12, lineHeight: 18 },
+  descriptionSection: { borderTopWidth: 1, borderTopColor: atelier.line, paddingTop: 18, marginTop: 9 },
+  descriptionHeading: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 11, fontWeight: '700', letterSpacing: 1.3, marginBottom: 11 },
+  descriptionText: { color: atelier.muted, fontFamily: atelier.body, fontSize: 13, lineHeight: 21 },
   sizeGuideToggle: { marginTop: 23, paddingVertical: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: atelier.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sizeGuideTitle: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 11, fontWeight: '700', letterSpacing: 1.3 },
   sizeGuideSymbol: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 22, lineHeight: 22 },
