@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: atelier.alabaster },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: atelier.alabaster },
   empty: { color: atelier.muted, fontSize: 14 },
-  content: { padding: 24, paddingBottom: 55 },
+  content: { padding: 24, paddingBottom: 130 },
   eyebrow: { color: atelier.cognac, fontSize: 10, letterSpacing: 2, fontWeight: '700', marginTop: 9, marginBottom: 11 },
   heading: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 32, lineHeight: 41, marginBottom: 12 },
   demo: { color: atelier.muted, fontSize: 11, marginBottom: 24 },

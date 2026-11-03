@@ -1,10 +1,15 @@
 import { Tabs } from 'expo-router';
 import { useFonts } from 'expo-font';
-import { Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { Platform, StyleSheet, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { atelier } from '@/atelier-theme';
 import { TabIcon } from '@/components/tab-icon';
 
 export default function RootLayout() {
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const barWidth = Math.min(width - 28, 560);
   const [fontsLoaded, fontError] = useFonts({
     AlfaSlabOne: require('../../assets/fonts/AlfaSlabOne-Regular.ttf'),
     JosefinSans: require('../../assets/fonts/JosefinSans-Variable.ttf'),
@@ -18,7 +23,31 @@ export default function RootLayout() {
         headerShown: false,
         tabBarActiveTintColor: atelier.petrol,
         tabBarInactiveTintColor: atelier.muted,
-        tabBarStyle: { backgroundColor: atelier.white, borderTopColor: atelier.line, borderTopWidth: 1, height: Platform.OS === 'web' ? 66 : undefined, paddingTop: 7 },
+        tabBarStyle: {
+          position: 'absolute',
+          width: barWidth,
+          left: (width - barWidth) / 2,
+          bottom: Math.max(insets.bottom, 14),
+          height: 70,
+          paddingTop: 8,
+          borderRadius: 35,
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.82)',
+          backgroundColor: 'rgba(246,243,236,0.74)',
+          shadowColor: atelier.slate,
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.18,
+          shadowRadius: 24,
+          elevation: 12,
+        },
+        tabBarBackground: () => (
+          <BlurView
+            intensity={Platform.OS === 'web' ? 75 : 65}
+            tint="light"
+            blurMethod={Platform.OS === 'android' ? 'none' : undefined}
+            style={styles.tabBarGlass}
+          />
+        ),
         tabBarIconStyle: { marginBottom: 2 },
         tabBarLabelStyle: { fontFamily: atelier.body, fontSize: 11, fontWeight: '600' },
       }}>
@@ -30,3 +59,12 @@ export default function RootLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBarGlass: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: 35,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(246,243,236,0.70)',
+  },
+});

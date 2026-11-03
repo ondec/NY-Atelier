@@ -51,7 +51,7 @@ export default function AccountScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: atelier.alabaster },
-  content: { paddingBottom: 35 },
+  content: { paddingBottom: 125 },
   header: { paddingHorizontal: 24, height: 70, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   wordmark: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 16, fontWeight: '700', letterSpacing: 3.7 },
   headerIndex: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1 },
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
   panelEyebrow: { color: atelier.brass, fontFamily: atelier.body, fontWeight: '700', fontSize: 10, letterSpacing: 1.8, marginBottom: 17 },
   panelTitle: { color: atelier.white, fontFamily: atelier.display, fontSize: 25, lineHeight: 33, marginBottom: 14 },
   panelCopy: { color: '#DCE4DE', fontFamily: atelier.body, fontSize: 14, lineHeight: 22, marginBottom: 25 },
-  button: { backgroundColor: atelier.alabaster, paddingHorizontal: 17, minHeight: 54, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  button: { backgroundColor: atelier.alabaster, paddingHorizontal: 17, minHeight: 54, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: atelier.buttonRadius },
   buttonText: { color: atelier.petrol, fontFamily: atelier.body, fontWeight: '700', letterSpacing: 1.2, fontSize: 11 },
   buttonArrow: { color: atelier.petrol, fontSize: 21 },
   future: { paddingHorizontal: 24, paddingTop: 48 },

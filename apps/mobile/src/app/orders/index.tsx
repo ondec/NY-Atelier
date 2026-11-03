@@ -112,7 +112,7 @@ export default function OrdersScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: atelier.alabaster },
-  content: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 52 },
+  content: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 130 },
   brand: { color: atelier.petrol, fontFamily: atelier.body, letterSpacing: 3.7, fontSize: 16, fontWeight: '700', marginBottom: 34 },
   eyebrow: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 10, fontWeight: '700', letterSpacing: 2, marginBottom: 10 },
   title: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 39, marginBottom: 8 },

@@ -17,7 +17,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <ImageBackground source={story.image} resizeMode="cover" imageStyle={styles.coverImage} style={[styles.hero, { height: Math.max(590, height - 125) }]}>
           <View style={styles.heroShade}>
             <View style={styles.topLine}>
@@ -79,6 +79,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: atelier.alabaster },
+  content: { paddingBottom: 115 },
   hero: { width: '100%' },
   coverImage: { width: '100%', height: '100%' },
   heroShade: { flex: 1, backgroundColor: 'rgba(6, 20, 24, 0.42)', paddingHorizontal: 24, justifyContent: 'space-between' },
@@ -88,7 +89,7 @@ const styles = StyleSheet.create({
   heroBottom: { paddingBottom: 32 },
   heroEyebrow: { color: atelier.brass, fontFamily: atelier.body, fontSize: 11, fontWeight: '700', letterSpacing: 2.2, marginBottom: 15 },
   heroTitle: { color: atelier.white, fontFamily: atelier.display, fontSize: 42, lineHeight: 49, marginBottom: 27 },
-  shopButton: { backgroundColor: atelier.alabaster, paddingVertical: 17, paddingHorizontal: 19, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 54 },
+  shopButton: { backgroundColor: atelier.alabaster, paddingVertical: 17, paddingHorizontal: 19, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 54, borderRadius: atelier.buttonRadius },
   shopButtonText: { color: atelier.petrol, fontFamily: atelier.body, fontWeight: '700', letterSpacing: 1.5, fontSize: 12 },
   shopArrow: { color: atelier.petrol, fontSize: 22, lineHeight: 22 },
   storyFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 27 },

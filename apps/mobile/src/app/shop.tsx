@@ -103,7 +103,7 @@ export default function ShopScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: atelier.alabaster },
-  content: { paddingBottom: 35 },
+  content: { paddingBottom: 125 },
   header: { paddingHorizontal: 24, height: 70, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   wordmark: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 16, fontWeight: '700', letterSpacing: 3.7 },
   headerIndex: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1 },
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   collectionTitle: { color: atelier.white, fontFamily: atelier.display, fontSize: 25, lineHeight: 32 },
   detailSafe: { flex: 1, backgroundColor: atelier.alabaster },
   detailTop: { height: 63, paddingHorizontal: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  closeButton: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
+  closeButton: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: atelier.white },
   closeText: { color: atelier.petrol, fontSize: 28 },
   detailImage: { width: '100%', height: 450, backgroundColor: atelier.white },
   detailBody: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 40 },

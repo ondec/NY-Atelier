@@ -17,7 +17,7 @@ export default function AtelierScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.wordmark}>NY ATELIER</Text>
           <Text style={styles.headerIndex}>THE ATELIER  /  01</Text>
@@ -97,6 +97,7 @@ export default function AtelierScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: atelier.alabaster },
+  content: { paddingBottom: 115 },
   header: { paddingHorizontal: 24, height: 70, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   wordmark: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 16, fontWeight: '700', letterSpacing: 3.7 },
   headerIndex: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1 },
@@ -114,12 +115,12 @@ const styles = StyleSheet.create({
   bookingTitle: { color: atelier.white, fontFamily: atelier.display, fontSize: 26, lineHeight: 34, marginBottom: 13 },
   bookingCopy: { color: '#DCE4DE', fontFamily: atelier.body, fontSize: 14, lineHeight: 21, marginBottom: 22 },
   methods: { flexDirection: 'row', gap: 10, marginBottom: 15 },
-  method: { flex: 1, borderWidth: 1, borderColor: '#86A0A3', paddingVertical: 15, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  method: { flex: 1, borderWidth: 1, borderColor: '#86A0A3', paddingVertical: 15, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: atelier.buttonRadius },
   methodSelected: { borderColor: atelier.brass, backgroundColor: '#28525A' },
   radio: { width: 15, height: 15, borderRadius: 8, borderWidth: 1.5, borderColor: '#B9CCCA' },
   radioSelected: { borderWidth: 4, borderColor: atelier.brass, backgroundColor: atelier.petrol },
   methodText: { color: atelier.white, fontFamily: atelier.body, fontSize: 13, fontWeight: '600' },
-  bookingButton: { backgroundColor: atelier.alabaster, minHeight: 54, paddingHorizontal: 17, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  bookingButton: { backgroundColor: atelier.alabaster, minHeight: 54, paddingHorizontal: 17, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: atelier.buttonRadius },
   bookingButtonText: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 12, letterSpacing: 1.1, fontWeight: '700' },
   bookingArrow: { color: atelier.petrol, fontSize: 21 },
   bookingNote: { color: '#C5D4D2', fontFamily: atelier.body, fontSize: 11, marginTop: 14 },
@@ -140,6 +141,6 @@ const styles = StyleSheet.create({
   modalCloseText: { color: atelier.petrol, fontSize: 30, lineHeight: 32 },
   modalTitle: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 27, lineHeight: 35, marginBottom: 14 },
   modalCopy: { color: atelier.slate, fontFamily: atelier.body, fontSize: 15, lineHeight: 23, marginBottom: 28 },
-  modalButton: { backgroundColor: atelier.petrol, paddingVertical: 17, alignItems: 'center' },
+  modalButton: { backgroundColor: atelier.petrol, paddingVertical: 17, alignItems: 'center', borderRadius: atelier.buttonRadius },
   modalButtonText: { color: atelier.white, fontFamily: atelier.body, fontSize: 12, fontWeight: '700', letterSpacing: 1.2 },
 });
