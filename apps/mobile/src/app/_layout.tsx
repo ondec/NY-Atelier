@@ -31,7 +31,7 @@ export default function RootLayout() {
           left: (width - barWidth) / 2,
           bottom: Math.max(insets.bottom, 14),
           height: 70,
-          paddingTop: 8,
+          paddingTop: 0,
           borderRadius: 35,
           borderWidth: 1,
           borderColor: 'rgba(255,255,255,0.82)',
