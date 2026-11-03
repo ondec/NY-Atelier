@@ -544,7 +544,7 @@ const styles = StyleSheet.create({
   sizeGuideRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 16, borderTopWidth: 1, borderTopColor: atelier.line, paddingVertical: 12 },
   sizeGuideMeasure: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 13, fontWeight: '700' },
   sizeGuideHow: { color: atelier.muted, fontFamily: atelier.body, fontSize: 12, flex: 1, textAlign: 'right' },
-  detailFooter: { paddingHorizontal: 24, paddingTop: 13, paddingBottom: 14, borderTopWidth: 1, borderTopColor: atelier.line, backgroundColor: atelier.alabaster },
+  detailFooter: { paddingHorizontal: 24, paddingTop: 13, paddingBottom: 0, borderTopWidth: 1, borderTopColor: atelier.line, backgroundColor: atelier.alabaster },
   detailFooterActions: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   detailHeartButton: { width: 52, height: 52, borderRadius: 26, backgroundColor: atelier.white, borderWidth: 1, borderColor: atelier.line, alignItems: 'center', justifyContent: 'center' },
   detailAddButton: { flex: 1, height: 52, borderRadius: atelier.buttonRadius, backgroundColor: atelier.petrol, alignItems: 'center', justifyContent: 'center' },
