@@ -8,9 +8,25 @@ import { NyMark } from '@/components/ny-mark';
 
 type ProductPhoto = { id: string; label: string; image: ImageSourcePropType };
 type ProductColor = { id: string; name: string; swatch: string; photos: ProductPhoto[]; concept?: boolean };
-type Product = { id: string; name: string; description: string; price: string; priceValue: number; image: ImageSourcePropType; category: string; colors: ProductColor[] };
+type Product = { id: string; name: string; description: string; price: string; priceValue: number; image: ImageSourcePropType; category: string; colors: ProductColor[]; newArrivalPreview?: boolean; promotionPreviewPrice?: string };
 type BagEntry = { productId: string; colorId: string; size: string | null; quantity: number };
 const products: Product[] = [
+  {
+    id: 'ember', name: 'The Ember Pocket', description: 'A black-and-white striped shirt with a contrast collar, sleeves and chest pocket. The graphic front gives this look its character.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-ember.jpg'), category: 'MEN', newArrivalPreview: true,
+    colors: [{ id: 'black-white', name: 'Black & white', swatch: '#252527', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-ember.jpg') }] }],
+  },
+  {
+    id: 'heritage-stripe-navy', name: 'Heritage Stripe Set — Navy Blue Edition', description: 'Navy and white stripes meet solid navy pocket panels, collar and trousers in a coordinated look.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-heritage-stripe-navy.jpg'), category: 'MEN', newArrivalPreview: true,
+    colors: [{ id: 'navy', name: 'Navy blue', swatch: '#25334A', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-heritage-stripe-navy.jpg') }] }],
+  },
+  {
+    id: 'redclover-navy', name: 'Redclover Set — Navy Blue Edition', description: 'A short-sleeve striped top with a small red pocket accent, paired with navy trousers.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-redclover-navy.jpg'), category: 'MEN', newArrivalPreview: true,
+    colors: [{ id: 'navy', name: 'Navy blue', swatch: '#31568D', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-redclover-navy.jpg') }] }],
+  },
+  {
+    id: 'old-money', name: 'Old Money Set', description: 'An all-black look with a textured panel on one side of the shirt and matching relaxed trousers.', price: 'GH₵ 1,300', priceValue: 1300, image: require('../../assets/ny/product-old-money.png'), category: 'MEN', promotionPreviewPrice: 'GH₵ 1,500',
+    colors: [{ id: 'black', name: 'Black', swatch: '#212023', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-old-money.png') }] }],
+  },
   {
     id: 'aegis', name: 'Aegis Set', description: 'A deep navy matching set with a longline top, offset button detail and a neat chest pocket. A clean, confident look for the moments that call for it.', price: 'GH₵ 1,150', priceValue: 1150, image: require('../../assets/ny/product-aegis.png'), category: 'MEN',
     colors: [{ id: 'navy', name: 'Navy', swatch: '#202431', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-aegis.png') }] }],
@@ -29,6 +45,14 @@ const products: Product[] = [
   {
     id: 'arctic', name: 'Arctic Edge Set', description: 'A white matching set with dark contrast trim and a clean half-placket neckline. A sharp, understated finish from top to trouser.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-arctic.png'), category: 'MEN',
     colors: [{ id: 'white', name: 'White', swatch: '#EDEDEB', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-arctic.png') }] }],
+  },
+  {
+    id: 'aurel-tunic', name: 'The Aurel Signature Tunic', description: 'A white longline tunic with a clean front and gold-toned chest detail.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-aurel-tunic.jpg'), category: 'MEN',
+    colors: [{ id: 'white', name: 'White', swatch: '#E9E9E7', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-aurel-tunic.jpg') }] }],
+  },
+  {
+    id: 'milano-pants', name: 'Milano Pleated Pants', description: 'Brown pleated trousers with a gathered waist, roomy legs and a relaxed finish.', price: 'GH₵ 500', priceValue: 500, image: require('../../assets/ny/product-milano-pants.png'), category: 'MEN',
+    colors: [{ id: 'brown', name: 'Brown', swatch: '#9A673E', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-milano-pants.png') }] }],
   },
 ];
 const filters = ['All', 'New Arrivals', 'Men', 'Women', 'Collections'] as const;
@@ -70,7 +94,7 @@ export default function ShopScreen() {
   const [sortBy, setSortBy] = useState<SortBy>('featured');
   const [filterOpen, setFilterOpen] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
-  const visibleProducts = (filter === 'Women' || filter === 'New Arrivals' ? [] : products)
+  const visibleProducts = (filter === 'Women' ? [] : filter === 'New Arrivals' ? products.filter((product) => product.newArrivalPreview) : products)
     .filter((product) => priceRange === 'all' || (priceRange === 'under1200' ? product.priceValue < 1200 : product.priceValue >= 1200))
     .sort((a, b) => sortBy === 'low' ? a.priceValue - b.priceValue : sortBy === 'high' ? b.priceValue - a.priceValue : 0);
   const bagEntries = Object.entries(bag);
@@ -132,7 +156,7 @@ export default function ShopScreen() {
         <View style={styles.header}>
           <View style={styles.brandLockup}><NyMark color={atelier.petrol} size={25} /><Text style={styles.wordmark}>NY ATELIER</Text></View>
           <View style={styles.headerRight}>
-            <Text style={styles.headerIndex}>READY-TO-WEAR  /  01</Text>
+            <Text style={styles.headerIndex}>READY-TO-WEAR</Text>
             <Pressable accessibilityRole="button" accessibilityLabel={`Open bag, ${bagCount} ${bagCount === 1 ? 'item' : 'items'}`} onPress={() => setBagOpen(true)} style={styles.headerBag}>
               <ShopActionIcon name="bag" color={atelier.petrol} size={20} />
               {bagCount > 0 ? <View style={styles.bagBadge}><Text style={styles.bagBadgeText}>{bagCount}</Text></View> : null}
@@ -152,19 +176,7 @@ export default function ShopScreen() {
           ))}
         </ScrollView>
 
-        {filter === 'New Arrivals' ? (
-          <View style={styles.newArrivals}>
-            <View style={styles.newArrivalsPanel}>
-              <Text style={styles.newArrivalsLabel}>NEW ARRIVALS</Text>
-              <Text style={styles.newArrivalsTitle}>A fresh edit is coming.</Text>
-              <Text style={styles.newArrivalsCopy}>New pieces will appear here when NY Atelier confirms their release.</Text>
-              <Pressable accessibilityRole="button" onPress={() => setFilter('All')} style={styles.newArrivalsButton}>
-                <Text style={styles.newArrivalsButtonText}>EXPLORE THE COLLECTION</Text>
-                <Text style={styles.newArrivalsArrow}>↗</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : filter === 'Women' ? (
+        {filter === 'Women' ? (
           <View style={styles.womenPreview}>
             <View style={[styles.listHeading, styles.womenListHeading]}>
               <Text style={styles.listTitle}>Womenswear</Text>
@@ -187,6 +199,10 @@ export default function ShopScreen() {
           </View>
         ) : (
           <>
+            {filter === 'New Arrivals' ? <View style={styles.arrivalsIntro}>
+              <Text style={styles.arrivalsIntroLabel}>NEW ARRIVALS · PREVIEW</Text>
+              <Text style={styles.arrivalsIntroCopy}>Recently listed pieces from NY Atelier’s store. Launch dates are still to be confirmed.</Text>
+            </View> : null}
             {filter === 'Collections' ? (
               <View style={styles.collectionFeature}>
                 <ImageBackground source={require('../../assets/ny/home-blue.jpg')} resizeMode="cover" imageStyle={styles.coverImage} style={styles.collectionImage}>
@@ -198,7 +214,7 @@ export default function ShopScreen() {
               </View>
             ) : null}
             <View style={styles.listHeading}>
-              <Text style={styles.listTitle}>{filter === 'Collections' ? 'Featured pieces' : 'Explore pieces'}</Text>
+              <Text style={styles.listTitle}>{filter === 'Collections' ? 'Featured pieces' : filter === 'New Arrivals' ? 'Recently listed' : 'Explore pieces'}</Text>
               <View style={styles.listActions}>
                 <Text style={styles.listCount}>{String(visibleProducts.length).padStart(2, '0')} {visibleProducts.length === 1 ? 'PIECE' : 'PIECES'}</Text>
                 <Pressable accessibilityRole="button" accessibilityLabel="Filter and sort pieces" onPress={() => setFilterOpen(true)} style={styles.filterButton}>
@@ -211,13 +227,15 @@ export default function ShopScreen() {
               {visibleProducts.map((product) => {
                 const saved = savedIds.includes(product.id);
                 const visibleColors = product.colors;
-                const conceptColors = visibleColors.filter((color) => color.concept);
                 return (
                   <View key={product.id} style={styles.product}>
                     <View style={styles.productVisual}>
                       <Pressable accessibilityRole="button" accessibilityLabel={`View ${product.name}`} onPress={() => openProduct(product)} style={styles.imageButton}>
                         <Image source={product.image} resizeMode="cover" style={styles.productImage} />
                       </Pressable>
+                      {product.newArrivalPreview || product.promotionPreviewPrice ? <View style={[styles.productTag, product.promotionPreviewPrice && styles.productTagOffer]}>
+                        <Text numberOfLines={1} style={styles.productTagText}>{product.newArrivalPreview ? 'NEW · PREVIEW' : 'OFFER · DEMO'}</Text>
+                      </View> : null}
                       <Pressable accessibilityRole="button" accessibilityLabel={`${saved ? 'Remove' : 'Add'} ${product.name} ${saved ? 'from' : 'to'} wishlist`} accessibilityState={{ selected: saved }} onPress={() => toggleSaved(product.id)} style={[styles.imageAction, styles.heartAction]}>
                         <ShopActionIcon name="heart" color={saved ? atelier.cognac : atelier.petrol} filled={saved} size={21} />
                       </Pressable>
@@ -228,18 +246,20 @@ export default function ShopScreen() {
                         {visibleColors.length > 3 ? <Text style={styles.cardColorMore}>+{visibleColors.length - 3}</Text> : null}
                       </View>
                     </View>
-                    <Pressable accessibilityRole="button" accessibilityLabel={`View ${product.name}, ${product.price}`} onPress={() => openProduct(product)} style={styles.productDetails}>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`View ${product.name}, ${product.price}${product.promotionPreviewPrice ? ', promotion layout demo' : ''}`} onPress={() => openProduct(product)} style={styles.productDetails}>
                       <Text style={styles.productCategory}>{product.category}  /  READY-TO-WEAR</Text>
                       <Text style={styles.productName}>{product.name}</Text>
-                      <Text style={styles.productPrice}>{product.price}</Text>
-                      {conceptColors.length > 0 ? <Text style={styles.productPreviewLabel}>{conceptColors.map((color) => color.name).join(', ').toUpperCase()} · VISUAL PREVIEW</Text> : null}
+                      <View style={styles.productPriceRow}>
+                        <Text style={styles.productPrice}>{product.price}</Text>
+                        {product.promotionPreviewPrice ? <Text style={styles.productPriceWas}>{product.promotionPreviewPrice}</Text> : null}
+                      </View>
                     </Pressable>
                   </View>
                 );
               })}
             </View>
             {visibleProducts.length === 0 ? <Text style={styles.emptyNote}>No pieces match this price range. Try another filter.</Text> : null}
-            <Text style={styles.previewNote}>Catalogue preview from NY Atelier’s public store. Prices and availability should be checked before purchase. Checkout is not connected here yet.</Text>
+            <Text style={styles.previewNote}>Catalogue preview from NY Atelier’s public store. New arrival badges and the example offer are design previews, not confirmed launch dates or an active discount. Check prices and availability before purchase. Checkout is not connected here yet.</Text>
           </>
         )}
       </ScrollView>
@@ -347,7 +367,11 @@ export default function ShopScreen() {
               <View style={styles.detailBody}>
                 <View style={styles.detailBrandLine}><NyMark color={atelier.cognac} size={18} /><Text style={styles.detailEyebrow}>NY ATELIER  /  READY-TO-WEAR</Text></View>
                 <Text style={styles.detailTitle}>{selected?.name}</Text>
-                <Text style={styles.detailPrice}>{selected?.price}</Text>
+                <View style={styles.detailPriceRow}>
+                  <Text style={styles.detailPrice}>{selected?.price}</Text>
+                  {selected?.promotionPreviewPrice ? <Text style={styles.detailPriceWas}>{selected.promotionPreviewPrice}</Text> : null}
+                </View>
+                {selected?.promotionPreviewPrice ? <Text style={styles.promotionPreviewNote}>Offer display preview only. NY Atelier has not listed an active discount for this item.</Text> : null}
                 <View style={styles.detailRule} />
                 <Text style={styles.detailLabel}>COLOUR <Text style={styles.detailLabelLight}>· {selectedColor?.name.toUpperCase()}{selectedColor?.concept ? ' PREVIEW' : ''}</Text></Text>
                 <View style={styles.colorRow}>
@@ -445,19 +469,17 @@ const styles = StyleSheet.create({
   listCount: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1.4 },
   filterButton: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: atelier.line, backgroundColor: atelier.white, alignItems: 'center', justifyContent: 'center' },
   filterDot: { position: 'absolute', top: 3, right: 3, width: 6, height: 6, borderRadius: 3, backgroundColor: atelier.cognac },
-  newArrivals: { paddingHorizontal: 24, paddingBottom: 32 },
-  newArrivalsPanel: { minHeight: 330, borderRadius: 20, backgroundColor: atelier.petrol, padding: 26, justifyContent: 'flex-end' },
-  newArrivalsLabel: { color: atelier.brass, fontFamily: atelier.body, fontSize: 10, fontWeight: '700', letterSpacing: 2, marginBottom: 15 },
-  newArrivalsTitle: { color: atelier.white, fontFamily: atelier.display, fontSize: 30, lineHeight: 38, marginBottom: 13 },
-  newArrivalsCopy: { color: atelier.alabaster, fontFamily: atelier.body, fontSize: 14, lineHeight: 21, marginBottom: 24 },
-  newArrivalsButton: { minHeight: 50, borderRadius: atelier.buttonRadius, backgroundColor: atelier.alabaster, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  newArrivalsButtonText: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 11, fontWeight: '700', letterSpacing: 1 },
-  newArrivalsArrow: { color: atelier.petrol, fontSize: 20 },
+  arrivalsIntro: { marginHorizontal: 24, marginBottom: 26, borderRadius: 18, backgroundColor: atelier.petrol, paddingHorizontal: 20, paddingVertical: 19 },
+  arrivalsIntroLabel: { color: atelier.brass, fontFamily: atelier.body, fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 },
+  arrivalsIntroCopy: { color: atelier.alabaster, fontFamily: atelier.body, fontSize: 13, lineHeight: 19 },
   grid: { width: '100%', maxWidth: 820, alignSelf: 'center', paddingHorizontal: 18, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   product: { width: '49%', paddingHorizontal: 5, marginBottom: 30 },
   productVisual: { width: '100%', aspectRatio: 3 / 4, marginBottom: 12, borderRadius: 16, overflow: 'hidden', backgroundColor: '#E8E7E2' },
   imageButton: { width: '100%', height: '100%' },
   productImage: { width: '100%', height: '100%' },
+  productTag: { position: 'absolute', top: 10, left: 10, maxWidth: '65%', borderRadius: atelier.buttonRadius, backgroundColor: atelier.petrol, paddingHorizontal: 9, paddingVertical: 6 },
+  productTagOffer: { backgroundColor: atelier.cognac },
+  productTagText: { color: atelier.white, fontFamily: atelier.body, fontSize: 8, fontWeight: '700', letterSpacing: 0.5 },
   imageAction: { position: 'absolute', width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(250,248,244,0.94)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)' },
   heartAction: { top: 9, right: 9 },
   cardColors: { position: 'absolute', right: 6, bottom: 6, minWidth: 22, paddingHorizontal: 2, paddingVertical: 3, alignItems: 'center', borderRadius: 12, backgroundColor: 'rgba(28,35,38,0.48)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)' },
@@ -467,8 +489,9 @@ const styles = StyleSheet.create({
   productDetails: { minHeight: 70 },
   productCategory: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1.3, marginBottom: 7 },
   productName: { color: atelier.slate, fontFamily: atelier.body, fontWeight: '700', fontSize: 16, marginBottom: 5 },
+  productPriceRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 7 },
   productPrice: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 14 },
-  productPreviewLabel: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 8, fontWeight: '700', letterSpacing: 0.7, marginTop: 5 },
+  productPriceWas: { color: atelier.muted, fontFamily: atelier.body, fontSize: 11, textDecorationLine: 'line-through' },
   emptyNote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 14, paddingHorizontal: 24, paddingVertical: 30 },
   previewNote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 11, lineHeight: 17, paddingHorizontal: 24 },
   coverImage: { width: '100%', height: '100%' },
@@ -528,7 +551,10 @@ const styles = StyleSheet.create({
   detailBrandLine: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   detailEyebrow: { color: atelier.cognac, fontFamily: atelier.body, fontWeight: '700', fontSize: 10, letterSpacing: 1.5 },
   detailTitle: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 27, lineHeight: 35, marginBottom: 6 },
+  detailPriceRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   detailPrice: { color: atelier.slate, fontFamily: atelier.body, fontSize: 18 },
+  detailPriceWas: { color: atelier.muted, fontFamily: atelier.body, fontSize: 14, textDecorationLine: 'line-through' },
+  promotionPreviewNote: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 11, lineHeight: 16, marginTop: 8 },
   detailRule: { height: 1, backgroundColor: atelier.line, marginVertical: 18 },
   detailLabel: { color: atelier.petrol, fontFamily: atelier.body, fontWeight: '700', fontSize: 11, letterSpacing: 1.3, marginBottom: 12 },
   detailLabelLight: { color: atelier.muted, fontWeight: '400' },
