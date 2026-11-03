@@ -1,17 +1,19 @@
 import { useState } from 'react';
-import { Image, ImageBackground, ImageSourcePropType, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ImageBackground, ImageSourcePropType, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { atelier } from '@/atelier-theme';
 import { ShopActionIcon } from '@/components/shop-action-icon';
 
 type Product = { id: string; name: string; price: string; priceValue: number; image: ImageSourcePropType; category: string };
+type BagEntry = { productId: string; size: string | null; quantity: number };
 const products: Product[] = [
   { id: 'aegis', name: 'Aegis Set', price: 'GH₵ 1,150', priceValue: 1150, image: require('../../assets/ny/product-aegis.png'), category: 'MEN' },
   { id: 'amani', name: 'Amani Set', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-amani.jpg'), category: 'MEN' },
   { id: 'arctic', name: 'Arctic Edge Set', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-arctic.png'), category: 'MEN' },
 ];
 const filters = ['All', 'Men', 'Women', 'Collections'] as const;
+const previewSizes = ['S', 'M', 'L', 'XL', 'XXL'];
 type PriceRange = 'all' | 'under1200' | '1200plus';
 type SortBy = 'featured' | 'low' | 'high';
 const priceOptions: { value: PriceRange; label: string }[] = [
@@ -26,10 +28,15 @@ const sortOptions: { value: SortBy; label: string }[] = [
 ];
 
 export default function ShopScreen() {
+  const { width, height } = useWindowDimensions();
+  const detailImageHeight = Math.min(Math.min(width, 560) * 1.16, height * 0.53, 520);
   const [filter, setFilter] = useState<(typeof filters)[number]>('All');
   const [selected, setSelected] = useState<Product | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [sizeError, setSizeError] = useState(false);
+  const [detailAdded, setDetailAdded] = useState(false);
   const [savedIds, setSavedIds] = useState<string[]>([]);
-  const [bag, setBag] = useState<Record<string, number>>({});
+  const [bag, setBag] = useState<Record<string, BagEntry>>({});
   const [priceRange, setPriceRange] = useState<PriceRange>('all');
   const [sortBy, setSortBy] = useState<SortBy>('featured');
   const [filterOpen, setFilterOpen] = useState(false);
@@ -37,23 +44,43 @@ export default function ShopScreen() {
   const visibleProducts = (filter === 'Women' ? [] : products)
     .filter((product) => priceRange === 'all' || (priceRange === 'under1200' ? product.priceValue < 1200 : product.priceValue >= 1200))
     .sort((a, b) => sortBy === 'low' ? a.priceValue - b.priceValue : sortBy === 'high' ? b.priceValue - a.priceValue : 0);
-  const bagCount = Object.values(bag).reduce((total, quantity) => total + quantity, 0);
-  const bagTotal = products.reduce((total, product) => total + product.priceValue * (bag[product.id] || 0), 0);
+  const bagEntries = Object.entries(bag);
+  const bagCount = bagEntries.reduce((total, [, entry]) => total + entry.quantity, 0);
+  const bagTotal = bagEntries.reduce((total, [, entry]) => total + (products.find((product) => product.id === entry.productId)?.priceValue || 0) * entry.quantity, 0);
+
+  function openProduct(product: Product) {
+    setSelectedSize(null);
+    setSizeError(false);
+    setDetailAdded(false);
+    setSelected(product);
+  }
 
   function toggleSaved(id: string) {
     setSavedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   }
 
-  function addToBag(id: string) {
-    setBag((current) => ({ ...current, [id]: (current[id] || 0) + 1 }));
+  function addToBag(id: string, size: string | null = null) {
+    const key = `${id}:${size || 'unselected'}`;
+    setBag((current) => ({ ...current, [key]: { productId: id, size, quantity: (current[key]?.quantity || 0) + 1 } }));
   }
 
-  function removeFromBag(id: string) {
+  function removeFromBag(key: string) {
     setBag((current) => {
       const next = { ...current };
-      delete next[id];
+      delete next[key];
       return next;
     });
+  }
+
+  function addSelectedToBag() {
+    if (!selected) return;
+    if (!selectedSize) {
+      setSizeError(true);
+      return;
+    }
+    addToBag(selected.id, selectedSize);
+    setDetailAdded(true);
+    setSizeError(false);
   }
 
   return (
@@ -129,11 +156,11 @@ export default function ShopScreen() {
             <View style={styles.grid}>
               {visibleProducts.map((product) => {
                 const saved = savedIds.includes(product.id);
-                const quantity = bag[product.id] || 0;
+                const quantity = bagEntries.reduce((total, [, entry]) => total + (entry.productId === product.id ? entry.quantity : 0), 0);
                 return (
                   <View key={product.id} style={styles.product}>
                     <View style={styles.productVisual}>
-                      <Pressable accessibilityRole="button" accessibilityLabel={`View ${product.name}`} onPress={() => setSelected(product)} style={styles.imageButton}>
+                      <Pressable accessibilityRole="button" accessibilityLabel={`View ${product.name}`} onPress={() => openProduct(product)} style={styles.imageButton}>
                         <Image source={product.image} resizeMode="cover" style={styles.productImage} />
                       </Pressable>
                       <Pressable accessibilityRole="button" accessibilityLabel={`${saved ? 'Remove' : 'Add'} ${product.name} ${saved ? 'from' : 'to'} wishlist`} accessibilityState={{ selected: saved }} onPress={() => toggleSaved(product.id)} style={[styles.imageAction, styles.heartAction]}>
@@ -143,7 +170,7 @@ export default function ShopScreen() {
                         <ShopActionIcon name="bag" color={quantity > 0 ? atelier.white : atelier.petrol} size={21} />
                       </Pressable>
                     </View>
-                    <Pressable accessibilityRole="button" accessibilityLabel={`View ${product.name}, ${product.price}`} onPress={() => setSelected(product)} style={styles.productDetails}>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`View ${product.name}, ${product.price}`} onPress={() => openProduct(product)} style={styles.productDetails}>
                       <Text style={styles.productCategory}>{product.category}  /  READY-TO-WEAR</Text>
                       <Text style={styles.productName}>{product.name}</Text>
                       <Text style={styles.productPrice}>{product.price}</Text>
@@ -192,10 +219,19 @@ export default function ShopScreen() {
             </View>
             {bagCount === 0 ? <Text style={styles.bagEmpty}>Your bag is empty. Explore the collection and add a piece.</Text> : (
               <>
-                {products.filter((product) => bag[product.id]).map((product) => <View key={product.id} style={styles.bagItem}>
-                  <Image source={product.image} resizeMode="cover" style={styles.bagImage} />
-                  <View style={styles.bagItemText}><Text style={styles.productName}>{product.name}</Text><Text style={styles.productPrice}>{product.price} · Qty {bag[product.id]}</Text><Pressable accessibilityRole="button" accessibilityLabel={`Remove ${product.name} from bag`} onPress={() => removeFromBag(product.id)}><Text style={styles.removeText}>Remove</Text></Pressable></View>
-                </View>)}
+                {bagEntries.map(([key, entry]) => {
+                  const product = products.find((item) => item.id === entry.productId);
+                  if (!product) return null;
+                  return <View key={key} style={styles.bagItem}>
+                    <Image source={product.image} resizeMode="cover" style={styles.bagImage} />
+                    <View style={styles.bagItemText}>
+                      <Text style={styles.productName}>{product.name}</Text>
+                      <Text style={styles.productPrice}>{product.price} · Qty {entry.quantity}</Text>
+                      <Text style={styles.bagSize}>{entry.size ? `Size ${entry.size}` : 'Size to be selected'}</Text>
+                      <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${product.name}${entry.size ? ` size ${entry.size}` : ''} from bag`} onPress={() => removeFromBag(key)}><Text style={styles.removeText}>Remove</Text></Pressable>
+                    </View>
+                  </View>;
+                })}
                 <View style={styles.totalRow}><Text style={styles.totalLabel}>SUBTOTAL</Text><Text style={styles.totalValue}>GH₵ {bagTotal.toLocaleString('en-GH')}</Text></View>
                 <Text style={styles.bagFootnote}>Bag contents are held in this preview only. Checkout is not connected yet.</Text>
               </>
@@ -205,21 +241,50 @@ export default function ShopScreen() {
       </Modal>
 
       <Modal visible={selected !== null} animationType="slide" onRequestClose={() => setSelected(null)}>
-        <SafeAreaView style={styles.detailSafe} edges={['top']}>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <View style={styles.detailTop}>
-              <Text style={styles.wordmark}>NY ATELIER</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="Close product" onPress={() => setSelected(null)} style={styles.closeButton}><Text style={styles.closeText}>×</Text></Pressable>
+        <SafeAreaView style={styles.detailSafe} edges={['top', 'bottom']}>
+          <View style={styles.detailShell}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.detailScrollContent}>
+              <View style={styles.detailHero}>
+                {selected ? <Image source={selected.image} resizeMode="contain" style={[styles.detailImage, { height: detailImageHeight }]} /> : null}
+                <View style={styles.detailTop}>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Back to Shop" onPress={() => setSelected(null)} style={styles.detailTopButton}>
+                    <ShopActionIcon name="back" color={atelier.petrol} size={20} />
+                  </Pressable>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Open bag, ${bagCount} ${bagCount === 1 ? 'item' : 'items'}`} onPress={() => { setSelected(null); setBagOpen(true); }} style={styles.detailTopButton}>
+                    <ShopActionIcon name="bag" color={atelier.petrol} size={20} />
+                    {bagCount > 0 ? <View style={styles.bagBadge}><Text style={styles.bagBadgeText}>{bagCount}</Text></View> : null}
+                  </Pressable>
+                </View>
+              </View>
+              <View style={styles.detailBody}>
+                <Text style={styles.detailEyebrow}>NY ATELIER  /  READY-TO-WEAR</Text>
+                <Text style={styles.detailTitle}>{selected?.name}</Text>
+                <Text style={styles.detailPrice}>{selected?.price}</Text>
+                <View style={styles.detailRule} />
+                <Text style={styles.detailLabel}>SELECT SIZE <Text style={styles.detailLabelLight}>· PREVIEW</Text></Text>
+                <View style={styles.sizeRow}>
+                  {previewSizes.map((size) => <Pressable key={size} accessibilityRole="button" accessibilityLabel={`Size ${size}`} accessibilityState={{ selected: selectedSize === size }} onPress={() => { setSelectedSize(size); setSizeError(false); setDetailAdded(false); }} style={[styles.sizeOption, selectedSize === size && styles.sizeOptionSelected]}><Text style={[styles.sizeText, selectedSize === size && styles.sizeTextSelected]}>{size}</Text></Pressable>)}
+                </View>
+                {sizeError ? <Text style={styles.sizeError}>Select a size to add this piece.</Text> : null}
+                <Text style={styles.detailNote}>Size choices are for this preview. Confirm availability with NY Atelier before purchase.</Text>
+              </View>
+            </ScrollView>
+            <View style={styles.detailFooter}>
+              {detailAdded ? <View style={styles.detailConfirmation}>
+                <Text style={styles.addedText}>Added to your bag</Text>
+                <View style={styles.confirmationActions}>
+                  <Pressable accessibilityRole="button" accessibilityLabel="View bag" onPress={() => { setSelected(null); setBagOpen(true); }}><Text style={styles.confirmationLink}>VIEW BAG</Text></Pressable>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Continue shopping" onPress={() => setSelected(null)}><Text style={styles.confirmationLink}>CONTINUE SHOPPING</Text></Pressable>
+                </View>
+              </View> : null}
+              <View style={styles.detailFooterActions}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`${selected && savedIds.includes(selected.id) ? 'Remove' : 'Add'} ${selected?.name || 'piece'} ${selected && savedIds.includes(selected.id) ? 'from' : 'to'} wishlist`} accessibilityState={{ selected: selected ? savedIds.includes(selected.id) : false }} onPress={() => selected && toggleSaved(selected.id)} style={styles.detailHeartButton}>
+                  <ShopActionIcon name="heart" color={selected && savedIds.includes(selected.id) ? atelier.cognac : atelier.petrol} filled={selected ? savedIds.includes(selected.id) : false} size={23} />
+                </Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel={`Add ${selected?.name || 'piece'} to bag`} onPress={addSelectedToBag} style={styles.detailAddButton}><Text style={styles.detailAddText}>ADD TO BAG</Text></Pressable>
+              </View>
             </View>
-            {selected ? <Image source={selected.image} resizeMode="contain" style={styles.detailImage} /> : null}
-            <View style={styles.detailBody}>
-              <Text style={styles.eyebrow}>READY-TO-WEAR  /  {selected?.category}</Text>
-              <Text style={styles.detailTitle}>{selected?.name}</Text>
-              <Text style={styles.detailPrice}>{selected?.price}</Text>
-              <View style={styles.detailRule} />
-              <Text style={styles.detailNote}>This is a visual product preview. Use the heart or bag icon on each Shop card to save a piece or add it to your preview bag. Size selection and checkout will be connected in a later shopping build.</Text>
-            </View>
-          </ScrollView>
+          </View>
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
@@ -299,19 +364,42 @@ const styles = StyleSheet.create({
   bagItem: { flexDirection: 'row', gap: 15, paddingBottom: 16, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: atelier.line },
   bagImage: { width: 78, height: 100, borderRadius: 12, backgroundColor: '#E8E7E2' },
   bagItemText: { flex: 1, justifyContent: 'center', gap: 5 },
+  bagSize: { color: atelier.muted, fontFamily: atelier.body, fontSize: 12 },
   removeText: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 12, textDecorationLine: 'underline', marginTop: 4 },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 5, marginBottom: 16 },
   totalLabel: { color: atelier.muted, fontFamily: atelier.body, fontSize: 11, letterSpacing: 1.3 },
   totalValue: { color: atelier.petrol, fontFamily: atelier.body, fontWeight: '700', fontSize: 17 },
   bagFootnote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 12, lineHeight: 18, marginBottom: 10 },
-  detailSafe: { flex: 1, backgroundColor: atelier.alabaster },
-  detailTop: { height: 63, paddingHorizontal: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  detailSafe: { flex: 1, backgroundColor: atelier.alabaster, alignItems: 'center' },
+  detailShell: { flex: 1, width: '100%', maxWidth: 560 },
+  detailScrollContent: { paddingBottom: 18 },
+  detailHero: { marginHorizontal: 12, borderRadius: 18, overflow: 'hidden', backgroundColor: '#E8E7E2' },
+  detailTop: { position: 'absolute', left: 14, right: 14, top: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  detailTopButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(250,248,244,0.94)', alignItems: 'center', justifyContent: 'center' },
   closeButton: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: atelier.white },
   closeText: { color: atelier.petrol, fontSize: 28 },
-  detailImage: { width: '100%', height: 450, backgroundColor: atelier.white, borderRadius: 18 },
-  detailBody: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 40 },
-  detailTitle: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 29, marginBottom: 10 },
-  detailPrice: { color: atelier.slate, fontFamily: atelier.body, fontSize: 19 },
-  detailRule: { height: 1, backgroundColor: atelier.line, marginVertical: 22 },
-  detailNote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 14, lineHeight: 22 },
+  detailImage: { width: '100%' },
+  detailBody: { paddingHorizontal: 24, paddingTop: 25 },
+  detailEyebrow: { color: atelier.cognac, fontFamily: atelier.body, fontWeight: '700', fontSize: 10, letterSpacing: 1.5, marginBottom: 10 },
+  detailTitle: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 27, lineHeight: 35, marginBottom: 6 },
+  detailPrice: { color: atelier.slate, fontFamily: atelier.body, fontSize: 18 },
+  detailRule: { height: 1, backgroundColor: atelier.line, marginVertical: 18 },
+  detailLabel: { color: atelier.petrol, fontFamily: atelier.body, fontWeight: '700', fontSize: 11, letterSpacing: 1.3, marginBottom: 12 },
+  detailLabelLight: { color: atelier.muted, fontWeight: '400' },
+  sizeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginBottom: 11 },
+  sizeOption: { minWidth: 51, height: 42, paddingHorizontal: 12, borderWidth: 1, borderColor: atelier.line, borderRadius: 12, backgroundColor: atelier.white, alignItems: 'center', justifyContent: 'center' },
+  sizeOptionSelected: { backgroundColor: atelier.petrol, borderColor: atelier.petrol },
+  sizeText: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 14, fontWeight: '700' },
+  sizeTextSelected: { color: atelier.white },
+  sizeError: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 12, marginBottom: 9 },
+  detailNote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 12, lineHeight: 18 },
+  detailFooter: { paddingHorizontal: 24, paddingTop: 13, paddingBottom: 8, borderTopWidth: 1, borderTopColor: atelier.line, backgroundColor: atelier.alabaster },
+  detailFooterActions: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  detailHeartButton: { width: 52, height: 52, borderRadius: 26, backgroundColor: atelier.white, borderWidth: 1, borderColor: atelier.line, alignItems: 'center', justifyContent: 'center' },
+  detailAddButton: { flex: 1, height: 52, borderRadius: 18, backgroundColor: atelier.petrol, alignItems: 'center', justifyContent: 'center' },
+  detailAddText: { color: atelier.white, fontFamily: atelier.body, fontSize: 12, fontWeight: '700', letterSpacing: 1.5 },
+  detailConfirmation: { paddingBottom: 13 },
+  addedText: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 14, fontWeight: '700', marginBottom: 9 },
+  confirmationActions: { flexDirection: 'row', justifyContent: 'space-between' },
+  confirmationLink: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textDecorationLine: 'underline' },
 });
