@@ -5,12 +5,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { atelier } from '@/atelier-theme';
 import { ShopActionIcon } from '@/components/shop-action-icon';
 
-type Product = { id: string; name: string; price: string; priceValue: number; image: ImageSourcePropType; category: string };
-type BagEntry = { productId: string; size: string | null; quantity: number };
+type ProductColor = { id: string; name: string; swatch: string; image: ImageSourcePropType; concept?: boolean };
+type Product = { id: string; name: string; price: string; priceValue: number; image: ImageSourcePropType; category: string; colors: ProductColor[] };
+type BagEntry = { productId: string; colorId: string; size: string | null; quantity: number };
 const products: Product[] = [
-  { id: 'aegis', name: 'Aegis Set', price: 'GH₵ 1,150', priceValue: 1150, image: require('../../assets/ny/product-aegis.png'), category: 'MEN' },
-  { id: 'amani', name: 'Amani Set', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-amani.jpg'), category: 'MEN' },
-  { id: 'arctic', name: 'Arctic Edge Set', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-arctic.png'), category: 'MEN' },
+  {
+    id: 'aegis', name: 'Aegis Set', price: 'GH₵ 1,150', priceValue: 1150, image: require('../../assets/ny/product-aegis.png'), category: 'MEN',
+    colors: [{ id: 'navy', name: 'Navy', swatch: '#202431', image: require('../../assets/ny/product-aegis.png') }],
+  },
+  {
+    id: 'amani', name: 'Amani Set', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-amani.jpg'), category: 'MEN',
+    colors: [
+      { id: 'cream', name: 'Cream', swatch: '#DCCB9B', image: require('../../assets/ny/product-amani.jpg') },
+      { id: 'black-preview', name: 'Black', swatch: '#242424', image: require('../../assets/ny/product-amani-black-preview.jpg'), concept: true },
+    ],
+  },
+  {
+    id: 'arctic', name: 'Arctic Edge Set', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-arctic.png'), category: 'MEN',
+    colors: [{ id: 'white', name: 'White', swatch: '#EDEDEB', image: require('../../assets/ny/product-arctic.png') }],
+  },
 ];
 const filters = ['All', 'Men', 'Women', 'Collections'] as const;
 const previewSizes = ['S', 'M', 'L', 'XL', 'XXL'];
@@ -32,6 +45,7 @@ export default function ShopScreen() {
   const detailImageHeight = Math.min(Math.min(width, 560) * 1.16, height * 0.53, 520);
   const [filter, setFilter] = useState<(typeof filters)[number]>('All');
   const [selected, setSelected] = useState<Product | null>(null);
+  const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [sizeError, setSizeError] = useState(false);
   const [detailAdded, setDetailAdded] = useState(false);
@@ -45,10 +59,12 @@ export default function ShopScreen() {
     .filter((product) => priceRange === 'all' || (priceRange === 'under1200' ? product.priceValue < 1200 : product.priceValue >= 1200))
     .sort((a, b) => sortBy === 'low' ? a.priceValue - b.priceValue : sortBy === 'high' ? b.priceValue - a.priceValue : 0);
   const bagEntries = Object.entries(bag);
+  const selectedColor = selected?.colors.find((color) => color.id === selectedColorId) || selected?.colors[0];
   const bagCount = bagEntries.reduce((total, [, entry]) => total + entry.quantity, 0);
   const bagTotal = bagEntries.reduce((total, [, entry]) => total + (products.find((product) => product.id === entry.productId)?.priceValue || 0) * entry.quantity, 0);
 
   function openProduct(product: Product) {
+    setSelectedColorId(product.colors[0].id);
     setSelectedSize(null);
     setSizeError(false);
     setDetailAdded(false);
@@ -59,9 +75,11 @@ export default function ShopScreen() {
     setSavedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   }
 
-  function addToBag(id: string, size: string | null = null) {
-    const key = `${id}:${size || 'unselected'}`;
-    setBag((current) => ({ ...current, [key]: { productId: id, size, quantity: (current[key]?.quantity || 0) + 1 } }));
+  function addToBag(id: string, size: string | null = null, colorId?: string) {
+    const chosenColorId = colorId || products.find((product) => product.id === id)?.colors[0].id;
+    if (!chosenColorId) return;
+    const key = `${id}:${chosenColorId}:${size || 'unselected'}`;
+    setBag((current) => ({ ...current, [key]: { productId: id, colorId: chosenColorId, size, quantity: (current[key]?.quantity || 0) + 1 } }));
   }
 
   function removeFromBag(key: string) {
@@ -78,7 +96,7 @@ export default function ShopScreen() {
       setSizeError(true);
       return;
     }
-    addToBag(selected.id, selectedSize);
+    addToBag(selected.id, selectedSize, selectedColorId || undefined);
     setDetailAdded(true);
     setSizeError(false);
   }
@@ -222,13 +240,15 @@ export default function ShopScreen() {
                 {bagEntries.map(([key, entry]) => {
                   const product = products.find((item) => item.id === entry.productId);
                   if (!product) return null;
+                  const color = product.colors.find((item) => item.id === entry.colorId) || product.colors[0];
                   return <View key={key} style={styles.bagItem}>
-                    <Image source={product.image} resizeMode="cover" style={styles.bagImage} />
+                    <Image source={color.image} resizeMode="cover" style={styles.bagImage} />
                     <View style={styles.bagItemText}>
                       <Text style={styles.productName}>{product.name}</Text>
                       <Text style={styles.productPrice}>{product.price} · Qty {entry.quantity}</Text>
+                      <Text style={styles.bagSize}>{color.name}{color.concept ? ' · colour preview' : ''}</Text>
                       <Text style={styles.bagSize}>{entry.size ? `Size ${entry.size}` : 'Size to be selected'}</Text>
-                      <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${product.name}${entry.size ? ` size ${entry.size}` : ''} from bag`} onPress={() => removeFromBag(key)}><Text style={styles.removeText}>Remove</Text></Pressable>
+                      <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${product.name} in ${color.name}${entry.size ? ` size ${entry.size}` : ''} from bag`} onPress={() => removeFromBag(key)}><Text style={styles.removeText}>Remove</Text></Pressable>
                     </View>
                   </View>;
                 })}
@@ -245,7 +265,7 @@ export default function ShopScreen() {
           <View style={styles.detailShell}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.detailScrollContent}>
               <View style={styles.detailHero}>
-                {selected ? <Image source={selected.image} resizeMode="contain" style={[styles.detailImage, { height: detailImageHeight }]} /> : null}
+                {selectedColor ? <Image source={selectedColor.image} resizeMode="contain" style={[styles.detailImage, { height: detailImageHeight }]} /> : null}
                 <View style={styles.detailTop}>
                   <Pressable accessibilityRole="button" accessibilityLabel="Back to Shop" onPress={() => setSelected(null)} style={styles.detailTopButton}>
                     <ShopActionIcon name="back" color={atelier.petrol} size={20} />
@@ -261,6 +281,16 @@ export default function ShopScreen() {
                 <Text style={styles.detailTitle}>{selected?.name}</Text>
                 <Text style={styles.detailPrice}>{selected?.price}</Text>
                 <View style={styles.detailRule} />
+                <Text style={styles.detailLabel}>COLOUR <Text style={styles.detailLabelLight}>· {selectedColor?.name.toUpperCase()}{selectedColor?.concept ? ' PREVIEW' : ''}</Text></Text>
+                <View style={styles.colorRow}>
+                  {selected?.colors.map((color) => <Pressable key={color.id} accessibilityRole="button" accessibilityLabel={`${color.name}${color.concept ? ' visual preview' : ''}`} accessibilityState={{ selected: selectedColorId === color.id }} onPress={() => { setSelectedColorId(color.id); setDetailAdded(false); }} style={styles.colorOption}>
+                    <View style={[styles.colorImageFrame, selectedColorId === color.id && styles.colorImageFrameSelected]}>
+                      <Image source={color.image} resizeMode="cover" style={styles.colorImage} />
+                    </View>
+                    <View style={styles.colorCaption}><View style={[styles.colorSwatch, { backgroundColor: color.swatch }]} /><Text style={[styles.colorName, selectedColorId === color.id && styles.colorNameSelected]}>{color.name}</Text></View>
+                  </Pressable>)}
+                </View>
+                {selectedColor?.concept ? <Text style={styles.colorPreviewNote}>This is a visual colour concept. NY Atelier has not confirmed it as a stocked variant.</Text> : null}
                 <Text style={styles.detailLabel}>SELECT SIZE <Text style={styles.detailLabelLight}>· PREVIEW</Text></Text>
                 <View style={styles.sizeRow}>
                   {previewSizes.map((size) => <Pressable key={size} accessibilityRole="button" accessibilityLabel={`Size ${size}`} accessibilityState={{ selected: selectedSize === size }} onPress={() => { setSelectedSize(size); setSizeError(false); setDetailAdded(false); }} style={[styles.sizeOption, selectedSize === size && styles.sizeOptionSelected]}><Text style={[styles.sizeText, selectedSize === size && styles.sizeTextSelected]}>{size}</Text></Pressable>)}
@@ -386,6 +416,16 @@ const styles = StyleSheet.create({
   detailRule: { height: 1, backgroundColor: atelier.line, marginVertical: 18 },
   detailLabel: { color: atelier.petrol, fontFamily: atelier.body, fontWeight: '700', fontSize: 11, letterSpacing: 1.3, marginBottom: 12 },
   detailLabelLight: { color: atelier.muted, fontWeight: '400' },
+  colorRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
+  colorOption: { alignItems: 'center', gap: 6 },
+  colorImageFrame: { width: 67, height: 78, borderWidth: 2, borderColor: 'transparent', borderRadius: 11, padding: 2, backgroundColor: atelier.white, overflow: 'hidden' },
+  colorImageFrameSelected: { borderColor: atelier.petrol },
+  colorImage: { width: '100%', height: '100%', borderRadius: 7 },
+  colorCaption: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  colorSwatch: { width: 9, height: 9, borderRadius: 5, borderWidth: 1, borderColor: atelier.line },
+  colorName: { color: atelier.muted, fontFamily: atelier.body, fontSize: 11 },
+  colorNameSelected: { color: atelier.petrol, fontWeight: '700' },
+  colorPreviewNote: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 11, lineHeight: 16, marginTop: -7, marginBottom: 16 },
   sizeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginBottom: 11 },
   sizeOption: { minWidth: 51, height: 42, paddingHorizontal: 12, borderWidth: 1, borderColor: atelier.line, borderRadius: 12, backgroundColor: atelier.white, alignItems: 'center', justifyContent: 'center' },
   sizeOptionSelected: { backgroundColor: atelier.petrol, borderColor: atelier.petrol },
