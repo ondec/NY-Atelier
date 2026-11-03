@@ -8,35 +8,37 @@ import { NyMark } from '@/components/ny-mark';
 
 type ProductPhoto = { id: string; label: string; image: ImageSourcePropType };
 type ProductColor = { id: string; name: string; swatch: string; photos: ProductPhoto[]; concept?: boolean };
-type Product = { id: string; name: string; description: string; price: string; priceValue: number; image: ImageSourcePropType; category: string; colors: ProductColor[]; newArrivalPreview?: boolean; promotionPreviewPrice?: string; stockStateExample?: boolean };
+type ClothingType = 'tops' | 'trousers' | 'sets';
+type ColorGroup = 'black' | 'blue' | 'light' | 'brown';
+type Product = { id: string; name: string; description: string; price: string; priceValue: number; image: ImageSourcePropType; category: string; clothingType: ClothingType; colorGroups: ColorGroup[]; colors: ProductColor[]; newArrivalPreview?: boolean; promotionPreviewPrice?: string; stockStateExample?: boolean };
 type BagEntry = { productId: string; colorId: string; size: string | null; quantity: number };
 const products: Product[] = [
   {
-    id: 'ember', name: 'The Ember Pocket', description: 'A black-and-white striped shirt with a contrast collar, sleeves and chest pocket. The graphic front gives this look its character.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-ember.jpg'), category: 'MEN', newArrivalPreview: true,
+    id: 'ember', name: 'The Ember Pocket', description: 'A black-and-white striped shirt with a contrast collar, sleeves and chest pocket. The graphic front gives this look its character.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-ember.jpg'), category: 'MEN', clothingType: 'tops', colorGroups: ['black'], newArrivalPreview: true,
     colors: [{ id: 'black-white', name: 'Black & white', swatch: '#252527', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-ember.jpg') }] }],
   },
   {
-    id: 'heritage-stripe-navy', name: 'Heritage Stripe Set — Navy Blue Edition', description: 'Navy and white stripes meet solid navy pocket panels, collar and trousers in a coordinated look.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-heritage-stripe-navy.jpg'), category: 'MEN', newArrivalPreview: true,
+    id: 'heritage-stripe-navy', name: 'Heritage Stripe Set — Navy Blue Edition', description: 'Navy and white stripes meet solid navy pocket panels, collar and trousers in a coordinated look.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-heritage-stripe-navy.jpg'), category: 'MEN', clothingType: 'sets', colorGroups: ['blue'], newArrivalPreview: true,
     colors: [{ id: 'navy', name: 'Navy blue', swatch: '#25334A', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-heritage-stripe-navy.jpg') }] }],
   },
   {
-    id: 'redclover-navy', name: 'Redclover Set — Navy Blue Edition', description: 'A short-sleeve striped top with a small red pocket accent, paired with navy trousers.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-redclover-navy.jpg'), category: 'MEN', newArrivalPreview: true,
+    id: 'redclover-navy', name: 'Redclover Set — Navy Blue Edition', description: 'A short-sleeve striped top with a small red pocket accent, paired with navy trousers.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-redclover-navy.jpg'), category: 'MEN', clothingType: 'sets', colorGroups: ['blue'], newArrivalPreview: true,
     colors: [{ id: 'navy', name: 'Navy blue', swatch: '#31568D', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-redclover-navy.jpg') }] }],
   },
   {
-    id: 'old-money', name: 'Old Money Set', description: 'An all-black look with a textured panel on one side of the shirt and matching relaxed trousers.', price: 'GH₵ 1,300', priceValue: 1300, image: require('../../assets/ny/product-old-money.png'), category: 'MEN', promotionPreviewPrice: 'GH₵ 1,500',
+    id: 'old-money', name: 'Old Money Set', description: 'An all-black look with a textured panel on one side of the shirt and matching relaxed trousers.', price: 'GH₵ 1,300', priceValue: 1300, image: require('../../assets/ny/product-old-money.png'), category: 'MEN', clothingType: 'sets', colorGroups: ['black'], promotionPreviewPrice: 'GH₵ 1,500',
     colors: [{ id: 'black', name: 'Black', swatch: '#212023', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-old-money.png') }] }],
   },
   {
-    id: 'aegis', name: 'Aegis Set', description: 'A deep navy matching set with a longline top, offset button detail and a neat chest pocket. A clean, confident look for the moments that call for it.', price: 'GH₵ 1,150', priceValue: 1150, image: require('../../assets/ny/product-aegis.png'), category: 'MEN',
+    id: 'aegis', name: 'Aegis Set', description: 'A deep navy matching set with a longline top, offset button detail and a neat chest pocket. A clean, confident look for the moments that call for it.', price: 'GH₵ 1,150', priceValue: 1150, image: require('../../assets/ny/product-aegis.png'), category: 'MEN', clothingType: 'sets', colorGroups: ['blue'],
     colors: [{ id: 'navy', name: 'Navy', swatch: '#202431', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-aegis.png') }] }],
   },
   {
-    id: 'milano-pants', name: 'Milano Pleated Pants', description: 'Brown pleated trousers with a gathered waist, roomy legs and a relaxed finish.', price: 'GH₵ 500', priceValue: 500, image: require('../../assets/ny/product-milano-pants.png'), category: 'MEN', stockStateExample: true,
+    id: 'milano-pants', name: 'Milano Pleated Pants', description: 'Brown pleated trousers with a gathered waist, roomy legs and a relaxed finish.', price: 'GH₵ 500', priceValue: 500, image: require('../../assets/ny/product-milano-pants.png'), category: 'MEN', clothingType: 'trousers', colorGroups: ['brown'], stockStateExample: true,
     colors: [{ id: 'brown', name: 'Brown', swatch: '#9A673E', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-milano-pants.png') }] }],
   },
   {
-    id: 'amani', name: 'Amani Set', description: 'A coordinated set with a button-front top and patterned pocket accents. Its simple lines let the details stand out.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-amani.jpg'), category: 'MEN',
+    id: 'amani', name: 'Amani Set', description: 'A coordinated set with a button-front top and patterned pocket accents. Its simple lines let the details stand out.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-amani.jpg'), category: 'MEN', clothingType: 'sets', colorGroups: ['light'],
     colors: [
       { id: 'cream', name: 'Cream', swatch: '#DCCB9B', photos: [
         { id: 'front', label: 'Front', image: require('../../assets/ny/product-amani.jpg') },
@@ -47,11 +49,11 @@ const products: Product[] = [
     ],
   },
   {
-    id: 'arctic', name: 'Arctic Edge Set', description: 'A white matching set with dark contrast trim and a clean half-placket neckline. A sharp, understated finish from top to trouser.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-arctic.png'), category: 'MEN',
+    id: 'arctic', name: 'Arctic Edge Set', description: 'A white matching set with dark contrast trim and a clean half-placket neckline. A sharp, understated finish from top to trouser.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-arctic.png'), category: 'MEN', clothingType: 'sets', colorGroups: ['light'],
     colors: [{ id: 'white', name: 'White', swatch: '#EDEDEB', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-arctic.png') }] }],
   },
   {
-    id: 'aurel-tunic', name: 'The Aurel Signature Tunic', description: 'A white longline tunic with a clean front and gold-toned chest detail.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-aurel-tunic.jpg'), category: 'MEN',
+    id: 'aurel-tunic', name: 'The Aurel Signature Tunic', description: 'A white longline tunic with a clean front and gold-toned chest detail.', price: 'GH₵ 1,200', priceValue: 1200, image: require('../../assets/ny/product-aurel-tunic.jpg'), category: 'MEN', clothingType: 'tops', colorGroups: ['light'],
     colors: [{ id: 'white', name: 'White', swatch: '#E9E9E7', photos: [{ id: 'front', label: 'Front', image: require('../../assets/ny/product-aurel-tunic.jpg') }] }],
   },
 ];
@@ -60,6 +62,20 @@ const previewSizes = ['S', 'M', 'L', 'XL', 'XXL'];
 const maxPreviewQuantity = 99;
 type PriceRange = 'all' | 'under1200' | '1200plus';
 type SortBy = 'featured' | 'low' | 'high';
+type TypeFilter = 'all' | ClothingType;
+type ColorFilter = 'all' | ColorGroup;
+type AvailabilityFilter = 'all' | 'available' | 'unavailable';
+const typeOptions: { value: TypeFilter; label: string }[] = [
+  { value: 'all', label: 'All types' }, { value: 'tops', label: 'Tops & shirts' },
+  { value: 'trousers', label: 'Trousers' }, { value: 'sets', label: 'Two-piece sets' },
+];
+const colorOptions: { value: ColorFilter; label: string }[] = [
+  { value: 'all', label: 'All colours' }, { value: 'black', label: 'Black' },
+  { value: 'blue', label: 'Blue' }, { value: 'light', label: 'White & cream' }, { value: 'brown', label: 'Brown' },
+];
+const availabilityOptions: { value: AvailabilityFilter; label: string }[] = [
+  { value: 'all', label: 'All pieces' }, { value: 'available', label: 'Available' }, { value: 'unavailable', label: 'Out of stock' },
+];
 const priceOptions: { value: PriceRange; label: string }[] = [
   { value: 'all', label: 'All prices' },
   { value: 'under1200', label: 'Under GH₵ 1,200' },
@@ -90,13 +106,20 @@ export default function ShopScreen() {
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [bag, setBag] = useState<Record<string, BagEntry>>({});
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [colorFilter, setColorFilter] = useState<ColorFilter>('all');
+  const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>('all');
   const [priceRange, setPriceRange] = useState<PriceRange>('all');
   const [sortBy, setSortBy] = useState<SortBy>('featured');
   const [filterOpen, setFilterOpen] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
   const visibleProducts = (filter === 'Women' ? [] : filter === 'New Arrivals' ? products.filter((product) => product.newArrivalPreview) : products)
+    .filter((product) => typeFilter === 'all' || product.clothingType === typeFilter)
+    .filter((product) => colorFilter === 'all' || product.colorGroups.includes(colorFilter))
+    .filter((product) => availabilityFilter === 'all' || (availabilityFilter === 'available' ? !product.stockStateExample : !!product.stockStateExample))
     .filter((product) => priceRange === 'all' || (priceRange === 'under1200' ? product.priceValue < 1200 : product.priceValue >= 1200))
     .sort((a, b) => sortBy === 'low' ? a.priceValue - b.priceValue : sortBy === 'high' ? b.priceValue - a.priceValue : 0);
+  const hasActiveFilters = typeFilter !== 'all' || colorFilter !== 'all' || availabilityFilter !== 'all' || priceRange !== 'all' || sortBy !== 'featured';
   const bagEntries = Object.entries(bag);
   const selectedColor = selected?.colors.find((color) => color.id === selectedColorId) || selected?.colors[0];
   const selectedPhotos = selectedColor?.photos || [];
@@ -165,7 +188,7 @@ export default function ShopScreen() {
           </View>
         </View>
         <View style={styles.intro}>
-          <Text style={styles.title}>The collection</Text>
+          <Text style={styles.title}>Ready-to-wear shop</Text>
           <Text style={styles.subtitle}>Expression, made effortless.</Text>
         </View>
 
@@ -185,7 +208,7 @@ export default function ShopScreen() {
                 <Text style={styles.listCount}>00 PIECES</Text>
                 <Pressable accessibilityRole="button" accessibilityLabel="Filter and sort pieces" onPress={() => setFilterOpen(true)} style={styles.filterButton}>
                   <ShopActionIcon name="filter" color={atelier.petrol} size={19} />
-                  {priceRange !== 'all' || sortBy !== 'featured' ? <View style={styles.filterDot} /> : null}
+                  {hasActiveFilters ? <View style={styles.filterDot} /> : null}
                 </Pressable>
               </View>
             </View>
@@ -220,7 +243,7 @@ export default function ShopScreen() {
                 <Text style={styles.listCount}>{String(visibleProducts.length).padStart(2, '0')} {visibleProducts.length === 1 ? 'PIECE' : 'PIECES'}</Text>
                 <Pressable accessibilityRole="button" accessibilityLabel="Filter and sort pieces" onPress={() => setFilterOpen(true)} style={styles.filterButton}>
                   <ShopActionIcon name="filter" color={atelier.petrol} size={19} />
-                  {priceRange !== 'all' || sortBy !== 'featured' ? <View style={styles.filterDot} /> : null}
+                  {hasActiveFilters ? <View style={styles.filterDot} /> : null}
                 </Pressable>
               </View>
             </View>
@@ -259,7 +282,7 @@ export default function ShopScreen() {
                 );
               })}
             </View>
-            {visibleProducts.length === 0 ? <Text style={styles.emptyNote}>No pieces match this price range. Try another filter.</Text> : null}
+            {visibleProducts.length === 0 ? <Text style={styles.emptyNote}>No pieces match these filters. Try another selection.</Text> : null}
             <Text style={styles.previewNote}>Catalogue design example using NY Atelier store images and listed prices. New, offer and out-of-stock treatments are illustrative; launch dates, discounts and stock states have not been confirmed. Checkout is not connected yet.</Text>
           </>
         )}
@@ -273,16 +296,30 @@ export default function ShopScreen() {
               <Text style={styles.sheetTitle}>Filter & sort</Text>
               <Pressable accessibilityRole="button" accessibilityLabel="Close filters" onPress={() => setFilterOpen(false)} style={styles.closeButton}><Text style={styles.closeText}>×</Text></Pressable>
             </View>
-            <Text style={styles.sheetLabel}>PRICE</Text>
-            <View style={styles.optionRow}>
-              {priceOptions.map((option) => <Pressable key={option.value} accessibilityRole="button" accessibilityState={{ selected: priceRange === option.value }} onPress={() => setPriceRange(option.value)} style={[styles.option, priceRange === option.value && styles.optionSelected]}><Text style={[styles.optionText, priceRange === option.value && styles.optionTextSelected]}>{option.label}</Text></Pressable>)}
-            </View>
-            <Text style={styles.sheetLabel}>SORT BY</Text>
-            <View style={styles.optionRow}>
-              {sortOptions.map((option) => <Pressable key={option.value} accessibilityRole="button" accessibilityState={{ selected: sortBy === option.value }} onPress={() => setSortBy(option.value)} style={[styles.option, sortBy === option.value && styles.optionSelected]}><Text style={[styles.optionText, sortBy === option.value && styles.optionTextSelected]}>{option.label}</Text></Pressable>)}
-            </View>
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.filterSheetScroll}>
+              <Text style={styles.sheetLabel}>CLOTHING TYPE</Text>
+              <View style={styles.optionRow}>
+                {typeOptions.map((option) => <Pressable key={option.value} accessibilityRole="button" accessibilityState={{ selected: typeFilter === option.value }} onPress={() => setTypeFilter(option.value)} style={[styles.option, typeFilter === option.value && styles.optionSelected]}><Text style={[styles.optionText, typeFilter === option.value && styles.optionTextSelected]}>{option.label}</Text></Pressable>)}
+              </View>
+              <Text style={styles.sheetLabel}>COLOUR</Text>
+              <View style={styles.optionRow}>
+                {colorOptions.map((option) => <Pressable key={option.value} accessibilityRole="button" accessibilityState={{ selected: colorFilter === option.value }} onPress={() => setColorFilter(option.value)} style={[styles.option, colorFilter === option.value && styles.optionSelected]}><Text style={[styles.optionText, colorFilter === option.value && styles.optionTextSelected]}>{option.label}</Text></Pressable>)}
+              </View>
+              <Text style={styles.sheetLabel}>PRICE</Text>
+              <View style={styles.optionRow}>
+                {priceOptions.map((option) => <Pressable key={option.value} accessibilityRole="button" accessibilityState={{ selected: priceRange === option.value }} onPress={() => setPriceRange(option.value)} style={[styles.option, priceRange === option.value && styles.optionSelected]}><Text style={[styles.optionText, priceRange === option.value && styles.optionTextSelected]}>{option.label}</Text></Pressable>)}
+              </View>
+              <Text style={styles.sheetLabel}>AVAILABILITY</Text>
+              <View style={styles.optionRow}>
+                {availabilityOptions.map((option) => <Pressable key={option.value} accessibilityRole="button" accessibilityState={{ selected: availabilityFilter === option.value }} onPress={() => setAvailabilityFilter(option.value)} style={[styles.option, availabilityFilter === option.value && styles.optionSelected]}><Text style={[styles.optionText, availabilityFilter === option.value && styles.optionTextSelected]}>{option.label}</Text></Pressable>)}
+              </View>
+              <Text style={styles.sheetLabel}>SORT BY</Text>
+              <View style={styles.optionRow}>
+                {sortOptions.map((option) => <Pressable key={option.value} accessibilityRole="button" accessibilityState={{ selected: sortBy === option.value }} onPress={() => setSortBy(option.value)} style={[styles.option, sortBy === option.value && styles.optionSelected]}><Text style={[styles.optionText, sortBy === option.value && styles.optionTextSelected]}>{option.label}</Text></Pressable>)}
+              </View>
+            </ScrollView>
             <View style={styles.sheetFooter}>
-              <Pressable accessibilityRole="button" accessibilityLabel="Clear filters" onPress={() => { setPriceRange('all'); setSortBy('featured'); }}><Text style={styles.clearText}>Clear</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="Clear filters" onPress={() => { setTypeFilter('all'); setColorFilter('all'); setAvailabilityFilter('all'); setPriceRange('all'); setSortBy('featured'); }}><Text style={styles.clearText}>Clear</Text></Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel={`Show ${visibleProducts.length} ${visibleProducts.length === 1 ? 'piece' : 'pieces'}`} onPress={() => setFilterOpen(false)} style={styles.showButton}><Text style={styles.showText}>SHOW {String(visibleProducts.length).padStart(2, '0')} {visibleProducts.length === 1 ? 'PIECE' : 'PIECES'}</Text></Pressable>
             </View>
           </View>
@@ -516,6 +553,7 @@ const styles = StyleSheet.create({
   sheetScrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(12,28,30,0.43)' },
   sheet: { maxHeight: '90%', backgroundColor: atelier.alabaster, borderTopLeftRadius: 25, borderTopRightRadius: 25, paddingHorizontal: 24, paddingTop: 22, paddingBottom: 16 },
   sheetTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 },
+  filterSheetScroll: { flexShrink: 1 },
   sheetTitle: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 24 },
   sheetLabel: { color: atelier.cognac, fontFamily: atelier.body, fontWeight: '700', fontSize: 10, letterSpacing: 1.6, marginBottom: 13 },
   optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginBottom: 27 },

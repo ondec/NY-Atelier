@@ -6,6 +6,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { atelier } from '@/atelier-theme';
 import { TabIcon } from '@/components/tab-icon';
+import { DemoCustomerProvider } from '@/lib/demo-customer';
 
 export default function RootLayout() {
   const pathname = usePathname();
@@ -18,7 +19,7 @@ export default function RootLayout() {
   if (!fontsLoaded && !fontError) return null;
 
   return (
-    <>
+    <DemoCustomerProvider>
       <StatusBar style={pathname === '/' ? 'light' : 'dark'} />
       <Tabs
         tabBar={({ state, descriptors, emitter, navigateToTab }) => (
@@ -64,7 +65,7 @@ export default function RootLayout() {
         <Tabs.Screen name="orders" options={{ title: 'Orders', tabBarIcon: ({ color, size, focused }) => <TabIcon name="orders" color={color} size={size} focused={focused} /> }} />
         <Tabs.Screen name="account" options={{ title: 'Account', tabBarIcon: ({ color, size, focused }) => <TabIcon name="account" color={color} size={size} focused={focused} /> }} />
       </Tabs>
-    </>
+    </DemoCustomerProvider>
   );
 }
 
