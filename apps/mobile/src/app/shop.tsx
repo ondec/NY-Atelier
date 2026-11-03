@@ -33,6 +33,7 @@ const products: Product[] = [
 ];
 const filters = ['All', 'New Arrivals', 'Men', 'Women', 'Collections'] as const;
 const previewSizes = ['S', 'M', 'L', 'XL', 'XXL'];
+const maxPreviewQuantity = 99;
 type PriceRange = 'all' | 'under1200' | '1200plus';
 type SortBy = 'featured' | 'low' | 'high';
 const priceOptions: { value: PriceRange; label: string }[] = [
@@ -59,6 +60,7 @@ export default function ShopScreen() {
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [sizeError, setSizeError] = useState(false);
   const [detailAdded, setDetailAdded] = useState(false);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
@@ -81,6 +83,7 @@ export default function ShopScreen() {
     setSelectedColorId(product.colors[0].id);
     setSelectedPhotoIndex(0);
     setSelectedSize(null);
+    setSelectedQuantity(1);
     setSizeError(false);
     setDetailAdded(false);
     setSizeGuideOpen(false);
@@ -97,11 +100,11 @@ export default function ShopScreen() {
     setSavedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   }
 
-  function addToBag(id: string, size: string | null = null, colorId?: string) {
+  function addToBag(id: string, size: string | null = null, colorId?: string, quantity = 1) {
     const chosenColorId = colorId || products.find((product) => product.id === id)?.colors[0].id;
     if (!chosenColorId) return;
     const key = `${id}:${chosenColorId}:${size || 'unselected'}`;
-    setBag((current) => ({ ...current, [key]: { productId: id, colorId: chosenColorId, size, quantity: (current[key]?.quantity || 0) + 1 } }));
+    setBag((current) => ({ ...current, [key]: { productId: id, colorId: chosenColorId, size, quantity: (current[key]?.quantity || 0) + quantity } }));
   }
 
   function removeFromBag(key: string) {
@@ -118,7 +121,7 @@ export default function ShopScreen() {
       setSizeError(true);
       return;
     }
-    addToBag(selected.id, selectedSize, selectedColorId || undefined);
+    addToBag(selected.id, selectedSize, selectedColorId || undefined, selectedQuantity);
     setDetailAdded(true);
     setSizeError(false);
   }
@@ -365,6 +368,18 @@ export default function ShopScreen() {
                   <Text style={styles.descriptionHeading}>DESCRIPTION</Text>
                   <Text style={styles.descriptionText}>{selected?.description}</Text>
                 </View>
+                <View style={styles.quantitySection}>
+                  <Text style={styles.quantityHeading}>QUANTITY</Text>
+                  <View style={styles.quantityControl}>
+                    <Pressable accessibilityRole="button" accessibilityLabel="Decrease quantity" accessibilityState={{ disabled: selectedQuantity === 1 }} disabled={selectedQuantity === 1} onPress={() => { setSelectedQuantity((current) => Math.max(1, current - 1)); setDetailAdded(false); }} style={[styles.quantityButton, selectedQuantity === 1 && styles.quantityButtonDisabled]}>
+                      <Text style={styles.quantitySymbol}>−</Text>
+                    </Pressable>
+                    <Text accessibilityLabel={`Quantity ${selectedQuantity}`} style={styles.quantityValue}>{selectedQuantity}</Text>
+                    <Pressable accessibilityRole="button" accessibilityLabel="Increase quantity" accessibilityState={{ disabled: selectedQuantity === maxPreviewQuantity }} disabled={selectedQuantity === maxPreviewQuantity} onPress={() => { setSelectedQuantity((current) => Math.min(maxPreviewQuantity, current + 1)); setDetailAdded(false); }} style={[styles.quantityButton, selectedQuantity === maxPreviewQuantity && styles.quantityButtonDisabled]}>
+                      <Text style={styles.quantitySymbol}>+</Text>
+                    </Pressable>
+                  </View>
+                </View>
                 <Pressable accessibilityRole="button" accessibilityState={{ expanded: sizeGuideOpen }} onPress={() => setSizeGuideOpen((open) => !open)} style={styles.sizeGuideToggle}>
                   <Text style={styles.sizeGuideTitle}>SIZE CHART & FIT GUIDE</Text>
                   <Text style={styles.sizeGuideSymbol}>{sizeGuideOpen ? '−' : '+'}</Text>
@@ -383,7 +398,7 @@ export default function ShopScreen() {
             </ScrollView>
             <View style={styles.detailFooter}>
               {detailAdded ? <View style={styles.detailConfirmation}>
-                <Text style={styles.addedText}>Added to your bag</Text>
+                <Text style={styles.addedText}>{selectedQuantity} {selectedQuantity === 1 ? 'item' : 'items'} added to your bag</Text>
                 <View style={styles.confirmationActions}>
                   <Pressable accessibilityRole="button" accessibilityLabel="View bag" onPress={() => { setSelected(null); setBagOpen(true); }}><Text style={styles.confirmationLink}>VIEW BAG</Text></Pressable>
                   <Pressable accessibilityRole="button" accessibilityLabel="Continue shopping" onPress={() => setSelected(null)}><Text style={styles.confirmationLink}>CONTINUE SHOPPING</Text></Pressable>
@@ -536,6 +551,13 @@ const styles = StyleSheet.create({
   descriptionSection: { borderTopWidth: 1, borderTopColor: atelier.line, paddingTop: 18, marginTop: 9 },
   descriptionHeading: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 11, fontWeight: '700', letterSpacing: 1.3, marginBottom: 11 },
   descriptionText: { color: atelier.muted, fontFamily: atelier.body, fontSize: 13, lineHeight: 21 },
+  quantitySection: { marginTop: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  quantityHeading: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 11, fontWeight: '700', letterSpacing: 1.3 },
+  quantityControl: { height: 46, minWidth: 138, borderRadius: atelier.buttonRadius, borderWidth: 1, borderColor: atelier.line, backgroundColor: atelier.white, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  quantityButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  quantityButtonDisabled: { opacity: 0.36 },
+  quantitySymbol: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 22, lineHeight: 27 },
+  quantityValue: { minWidth: 35, color: atelier.petrol, fontFamily: atelier.body, fontSize: 15, fontWeight: '700', textAlign: 'center' },
   sizeGuideToggle: { marginTop: 23, paddingVertical: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: atelier.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sizeGuideTitle: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 11, fontWeight: '700', letterSpacing: 1.3 },
   sizeGuideSymbol: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 22, lineHeight: 22 },
