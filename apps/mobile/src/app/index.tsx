@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ImageBackground, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { atelier } from '@/atelier-theme';
 import { NyMark } from '@/components/ny-mark';
@@ -13,22 +13,23 @@ const stories = [
 
 export default function HomeScreen() {
   const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [activeStory, setActiveStory] = useState(0);
   const story = stories[activeStory];
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <View style={styles.screen}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <ImageBackground source={story.image} resizeMode="cover" imageStyle={styles.coverImage} style={[styles.hero, { height: Math.max(590, height - 125) }]}>
+        <ImageBackground source={story.image} resizeMode="cover" imageStyle={styles.coverImage} style={[styles.hero, { height: Math.max(590, height) }]}>
           <View style={styles.heroShade}>
-            <View style={styles.topLine}>
+            <View style={[styles.topLine, { marginTop: insets.top + 24 }]}>
               <View style={styles.brand}>
                 <NyMark color={atelier.white} size={28} />
                 <Text style={styles.wordmark}>NY ATELIER</Text>
               </View>
               <Text style={styles.edition}>THE NY EDIT  /  01</Text>
             </View>
-            <View style={styles.heroBottom}>
+            <View style={{ paddingBottom: insets.bottom + 86 }}>
               <Text style={styles.heroEyebrow}>{story.caption}</Text>
               <Text style={styles.heroTitle}>{story.title}</Text>
               <Pressable accessibilityRole="button" onPress={() => router.push('/shop')} style={styles.shopButton}>
@@ -77,21 +78,20 @@ export default function HomeScreen() {
         </Pressable>
         <Text style={styles.previewNote}>Visual preview · shopping and booking are not connected yet.</Text>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: atelier.alabaster, paddingTop: 16 },
+  screen: { flex: 1, backgroundColor: atelier.alabaster },
   content: { paddingBottom: 115 },
   hero: { width: '100%' },
   coverImage: { width: '100%', height: '100%' },
   heroShade: { flex: 1, backgroundColor: 'rgba(6, 20, 24, 0.42)', paddingHorizontal: 24, justifyContent: 'space-between' },
-  topLine: { marginTop: 23, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  topLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   wordmark: { color: atelier.white, fontFamily: atelier.body, fontWeight: '700', letterSpacing: 3.5, fontSize: 16 },
   edition: { color: atelier.white, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1.2 },
-  heroBottom: { paddingBottom: 32 },
   heroEyebrow: { color: atelier.brass, fontFamily: atelier.body, fontSize: 11, fontWeight: '700', letterSpacing: 2.2, marginBottom: 15 },
   heroTitle: { color: atelier.white, fontFamily: atelier.display, fontSize: 42, lineHeight: 49, marginBottom: 27 },
   shopButton: { backgroundColor: atelier.alabaster, paddingVertical: 17, paddingHorizontal: 19, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 54, borderRadius: atelier.buttonRadius },

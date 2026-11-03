@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { BlurView } from 'expo-blur';
 import { StatusBar } from 'expo-status-bar';
@@ -8,6 +8,7 @@ import { atelier } from '@/atelier-theme';
 import { TabIcon } from '@/components/tab-icon';
 
 export default function RootLayout() {
+  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const [fontsLoaded, fontError] = useFonts({
     AlfaSlabOne: require('../../assets/fonts/AlfaSlabOne-Regular.ttf'),
@@ -18,7 +19,7 @@ export default function RootLayout() {
 
   return (
     <>
-      <StatusBar style="dark" />
+      <StatusBar style={pathname === '/' ? 'light' : 'dark'} />
       <Tabs
         tabBar={({ state, descriptors, emitter, navigateToTab }) => (
           <View style={[styles.tabBarPosition, { bottom: Math.max(insets.bottom, Platform.OS === 'web' ? 0 : 16) + 2 }]} pointerEvents="box-none">
