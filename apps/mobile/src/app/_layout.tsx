@@ -20,7 +20,7 @@ export default function RootLayout() {
 
   return (
     <DemoCustomerProvider>
-      <StatusBar style={pathname === '/' ? 'light' : 'dark'} />
+      <StatusBar style={pathname === '/' || pathname === '/atelier' ? 'light' : 'dark'} />
       <Tabs
         tabBar={({ state, descriptors, emitter, navigateToTab }) => (
           <View style={[styles.tabBarPosition, { bottom: Math.max(insets.bottom, Platform.OS === 'web' ? 0 : 16) + 2 }]} pointerEvents="box-none">

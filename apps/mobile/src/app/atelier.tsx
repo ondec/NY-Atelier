@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { atelier } from '@/atelier-theme';
@@ -22,6 +22,8 @@ export default function AtelierScreen() {
   const [notes, setNotes] = useState('');
   const { requests, addRequest } = useDemoCustomer();
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const heroHeight = height * (2 / 3);
   const today = new Date();
   const dates = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + index + 1);
@@ -41,15 +43,14 @@ export default function AtelierScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <View style={styles.safe}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.brandLockup}><NyMark color={atelier.petrol} size={25} /><Text style={styles.wordmark}>NY ATELIER</Text></View>
-          <Text style={styles.headerIndex}>THE ATELIER  /  01</Text>
-        </View>
-
-        <ImageBackground source={require('../../assets/ny/atelier.jpg')} resizeMode="cover" imageStyle={styles.heroImage} style={styles.hero}>
+        <ImageBackground source={require('../../assets/ny/atelier.jpg')} resizeMode="cover" imageStyle={styles.heroImage} style={[styles.hero, { height: heroHeight }]}>
           <View style={styles.heroOverlay}>
+            <View style={[styles.heroHeader, { marginTop: insets.top + 24 }]}>
+              <NyMark color={atelier.white} size={28} />
+              <Text style={styles.wordmark}>NY ATELIER</Text>
+            </View>
             <Text style={styles.heroCaption}>CUSTOM CLOTHING · BESPOKE CRAFT</Text>
           </View>
         </ImageBackground>
@@ -140,20 +141,18 @@ export default function AtelierScreen() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: atelier.alabaster },
   content: { paddingBottom: 115 },
-  header: { paddingHorizontal: 24, height: 70, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  brandLockup: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  wordmark: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 16, fontWeight: '700', letterSpacing: 3.7 },
-  headerIndex: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1 },
-  hero: { height: 270, marginHorizontal: 14, borderRadius: 18, overflow: 'hidden' },
+  wordmark: { color: atelier.white, fontFamily: atelier.body, fontSize: 16, fontWeight: '700', letterSpacing: 3.7 },
+  hero: { width: '100%', overflow: 'hidden' },
   heroImage: { width: '100%', height: '100%' },
-  heroOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(6, 20, 24, 0.15)', padding: 24 },
+  heroOverlay: { flex: 1, justifyContent: 'space-between', backgroundColor: 'rgba(6, 20, 24, 0.24)', paddingHorizontal: 24, paddingBottom: 28 },
+  heroHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   heroCaption: { color: atelier.white, fontFamily: atelier.body, fontWeight: '700', fontSize: 10, letterSpacing: 1.8 },
   intro: { paddingHorizontal: 24, paddingTop: 36, paddingBottom: 37 },
   eyebrow: { color: atelier.cognac, fontFamily: atelier.body, fontWeight: '700', fontSize: 10, letterSpacing: 2, marginBottom: 14 },
