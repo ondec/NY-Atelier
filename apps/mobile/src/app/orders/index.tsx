@@ -54,7 +54,6 @@ export default function OrdersScreen() {
         <Text style={styles.eyebrow}>YOUR JOURNEY</Text>
         <Text style={styles.title}>Orders</Text>
         <Text style={styles.subtitle}>Every piece, from first step to final handover.</Text>
-        <Text style={styles.demo}>Team preview · fictional orders</Text>
 
         <View style={styles.switcher}>
           {(['active', 'history'] as const).map((value) => (
@@ -75,7 +74,7 @@ export default function OrdersScreen() {
         {error ? (
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>Orders are unavailable</Text>
-            <Text style={styles.emptyText}>Check that the demo is running, then pull down to refresh.</Text>
+            <Text style={styles.emptyText}>Check your connection, then pull down to refresh.</Text>
           </View>
         ) : null}
         {!loading && !error && visible.length === 0 ? (
@@ -101,7 +100,7 @@ export default function OrdersScreen() {
               <Text style={styles.progress}>{order.completed_item_count} of {order.item_count} outfits complete</Text>
             ) : null}
             <View style={styles.cardBottom}>
-              <Text style={styles.date}>Expected {formatDate(order.expected_completion_date)}</Text>
+              <Text style={styles.date}>{order.is_complete ? 'Completed' : 'Expected'} {formatDate(order.expected_completion_date)}</Text>
               <Text style={styles.open}>VIEW ORDER  ›</Text>
             </View>
           </Pressable>
@@ -118,8 +117,7 @@ const styles = StyleSheet.create({
   brand: { color: atelier.petrol, fontFamily: atelier.body, letterSpacing: 3.7, fontSize: 16, fontWeight: '700' },
   eyebrow: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 10, fontWeight: '700', letterSpacing: 2, marginBottom: 10 },
   title: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 39, marginBottom: 8 },
-  subtitle: { color: atelier.muted, fontFamily: atelier.body, fontSize: 15, lineHeight: 22, marginBottom: 14 },
-  demo: { alignSelf: 'flex-start', color: atelier.petrol, backgroundColor: '#E5ECE8', fontFamily: atelier.body, fontSize: 11, paddingHorizontal: 10, paddingVertical: 7, marginBottom: 27 },
+  subtitle: { color: atelier.muted, fontFamily: atelier.body, fontSize: 15, lineHeight: 22, marginBottom: 28 },
   switcher: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: atelier.line, marginBottom: 18 },
   switchButton: { paddingHorizontal: 18, paddingVertical: 13, borderBottomWidth: 2, borderBottomColor: 'transparent' },
   switchButtonActive: { borderBottomColor: atelier.petrol },
@@ -129,7 +127,7 @@ const styles = StyleSheet.create({
   empty: { backgroundColor: atelier.white, padding: 24 },
   emptyTitle: { color: atelier.slate, fontSize: 18, fontWeight: '600', marginBottom: 7 },
   emptyText: { color: atelier.muted, fontSize: 13, lineHeight: 20 },
-  card: { backgroundColor: atelier.white, borderWidth: 1, borderColor: '#E8E2D8', padding: 20, marginBottom: 13 },
+  card: { backgroundColor: atelier.white, borderWidth: 1, borderColor: '#E8E2D8', borderRadius: 10, padding: 20, marginBottom: 13 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginBottom: 13 },
   category: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 10, letterSpacing: 1.5, fontWeight: '700', textTransform: 'uppercase' },
   reference: { color: atelier.muted, fontFamily: atelier.body, fontSize: 10 },
