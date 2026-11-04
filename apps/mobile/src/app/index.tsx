@@ -4,6 +4,7 @@ import { Animated, Easing, ImageBackground, Platform, Pressable, ScrollView, typ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { atelier } from '@/atelier-theme';
+import { HeroScrollView } from '@/components/hero-scroll-view';
 import { NyMark } from '@/components/ny-mark';
 
 const stories = [
@@ -56,7 +57,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <HeroScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={[styles.hero, { height: heroHeight }]}>
           <ScrollView
             ref={carouselRef}
@@ -138,7 +139,7 @@ export default function HomeScreen() {
           </View>
         </Pressable>
         <Text style={styles.previewNote}>Visual preview · shopping and booking are not connected yet.</Text>
-      </ScrollView>
+      </HeroScrollView>
     </View>
   );
 }

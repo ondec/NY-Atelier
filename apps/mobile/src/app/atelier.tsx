@@ -4,6 +4,7 @@ import { ImageBackground, Modal, Pressable, ScrollView, StyleSheet, Text, TextIn
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { atelier } from '@/atelier-theme';
+import { HeroScrollView } from '@/components/hero-scroll-view';
 import { NyMark } from '@/components/ny-mark';
 import { demoCustomer, useDemoCustomer } from '@/lib/demo-customer';
 
@@ -44,7 +45,7 @@ export default function AtelierScreen() {
 
   return (
     <View style={styles.safe}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <HeroScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <ImageBackground source={require('../../assets/ny/atelier.jpg')} resizeMode="cover" imageStyle={styles.heroImage} style={[styles.hero, { height: heroHeight }]}>
           <View style={styles.heroOverlay}>
             <View style={[styles.heroHeader, { marginTop: insets.top + 24 }]}>
@@ -112,7 +113,7 @@ export default function AtelierScreen() {
           <Text style={styles.trackingText}>VIEW YOUR ORDERS  ↗</Text>
         </Pressable>
         <Text style={styles.previewNote}>Team preview · consultation requests stay on this device until booking is connected. Alterations are created in-store and appear in Orders.</Text>
-      </ScrollView>
+      </HeroScrollView>
 
       <Modal animationType="slide" visible={bookingOpen} onRequestClose={() => setBookingOpen(false)}>
         <SafeAreaView style={styles.formSafe} edges={['top']}>
