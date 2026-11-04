@@ -138,6 +138,23 @@ export default function HomeScreen() {
             <Text style={styles.featureLink}>DISCOVER BESPOKE  ↗</Text>
           </View>
         </Pressable>
+
+        <View style={styles.promoSection}>
+          <Text style={styles.sectionEyebrow}>MORE FROM THE ATELIER</Text>
+          <Text style={styles.promoSectionTitle}>Whatever the moment calls for.</Text>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/atelier')} style={[styles.promoCard, styles.promoCardDark]}>
+            <Text style={styles.promoEyebrowDark}>COUTURE & SPECIAL EVENTS</Text>
+            <Text style={styles.promoTitleDark}>Your idea, made remarkable.</Text>
+            <Text style={styles.promoCopyDark}>Create a one-of-a-kind look for an occasion that matters to you.</Text>
+            <Text style={styles.promoLinkDark}>EXPLORE ATELIER SERVICES  ↗</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/atelier')} style={[styles.promoCard, styles.promoCardLight]}>
+            <Text style={styles.promoEyebrowLight}>WARDROBE REVAMPING</Text>
+            <Text style={styles.promoTitleLight}>A fresh way to wear you.</Text>
+            <Text style={styles.promoCopyLight}>Revisit your wardrobe with personal styling and thoughtful fabric choices.</Text>
+            <Text style={styles.promoLinkLight}>DISCOVER THE SERVICES  ↗</Text>
+          </Pressable>
+        </View>
         <Text style={styles.previewNote}>Visual preview · shopping and booking are not connected yet.</Text>
       </HeroScrollView>
     </View>
@@ -177,5 +194,18 @@ const styles = StyleSheet.create({
   featureText: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 15 },
   featureTitle: { color: atelier.slate, fontFamily: atelier.display, fontSize: 19, flex: 1 },
   featureLink: { color: atelier.cognac, fontFamily: atelier.body, fontWeight: '700', fontSize: 9, letterSpacing: 1 },
+  promoSection: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 32 },
+  promoSectionTitle: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 26, lineHeight: 35, marginBottom: 24 },
+  promoCard: { borderRadius: 16, paddingHorizontal: 23, paddingVertical: 26, marginBottom: 14 },
+  promoCardDark: { backgroundColor: atelier.petrol },
+  promoCardLight: { backgroundColor: atelier.white, borderWidth: 1, borderColor: atelier.line },
+  promoEyebrowDark: { color: atelier.brass, fontFamily: atelier.body, fontWeight: '700', fontSize: 10, letterSpacing: 1.7, marginBottom: 13 },
+  promoEyebrowLight: { color: atelier.cognac, fontFamily: atelier.body, fontWeight: '700', fontSize: 10, letterSpacing: 1.7, marginBottom: 13 },
+  promoTitleDark: { color: atelier.white, fontFamily: atelier.display, fontSize: 23, lineHeight: 31, marginBottom: 10 },
+  promoTitleLight: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 23, lineHeight: 31, marginBottom: 10 },
+  promoCopyDark: { color: '#DCE4DE', fontFamily: atelier.body, fontSize: 14, lineHeight: 21, marginBottom: 21 },
+  promoCopyLight: { color: atelier.slate, fontFamily: atelier.body, fontSize: 14, lineHeight: 21, marginBottom: 21 },
+  promoLinkDark: { color: atelier.white, fontFamily: atelier.body, fontSize: 10, fontWeight: '700', letterSpacing: 1.1 },
+  promoLinkLight: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 10, fontWeight: '700', letterSpacing: 1.1 },
   previewNote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 11, textAlign: 'center', paddingHorizontal: 24, paddingBottom: 40 },
 });

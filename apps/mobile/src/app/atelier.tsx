@@ -8,11 +8,21 @@ import { HeroScrollView } from '@/components/hero-scroll-view';
 import { NyMark } from '@/components/ny-mark';
 import { demoCustomer, useDemoCustomer } from '@/lib/demo-customer';
 
-const services = [
+const journeySteps = [
   { number: '01', title: 'Measurements & fittings', note: 'A fit that belongs to you.' },
   { number: '02', title: 'Fabric selection', note: 'Explore cloth and finish together.' },
   { number: '03', title: 'Styling', note: 'Consider every detail of the look.' },
 ];
+
+const atelierServices = [
+  { number: '01', title: 'Couture Experience', note: 'One-of-a-kind pieces, handcrafted around your personal style.', purpose: 'Couture Experience' },
+  { number: '02', title: 'Bespoke Tailor-Made Clothing', note: 'A garment shaped to your measurements, from fabric choice to final stitch.', purpose: 'Custom clothing' },
+  { number: '03', title: 'Unique Idea Development for Special Events', note: 'Develop a distinctive look for a wedding, gala or milestone.', purpose: 'Special event outfit' },
+  { number: '04', title: 'Consultancy Services', note: 'Personal guidance on styling, wardrobe choices and how to wear them.', purpose: 'Consultancy Services' },
+  { number: '05', title: 'Custom Fabric Selection', note: 'Explore fabric choices that suit your garment and the way you want it to feel.', purpose: 'Custom Fabric Selection' },
+  { number: '06', title: 'Wardrobe Revamping', note: 'Refresh your wardrobe with pieces and styling that fit your life now.', purpose: 'Wardrobe Revamping' },
+  { number: '07', title: 'Personalized Accessories Design', note: 'Consider the finishing touches, from jewellery to shoes and bags.', purpose: 'Personalized Accessories Design' },
+] as const;
 
 export default function AtelierScreen() {
   const [method, setMethod] = useState<'in-person' | 'virtual'>('in-person');
@@ -30,7 +40,7 @@ export default function AtelierScreen() {
     const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + index + 1);
     return { value: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`, day: date.toLocaleDateString('en-GH', { weekday: 'short' }), date: date.toLocaleDateString('en-GH', { day: 'numeric', month: 'short' }) };
   });
-  const purposeOptions = ['Custom clothing', 'Occasion outfit', 'Measurements & fit', 'Other'];
+  const purposeOptions: string[] = [...new Set(atelierServices.map((service) => service.purpose)), 'Measurements & fit', 'Other'];
   const timeOptions = ['10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM'];
   const canSubmit = !!preferredDate && !!preferredTime;
 
@@ -95,9 +105,9 @@ export default function AtelierScreen() {
         </View> : null}
 
         <View style={styles.services}>
-          <Text style={styles.eyebrow}>EXPLORE THE ATELIER</Text>
+          <Text style={styles.eyebrow}>HOW IT COMES TOGETHER</Text>
           <Text style={styles.servicesTitle}>The details make it yours.</Text>
-          {services.map((service) => (
+          {journeySteps.map((service) => (
             <View key={service.number} style={styles.serviceRow}>
               <Text style={styles.serviceNumber}>{service.number}</Text>
               <View style={styles.serviceText}>
@@ -105,6 +115,27 @@ export default function AtelierScreen() {
                 <Text style={styles.serviceNote}>{service.note}</Text>
               </View>
             </View>
+          ))}
+        </View>
+
+        <View style={styles.offerings}>
+          <Text style={styles.eyebrow}>OUR SERVICES</Text>
+          <Text style={styles.offeringsTitle}>Made for every expression of you.</Text>
+          <Text style={styles.offeringsIntro}>Explore the ways NY Atelier can bring your idea or wardrobe to life.</Text>
+          {atelierServices.map((service) => (
+            <Pressable
+              key={service.number}
+              accessibilityRole="button"
+              accessibilityLabel={`Ask about ${service.title}`}
+              onPress={() => { setPurpose(service.purpose); setBookingOpen(true); }}
+              style={styles.offeringRow}>
+              <Text style={styles.offeringNumber}>{service.number}</Text>
+              <View style={styles.offeringContent}>
+                <Text style={styles.offeringTitle}>{service.title}</Text>
+                <Text style={styles.offeringNote}>{service.note}</Text>
+                <Text style={styles.offeringLink}>ASK ABOUT THIS  ↗</Text>
+              </View>
+            </Pressable>
           ))}
         </View>
 
@@ -160,7 +191,7 @@ const styles = StyleSheet.create({
   title: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 31, lineHeight: 39 },
   rule: { width: 51, height: 2, backgroundColor: atelier.brass, marginTop: 23, marginBottom: 20 },
   introCopy: { color: atelier.slate, fontFamily: atelier.body, fontSize: 16, lineHeight: 24 },
-  booking: { backgroundColor: atelier.petrol, marginHorizontal: 14, paddingHorizontal: 25, paddingTop: 31, paddingBottom: 27 },
+  booking: { backgroundColor: atelier.petrol, marginHorizontal: 14, paddingHorizontal: 25, paddingTop: 31, paddingBottom: 27, borderRadius: 10 },
   bookingEyebrow: { color: atelier.brass, fontFamily: atelier.body, fontWeight: '700', fontSize: 10, letterSpacing: 1.8, marginBottom: 15 },
   bookingTitle: { color: atelier.white, fontFamily: atelier.display, fontSize: 26, lineHeight: 34, marginBottom: 13 },
   bookingCopy: { color: '#DCE4DE', fontFamily: atelier.body, fontSize: 14, lineHeight: 21, marginBottom: 22 },
@@ -181,6 +212,15 @@ const styles = StyleSheet.create({
   serviceText: { flex: 1 },
   serviceTitle: { color: atelier.slate, fontFamily: atelier.body, fontWeight: '700', fontSize: 17, marginBottom: 4 },
   serviceNote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 13 },
+  offerings: { paddingHorizontal: 24, paddingTop: 26, paddingBottom: 42 },
+  offeringsTitle: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 25, lineHeight: 34, marginBottom: 12 },
+  offeringsIntro: { color: atelier.muted, fontFamily: atelier.body, fontSize: 14, lineHeight: 21, marginBottom: 24 },
+  offeringRow: { borderTopWidth: 1, borderTopColor: atelier.line, flexDirection: 'row', gap: 18, paddingVertical: 20 },
+  offeringNumber: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 11, marginTop: 4 },
+  offeringContent: { flex: 1 },
+  offeringTitle: { color: atelier.slate, fontFamily: atelier.body, fontWeight: '700', fontSize: 17, lineHeight: 23, marginBottom: 7 },
+  offeringNote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 13, lineHeight: 19 },
+  offeringLink: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 10, fontWeight: '700', letterSpacing: 1.1, marginTop: 12 },
   trackingLink: { marginHorizontal: 24, borderTopWidth: 1, borderTopColor: atelier.line, paddingVertical: 24, flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   trackingTitle: { color: atelier.slate, fontFamily: atelier.body, fontSize: 14, flex: 1 },
   trackingText: { color: atelier.cognac, fontFamily: atelier.body, fontWeight: '700', fontSize: 10, letterSpacing: 1 },
