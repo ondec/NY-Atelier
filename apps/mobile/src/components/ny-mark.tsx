@@ -10,6 +10,15 @@ type NyMarkProps = {
   size: number;
 };
 
+/** The original logo's rope surround, without the central monogram. */
+export function NyWreath({ color, size }: NyMarkProps) {
+  return <Svg width={size} height={size} viewBox="0 0 2332 2258" fill="none">
+    <G transform="matrix(4.166667 0 0 4.166667 0 0)">
+      <G transform="translate(73.1642 341.3077)"><Path d={WREATH_PATH} fill={color} fillRule="nonzero" /></G>
+    </G>
+  </Svg>;
+}
+
 export function NyMark({ color, size }: NyMarkProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 2332 2258" fill="none">

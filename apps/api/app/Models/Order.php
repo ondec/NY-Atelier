@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Order extends Model
 {
     protected $fillable = [
-        'customer_id', 'reference', 'category', 'status',
+        'customer_id', 'reference', 'category', 'status', 'source',
         'expected_completion_date', 'date_change_explanation',
         'fulfilment_method', 'fulfilment_status', 'payment_status',
-        'client_action', 'completed_at',
+        'workflow_stage', 'workflow_version', 'handover_instructions', 'courier_name', 'tracking_reference',
+        'client_action', 'completed_at', 'service_offering', 'consultation_id', 'measurement_id',
     ];
 
     protected function casts(): array
@@ -20,6 +21,7 @@ class Order extends Model
         return [
             'expected_completion_date' => 'date:Y-m-d',
             'completed_at' => 'datetime',
+            'workflow_version' => 'integer',
         ];
     }
 
@@ -35,6 +37,6 @@ class Order extends Model
 
     public function events(): HasMany
     {
-        return $this->hasMany(OrderEvent::class)->orderByDesc('occurred_at');
+        return $this->hasMany(OrderEvent::class)->orderByDesc('occurred_at')->orderByDesc('id');
     }
 }

@@ -1,0 +1,1 @@
+export function sameOrigin(request:Request){const origin=request.headers.get('origin');if(!origin)return request.method==='GET'||request.method==='HEAD';try{const url=new URL(origin);return ['http:','https:'].includes(url.protocol)&&url.host===(request.headers.get('x-forwarded-host')??request.headers.get('host'));}catch{return false;}}

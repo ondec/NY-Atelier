@@ -1,103 +1,87 @@
 # NY Atelier codebase
 
-This folder contains the first connected prototype foundation. The customer app, staff portal and API are separate from the project documents and logo in the parent folder. All records in this slice are fictional.
+NY Atelier has three connected applications: a customer Expo app, one Next.js staff web app containing NY Studio and NY Office, and a shared Laravel API/PostgreSQL database.
 
-## Selected stack
+**Start with the [current implementation/design handoff](docs/AI_HANDOFF.md) and [latest work log](docs/WORK_LOG.md).** They replace the outdated initial-prototype descriptions and provide the complete module map, design decisions, permissions and limitations. Root `AGENTS.md` and `CLAUDE.md` point both coding assistants to the same guide.
 
-- Customer app: Expo SDK 58, React Native, TypeScript and Expo Router.
-- Staff portal: React, Next.js and TypeScript.
-- API: Laravel 13 with Sanctum installed for the later authentication slice.
-- Database: PostgreSQL 17 for local development.
+## Stack
 
-No hosted service account, paid subscription or payment provider is required to run this slice.
+| Application | Stack |
+| --- | --- |
+| Customer app — `apps/mobile` | Expo SDK 58, React Native 0.88.1, React 19.3, Expo Router, TypeScript |
+| Staff web app — `apps/portal` | Next.js 16.4.6 App Router, React 19.3, TypeScript, application CSS |
+| API — `apps/api` | Laravel 13.39, Sanctum staff authentication, PHP |
+| Database | PostgreSQL 17 for local development; isolated SQLite for backend tests |
 
-## What works now
+Use lockfiles and the handoff for exact installed versions. Studio is a responsive installable web app for phone, tablet and desktop, separate from the customer Expo app.
 
-The Laravel API serves four seeded demo orders: Ready-to-Wear, Alterations, a three-outfit Custom order, and one completed order. The app's Orders area shows Active and History lists and an order detail view. The staff portal reads the same records and shows an order overview. The Custom order correctly shows one of three outfits complete while collection remains unavailable.
+## Connected now
 
-The app's Home, Shop, Atelier and Account tabs use the approved NY Atelier editorial direction. Home has a photographic collection carousel and two short Atelier service promotions. Shop shows a nine-piece preview of public-store products, with clothing type, colour, price, availability and sort filters; the Women's tab explicitly says its catalogue is pending. Atelier lists seven offerings from the NY Atelier services brochure. Tapping one opens the consultation form with its purpose selected. The demo customer can choose a method and preferred date/time, add notes, and save an **Awaiting confirmation** request locally. The same request appears in Account. Account uses the fictional Ama Mensah demo profile; there is no real sign-in or identity check. The portal remains read-only. Staff permissions, approvals, live catalogue sync, server-side booking, checkout and messaging are not connected yet. Payment labels in sample data are simulated.
+- Staff login, eight-hour sessions, role-correct Office/Studio switching and server-side permissions for owner, manager and receptionist.
+- Shared customer records, dated garment fittings, additional/removable measurements, protected inspiration photos/videos and grouped fitting history.
+- Shared consultations and order workflows, service-specific order desks, source tracking and an informative owner overview.
+- Shared catalogue, variants, stock movements, collections and manually confirmed Studio POS sales/receipts.
+- Product/collection size-chart publishing and a reusable context-aware customer Size Guide.
+- Salary approvals/payout records and a team directory, with some finance and production work still incomplete.
+- Customer Home/Shop/Atelier/Orders/Account interfaces. Customer identity and parts of account persistence remain a demo/device-local foundation.
 
-Home and Atelier photography comes from [NY Atelier's main website](https://thenyatelier.com/). The sample product images, names and prices were checked against the [public ready-to-wear store](https://rtw.thenyatelier.com/) on 3 November 2026; they are bundled design-preview content, not live inventory. The provisional display and interface fonts are Alfa Slab One and Josefin Sans, as specified in the design plan; their SIL Open Font licenses are included under `apps/mobile/assets/fonts/`.
+The current database contains seeded examples and subsequently added development records. Preserve it. Customer registration/checkout, electronic payment processing, live external notifications, production hosting and store releases are not complete. Recording a Studio payment does not move or independently verify money.
 
-The mobile app uses Expo SDK 58 to match the current Expo Go phone preview. Expo Doctor and the SDK dependency check pass. This prototype uses fictional data only; review dependencies again before any production release or real customer data.
+## Local operation
 
-## Local setup on a Mac
+Inspect existing listeners before starting duplicates. PostgreSQL, API 8000, portal 3000 and Expo 8081 were running at the 20 November 2026 handoff.
 
-Install Node 24, PHP 8.4, Composer and PostgreSQL 17. On this development Mac they are available through Homebrew. Start PostgreSQL and create one local database:
-
-```sh
-brew services start postgresql@17
-/opt/homebrew/opt/postgresql@17/bin/createdb ny_atelier_dev
-```
-
-Use the selected tool versions in each Terminal window:
-
-```sh
-export PATH="/opt/homebrew/opt/node@24/bin:/opt/homebrew/opt/php@8.4/bin:/opt/homebrew/opt/postgresql@17/bin:$PATH"
-```
-
-From `codebase/`, install the locked dependencies:
-
-```sh
-cd apps/api && composer install
-cd ../portal && npm ci
-cd ../mobile && npm ci
-```
-
-Copy `apps/api/.env.example` to `apps/api/.env`. Set `DB_USERNAME` to your local PostgreSQL username, set `NY_DEMO_API_ENABLED=true` only for the fictional demo database, then run:
+Run in separate terminals, from this directory:
 
 ```sh
 cd apps/api
-php artisan key:generate
-php artisan migrate --seed
-```
-
-The demo route returns 404 when `NY_DEMO_API_ENABLED` is false. It is a read-only preview route and must not be enabled against real customer data.
-
-## Run the demo
-
-Start these in three Terminal windows, each with the tool versions above on `PATH`:
-
-```sh
-cd codebase/apps/api
-php artisan serve --host=0.0.0.0 --port=8000
+composer run preview
 ```
 
 ```sh
-cd codebase/apps/portal
-npm run dev -- --hostname 127.0.0.1 --port 3000
+cd apps/portal
+npm run dev -- --webpack --hostname 0.0.0.0 --port 3000
 ```
 
 ```sh
-cd codebase/apps/mobile
-npx expo start --lan
+cd apps/mobile
+npx expo start --lan --port 8081
 ```
 
-Open the staff portal at `http://127.0.0.1:3000`. For a phone preview, use Expo Go for SDK 58, keep the phone and Mac on the same network, and scan Expo's QR code. In `apps/mobile/.env.local`, set `EXPO_PUBLIC_API_BASE_URL` to the Mac's current LAN address, for example `http://192.168.x.x:8000`. On Wi-Fi, `ipconfig getifaddr en0` often prints that address. Restart Expo after changing the file. Physical iPhones may require Expo CLI and Expo Go to be signed in to the same free Expo account. The API is bound to the local network for this demo and contains fictional data only.
+The staff app's local entry points are `/staff/sign-in`, `/showroom` and `/office/{role}` on port 3000. The customer web preview uses Expo's port 8081. Same-Wi-Fi device testing uses the development Mac's current LAN address, not the phone's `127.0.0.1`.
 
-The app and portal can also run in a browser for development. The app's web preview is available from Expo at `http://localhost:8081/orders` when its web mode is started.
+Existing `.env` files are local and must not be overwritten or committed. Portal `API_BASE_URL` points to Laravel. Mobile `EXPO_PUBLIC_API_BASE_URL` points to Laravel and `EXPO_PUBLIC_SIZE_GUIDE_BASE_URL` points to the portal sizing endpoint. Never put secrets in public Expo variables.
 
-To try the Atelier journey, open **Atelier**, choose **In person** or **Virtual**, then tap **Request a consultation**. The app is already using the fictional Ama Mensah demo profile (`ama.mensah@example.com`); no password is needed. Choose a purpose, preferred date and time, and optionally add notes. The request appears in Atelier and Account as **Awaiting confirmation**. It is stored only on that device or browser and is not sent to the team or API. Clearing the app/browser storage removes it.
+For a fresh machine, install locked dependencies using `composer install` in the API and `npm ci` in each front end, configure the appropriate PHP/Node/PostgreSQL versions and local environment, then inspect migration status. On this existing project, apply new migrations deliberately; do not regenerate `APP_KEY`, run database reset commands or seed over the user's records as routine setup.
 
-## Demo data contract
+## Verification
 
-`GET /api/demo/orders` returns `{ "demo": true, "orders": [...] }`. Each order includes its `reference`, `category`, `status`, expected completion date, fulfilment and simulated payment status, `is_complete`, item counts, garment items and dated timeline. The app and portal fetch this endpoint separately from the same Laravel database. Internal numeric database IDs are not exposed in this demo response. Customer account and staff role boundaries will be added before any real data. The mobile demo profile and consultation requests are separate from this API and are not authenticated.
-
-## Reset and verify
-
-To restore the four fictional records in the local development database:
+Use the narrow tests appropriate to a change; see the handoff for tested commands and dated results.
 
 ```sh
-cd codebase/apps/api
-php artisan migrate:fresh --seed
+# apps/portal
+npx tsc --noEmit
+npx eslint <changed-files>
+node --experimental-strip-types --test src/lib/order-desk.test.mjs src/lib/studio-dialog-history.test.mjs
+NY_STAFF_PREVIEW=1 npm run build
 ```
 
-This reset deletes records in the configured database. Confirm the API `.env` points to the local demo database first. Run the meaningful checks:
+The alternate production-build directory avoids overwriting the active development server output.
 
 ```sh
-cd codebase/apps/api && php artisan test --compact
-cd codebase/apps/portal && npm run build
-cd codebase/apps/mobile && npx expo lint && npx tsc --noEmit && npx expo export --platform all
+# apps/api
+php artisan test --compact tests/Feature/OrderSourceTest.php tests/Feature/DemoStaffOrderTest.php tests/Feature/DemoStudioSaleTest.php tests/Feature/DemoOrdersTest.php
+vendor/bin/pint --dirty --format agent
 ```
 
-The next connected slice is staff authentication and stage approval: a staff submission should remain private until a manager or owner approves it, then the customer Orders view should show the approved update.
+```sh
+# apps/mobile, after customer-app changes
+npx expo lint
+npx tsc --noEmit
+```
+
+## Continue and hand over
+
+Read the app-specific instructions before changing framework code. Update [WORK_LOG.md](docs/WORK_LOG.md) before handing to the other assistant and update changed facts in [AI_HANDOFF.md](docs/AI_HANDOFF.md). The repository includes a portable `docs/` snapshot. In the full local project, `../docs/` remains the live shared handoff; consult it first and refresh the tracked snapshot before publishing another checkpoint. Standalone clones maintain `docs/` directly.
+
+Studio is the first planned release, across all screen sizes. WordPress catalogue import, physical iPhone/iPad Safari acceptance, hosting/HTTPS, durable storage/backups and domain setup remain ahead. Office can launch later while using the same API/database. No domain or temporary tunnel should be assumed live from a previous session.

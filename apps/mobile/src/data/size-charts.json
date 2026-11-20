@@ -1,0 +1,310 @@
+{
+  "version": "1.0",
+  "name": "International Clothing Size Guide",
+  "market": "GH",
+  "defaultUnit": "cm",
+  "measurementType": "body",
+  "fit": "regular",
+  "conversionConfidence": "approximate",
+  "ghanaSizeSystem": "international-alpha",
+  "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL",
+    "3XL"
+  ],
+  "charts": {
+    "men": {
+      "shirts": {
+        "category": "long-sleeve-shirt",
+        "primaryMeasurement": "chestCm",
+        "additionalProductMeasurements": [
+          "shoulderCm",
+          "sleeveLengthCm",
+          "shirtLengthCm"
+        ],
+        "rows": [
+          {
+            "size": "S",
+            "chestCm": [
+              91,
+              96
+            ],
+            "collarUkUsIn": 15.5,
+            "collarEuCm": "39-40"
+          },
+          {
+            "size": "M",
+            "chestCm": [
+              97,
+              101
+            ],
+            "collarUkUsIn": 16,
+            "collarEuCm": "41-42"
+          },
+          {
+            "size": "L",
+            "chestCm": [
+              102,
+              106
+            ],
+            "collarUkUsIn": 17,
+            "collarEuCm": "43-44"
+          },
+          {
+            "size": "XL",
+            "chestCm": [
+              107,
+              111
+            ],
+            "collarUkUsIn": 17.5,
+            "collarEuCm": "45-46"
+          },
+          {
+            "size": "2XL",
+            "chestCm": [
+              112,
+              116
+            ],
+            "collarUkUsIn": 18.5,
+            "collarEuCm": "47-48"
+          },
+          {
+            "size": "3XL",
+            "chestCm": [
+              117,
+              121
+            ],
+            "collarUkUsIn": 19.5,
+            "collarEuCm": "49-50"
+          }
+        ]
+      },
+      "trousers": {
+        "category": "trousers",
+        "primaryMeasurement": "waistCm",
+        "additionalProductMeasurements": [
+          "hipCm",
+          "inseamCm",
+          "outseamCm"
+        ],
+        "rows": [
+          {
+            "size": "S",
+            "waistCm": [
+              76,
+              82
+            ],
+            "ukUsWaistIn": [
+              30,
+              32
+            ],
+            "eu": "46"
+          },
+          {
+            "size": "M",
+            "waistCm": [
+              83,
+              89
+            ],
+            "ukUsWaistIn": [
+              33,
+              35
+            ],
+            "eu": "48"
+          },
+          {
+            "size": "L",
+            "waistCm": [
+              90,
+              97
+            ],
+            "ukUsWaistIn": [
+              36,
+              38
+            ],
+            "eu": "50"
+          },
+          {
+            "size": "XL",
+            "waistCm": [
+              98,
+              105
+            ],
+            "ukUsWaistIn": [
+              39,
+              41
+            ],
+            "eu": "52"
+          },
+          {
+            "size": "2XL",
+            "waistCm": [
+              106,
+              113
+            ],
+            "ukUsWaistIn": [
+              42,
+              44
+            ],
+            "eu": "54"
+          },
+          {
+            "size": "3XL",
+            "waistCm": [
+              114,
+              121
+            ],
+            "ukUsWaistIn": [
+              45,
+              47
+            ],
+            "eu": "56"
+          }
+        ]
+      }
+    },
+    "women": {
+      "shirts": {
+        "category": "long-sleeve-shirt",
+        "measurementMode": "reference-point",
+        "primaryMeasurement": "bustCm",
+        "additionalProductMeasurements": [
+          "shoulderCm",
+          "sleeveLengthCm",
+          "shirtLengthCm"
+        ],
+        "rows": [
+          {
+            "size": "S",
+            "uk": "10",
+            "us": "6",
+            "eu": "38",
+            "bustCm": 90,
+            "waistCm": 70
+          },
+          {
+            "size": "M",
+            "uk": "12",
+            "us": "8",
+            "eu": "40",
+            "bustCm": 95,
+            "waistCm": 75
+          },
+          {
+            "size": "L",
+            "uk": "14",
+            "us": "10",
+            "eu": "42",
+            "bustCm": 100,
+            "waistCm": 80
+          },
+          {
+            "size": "XL",
+            "uk": "16",
+            "us": "12",
+            "eu": "44",
+            "bustCm": 105,
+            "waistCm": 85
+          },
+          {
+            "size": "2XL",
+            "uk": "18",
+            "us": "14",
+            "eu": "46",
+            "bustCm": 112,
+            "waistCm": 92
+          },
+          {
+            "size": "3XL",
+            "uk": "20",
+            "us": "16",
+            "eu": "48",
+            "bustCm": 119,
+            "waistCm": 99
+          }
+        ]
+      },
+      "trousers": {
+        "category": "trousers",
+        "measurementMode": "reference-point",
+        "primaryMeasurement": "waistCm",
+        "secondaryMeasurement": "hipCm",
+        "rows": [
+          {
+            "size": "S",
+            "uk": "10",
+            "us": "6",
+            "eu": "38",
+            "waistCm": 70,
+            "hipCm": 94
+          },
+          {
+            "size": "M",
+            "uk": "12",
+            "us": "8",
+            "eu": "40",
+            "waistCm": 75,
+            "hipCm": 99
+          },
+          {
+            "size": "L",
+            "uk": "14",
+            "us": "10",
+            "eu": "42",
+            "waistCm": 80,
+            "hipCm": 104
+          },
+          {
+            "size": "XL",
+            "uk": "16",
+            "us": "12",
+            "eu": "44",
+            "waistCm": 85,
+            "hipCm": 109
+          },
+          {
+            "size": "2XL",
+            "uk": "18",
+            "us": "14",
+            "eu": "46",
+            "waistCm": 92,
+            "hipCm": 116
+          },
+          {
+            "size": "3XL",
+            "uk": "20",
+            "us": "16",
+            "eu": "48",
+            "waistCm": 99,
+            "hipCm": 123
+          }
+        ]
+      }
+    }
+  },
+  "trouserLengths": [
+    {
+      "label": "Short",
+      "code": "L30",
+      "inseamIn": 30
+    },
+    {
+      "label": "Regular",
+      "code": "L32",
+      "inseamIn": 32
+    },
+    {
+      "label": "Long",
+      "code": "L34",
+      "inseamIn": 34
+    },
+    {
+      "label": "Extra Long",
+      "code": "L36",
+      "inseamIn": 36
+    }
+  ]
+}

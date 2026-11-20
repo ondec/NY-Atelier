@@ -9,13 +9,15 @@ class OrderEvent extends Model
 {
     protected $fillable = [
         'order_id', 'order_item_id', 'title', 'explanation',
-        'occurred_at', 'client_visible',
+        'occurred_at', 'client_visible', 'stage_key', 'action_key', 'action_type', 'request_hash',
+        'notified_at', 'external_channel', 'external_status',
     ];
 
     protected function casts(): array
     {
         return [
             'occurred_at' => 'datetime',
+            'notified_at' => 'datetime',
             'client_visible' => 'boolean',
         ];
     }

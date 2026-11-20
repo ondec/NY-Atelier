@@ -1,43 +1,11 @@
-import Svg, { Path } from 'react-native-svg';
-import type { ColorValue } from 'react-native';
-
-type ShopActionIconProps = {
-  name: 'heart' | 'bag' | 'filter' | 'back' | 'forward';
-  color: ColorValue;
-  filled?: boolean;
-  size?: number;
-};
-
-export function ShopActionIcon({ name, color, filled = false, size = 20 }: ShopActionIconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      {name === 'heart' ? (
-        <Path
-          d="M20.2 5.8a4.4 4.4 0 0 0-6.2 0L12 7.7l-2-1.9a4.4 4.4 0 0 0-6.2 6.2L12 20.2l8.2-8.2a4.4 4.4 0 0 0 0-6.2Z"
-          fill={filled ? color : 'none'}
-          stroke={color}
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      ) : null}
-      {name === 'bag' ? (
-        <>
-          <Path d="M5.2 8.6h13.6l-.8 10.2c-.1 1-1 1.8-2 1.8H8c-1 0-1.9-.8-2-1.8L5.2 8.6Z" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-          <Path d="M9 9V7a3 3 0 0 1 6 0v2" stroke={color} strokeWidth="1.7" strokeLinecap="round" />
-        </>
-      ) : null}
-      {name === 'filter' ? (
-        <>
-          <Path d="M3.5 6.5h17M6.5 12h11M9.5 17.5h5" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
-        </>
-      ) : null}
-      {name === 'back' ? (
-        <Path d="m14.5 4.5-7.5 7.5 7.5 7.5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      ) : null}
-      {name === 'forward' ? (
-        <Path d="m9.5 4.5 7.5 7.5-7.5 7.5" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      ) : null}
-    </Svg>
-  );
+import { StyleSheet, Text, View, type ColorValue, type StyleProp, type TextStyle } from 'react-native';
+import { NyIcon } from '@/components/ny-icon';
+const icons = { heart: 'heart', bag: 'bag', filter: 'filter', back: 'chevron-left', forward: 'chevron-right', 'arrow-up-right': 'arrow-up-right', 'arrow-right': 'arrow-right', close: 'close', plus: 'plus', minus: 'minus' } as const;
+export function ShopActionIcon({ name, color, size = 20 }: { name: keyof typeof icons; color: ColorValue; filled?: boolean; size?: number }) {
+  return <NyIcon name={icons[name]} color={color} size={size} />;
 }
+export function IconLabel({ label, name, color, style }: { label: string; name: 'arrow-up-right' | 'arrow-right' | 'back' | 'forward'; color: ColorValue; style?: StyleProp<TextStyle> }) {
+  const icon = <ShopActionIcon name={name} color={color} size={13} />;
+  return <View style={styles.label}>{name === 'back' ? icon : null}<Text style={[style, styles.labelText]}>{label}</Text>{name !== 'back' ? icon : null}</View>;
+}
+const styles = StyleSheet.create({ label: { flexDirection: 'row', alignItems: 'center', gap: 5 }, labelText: { flexShrink: 1 } });

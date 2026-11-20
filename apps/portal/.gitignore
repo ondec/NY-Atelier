@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/.next-top-preview/
+/.next-staff-preview/
+
+/.studio-data/

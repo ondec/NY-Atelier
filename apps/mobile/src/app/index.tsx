@@ -1,25 +1,33 @@
+import { useTabSwipeBlocker, GestureBoundary } from '@/components/tab-swipe';
+import { IconLabel, ShopActionIcon } from '@/components/shop-action-icon';
+import { StatusBar } from 'expo-status-bar';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, ImageBackground, Platform, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, ImageBackground, Modal, Platform, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useEdgeSwipeBack } from '@/components/edge-swipe-back';
 import { atelier } from '@/atelier-theme';
+import { atelierServices, type AtelierService } from '@/data/atelier-services';
 import { HeroScrollView } from '@/components/hero-scroll-view';
 import { NyMark } from '@/components/ny-mark';
+import { HomeDestinationCard } from '@/components/home-destination-card';
 
-const stories = [
-  { image: require('../../assets/ny/home-green.jpg'), number: '01 / 02', title: 'The art of\nbeing seen.', caption: 'READY-TO-WEAR · NY ATELIER' },
-  { image: require('../../assets/ny/home-blue.jpg'), number: '02 / 02', title: 'Made for\nyour moment.', caption: 'A NEW EXPRESSION OF STYLE' },
-] as const;
+import { redCloverCollection } from '@/data/shop-collections';
+
+const stories = redCloverCollection.photos;
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const carouselRef = useRef<ScrollViewInstance>(null);
   const activeStoryRef = useRef(0);
-  const [copyEntrance] = useState(() => new Animated.Value(1));
+  const [service, setService] = useState<AtelierService | null>(null);
+  const closeService = useCallback(() => setService(null), [setService]);
+  useTabSwipeBlocker(service !== null);
+  const serviceSwipe = useEdgeSwipeBack(closeService, service !== null);
   const [activeStory, setActiveStory] = useState(0);
-  const story = stories[activeStory];
+  const slideWidth = Platform.OS === 'web' ? ('100vw' as ViewStyle['width']) : width;
   const heroHeight = Math.max(590, height);
 
   function showStory(index: number) {
@@ -32,18 +40,6 @@ export default function HomeScreen() {
   useEffect(() => {
     carouselRef.current?.scrollTo({ x: activeStoryRef.current * width, animated: false });
   }, [width]);
-
-  useEffect(() => {
-    copyEntrance.stopAnimation();
-    copyEntrance.setValue(0);
-    Animated.timing(copyEntrance, {
-      toValue: 1,
-      duration: 480,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: Platform.OS !== 'web',
-    }).start();
-    return () => copyEntrance.stopAnimation();
-  }, [activeStory, copyEntrance]);
 
   useFocusEffect(useCallback(() => {
     const timer = setTimeout(() => {
@@ -59,27 +55,33 @@ export default function HomeScreen() {
     <View style={styles.screen}>
       <HeroScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={[styles.hero, { height: heroHeight }]}>
-          <ScrollView
+          <View style={StyleSheet.absoluteFill}><GestureBoundary><ScrollView
             ref={carouselRef}
             horizontal
             pagingEnabled
             decelerationRate="fast"
             directionalLockEnabled
             showsHorizontalScrollIndicator={false}
-            style={StyleSheet.absoluteFill}
+            style={{ height: heroHeight }}
             onMomentumScrollEnd={(event) => {
+              if (!width) return;
               const index = Math.round(event.nativeEvent.contentOffset.x / width);
               if (index >= 0 && index < stories.length && index !== activeStoryRef.current) {
                 activeStoryRef.current = index;
                 setActiveStory(index);
               }
             }}>
-            {stories.map((slide) => (
-              <ImageBackground key={slide.number} source={slide.image} resizeMode="cover" imageStyle={styles.coverImage} style={{ width, height: heroHeight }}>
+            {stories.map((slide, index) => (
+              <View key={slide.id} style={{ width: slideWidth, height: heroHeight }}>
+                {Platform.OS === 'web' ? (
+                  <img src={slide.image.uri} alt="" loading={index === 0 ? 'eager' : 'lazy'} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <ImageBackground source={slide.image} resizeMode="cover" imageStyle={styles.coverImage} style={StyleSheet.absoluteFill} />
+                )}
                 <View pointerEvents="none" style={styles.imageShade} />
-              </ImageBackground>
+              </View>
             ))}
-          </ScrollView>
+          </ScrollView></GestureBoundary></View>
           <View pointerEvents="box-none" style={styles.heroOverlay}>
             <View pointerEvents="none" style={[styles.topLine, { marginTop: insets.top + 24 }]}>
               <View style={styles.brand}>
@@ -88,25 +90,23 @@ export default function HomeScreen() {
               </View>
             </View>
             <View pointerEvents="box-none" style={{ paddingBottom: insets.bottom + 86 }}>
-              <Animated.View
-                pointerEvents="none"
-                style={[styles.storyCopy, { opacity: copyEntrance, transform: [{ translateX: copyEntrance.interpolate({ inputRange: [0, 1], outputRange: [activeStory === 0 ? -24 : 24, 0] }) }] }]}>
-                <Text style={styles.heroEyebrow}>{story.caption}</Text>
-                <Text style={styles.heroTitle}>{story.title}</Text>
-              </Animated.View>
-              <Pressable accessibilityRole="button" onPress={() => router.push('/shop')} style={styles.shopButton}>
+              <View pointerEvents="none">
+                <Text style={styles.heroEyebrow}>FEATURED COLLECTION</Text>
+                <Text style={styles.heroTitle}>{redCloverCollection.title}</Text>
+              </View>
+              <Pressable accessibilityRole="button" onPress={() => router.navigate({ pathname: '/shop', params: { collection: redCloverCollection.id } })} style={styles.shopButton}>
                 <Text style={styles.shopButtonText}>SHOP THE COLLECTION</Text>
-                <Text style={styles.shopArrow}>↗</Text>
+                <ShopActionIcon name="arrow-up-right" color={atelier.petrol} />
               </Pressable>
               <View style={styles.storyFoot}>
-                <Text style={styles.storyNumber}>{story.number}</Text>
+                <Text style={styles.storyNumber}>{String(activeStory + 1).padStart(2, '0')} / {String(stories.length).padStart(2, '0')}</Text>
                 <View style={styles.storyDots}>
                   {stories.map((_, index) => (
                     <Pressable key={index} accessibilityRole="button" accessibilityLabel={`Show story ${index + 1}`} accessibilityState={{ selected: index === activeStory }} onPress={() => showStory(index)} style={[styles.storyDot, index === activeStory && styles.storyDotActive]} />
                   ))}
                 </View>
                 <Pressable accessibilityRole="button" accessibilityLabel="Next story" onPress={() => showStory((activeStoryRef.current + 1) % stories.length)}>
-                  <Text style={styles.nextStory}>NEXT  →</Text>
+                  <IconLabel label="NEXT" name="arrow-right" color={atelier.white} style={styles.nextStory} />
                 </Pressable>
               </View>
             </View>
@@ -119,44 +119,51 @@ export default function HomeScreen() {
           <Text style={styles.sectionCopy}>Discover expressive ready-to-wear and a personal Atelier journey, shaped by NY craftsmanship.</Text>
         </View>
 
-        <Pressable accessibilityRole="button" onPress={() => router.push('/shop')} style={styles.feature}>
-          <ImageBackground source={require('../../assets/ny/home-blue.jpg')} resizeMode="cover" imageStyle={styles.coverImage} style={styles.featureImage}>
-            <View style={styles.featureTag}><Text style={styles.featureTagText}>01  /  READY-TO-WEAR</Text></View>
-          </ImageBackground>
-          <View style={styles.featureText}>
-            <Text style={styles.featureTitle}>The collection</Text>
-            <Text style={styles.featureLink}>EXPLORE PIECES  ↗</Text>
-          </View>
-        </Pressable>
-
-        <Pressable accessibilityRole="button" onPress={() => router.push('/atelier')} style={styles.feature}>
-          <ImageBackground source={require('../../assets/ny/atelier.jpg')} resizeMode="cover" imageStyle={styles.coverImage} style={styles.featureImage}>
-            <View style={styles.featureTag}><Text style={styles.featureTagText}>02  /  THE ATELIER</Text></View>
-          </ImageBackground>
-          <View style={styles.featureText}>
-            <Text style={styles.featureTitle}>Made around you</Text>
-            <Text style={styles.featureLink}>DISCOVER BESPOKE  ↗</Text>
-          </View>
-        </Pressable>
+        <View style={styles.featureRow}>
+          <HomeDestinationCard image={require('../../assets/ny/home-blue.jpg')} tag="01 / THE COLLECTION" title="Ready-to-Wear" description="Expression, made effortless." action="EXPLORE PIECES" accessibilityLabel="Explore Ready-to-Wear" onPress={() => router.push('/shop')} />
+          <HomeDestinationCard image={require('../../assets/ny/atelier.jpg')} tag="02 / THE ATELIER" title="NY Atelier" description="Made around you." action="DISCOVER BESPOKE" accessibilityLabel="Discover NY Atelier" onPress={() => router.push('/atelier')} />
+        </View>
 
         <View style={styles.promoSection}>
-          <Text style={styles.sectionEyebrow}>MORE FROM THE ATELIER</Text>
+          <Text style={styles.sectionEyebrow}>THE ATELIER / OUR SERVICES</Text>
           <Text style={styles.promoSectionTitle}>Whatever the moment calls for.</Text>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/atelier')} style={[styles.promoCard, styles.promoCardDark]}>
-            <Text style={styles.promoEyebrowDark}>COUTURE & SPECIAL EVENTS</Text>
-            <Text style={styles.promoTitleDark}>Your idea, made remarkable.</Text>
-            <Text style={styles.promoCopyDark}>Create a one-of-a-kind look for an occasion that matters to you.</Text>
-            <Text style={styles.promoLinkDark}>EXPLORE ATELIER SERVICES  ↗</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Read about ${atelierServices[0].title}`} onPress={() => setService(atelierServices[0])} style={styles.serviceFeature}>
+            <ImageBackground source={atelierServices[0].image} resizeMode="cover" style={styles.serviceFeatureImage}>
+              <View style={styles.serviceShade}><Text style={styles.serviceFeatureIndex}>01 / AN ATELIER EXPERIENCE</Text><View><Text style={styles.serviceFeatureTitle}>{atelierServices[0].title}</Text><Text style={styles.serviceFeatureCopy}>{atelierServices[0].note}</Text><IconLabel label="DISCOVER COUTURE" name="arrow-up-right" color={atelier.white} style={styles.serviceFeatureLink} /></View></View>
+            </ImageBackground>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/atelier')} style={[styles.promoCard, styles.promoCardLight]}>
-            <Text style={styles.promoEyebrowLight}>WARDROBE REVAMPING</Text>
-            <Text style={styles.promoTitleLight}>A fresh way to wear you.</Text>
-            <Text style={styles.promoCopyLight}>Revisit your wardrobe with personal styling and thoughtful fabric choices.</Text>
-            <Text style={styles.promoLinkLight}>DISCOVER THE SERVICES  ↗</Text>
-          </Pressable>
+          <View style={styles.serviceGrid}>
+            {atelierServices.slice(1).map((item) => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`Read about ${item.title}`} onPress={() => setService(item)} style={[styles.serviceCard, width >= 900 && { width: '48%' }]}>
+              <ImageBackground source={item.image} resizeMode="cover" style={styles.serviceImage} />
+              <View style={styles.serviceCardBody}><Text style={styles.serviceIndex}>{item.number}</Text><Text style={styles.serviceTitle}>{item.title}</Text><Text style={styles.serviceCopy}>{item.note}</Text></View>
+              <ShopActionIcon name="arrow-up-right" color={atelier.cognac} size={18} />
+            </Pressable>)}
+          </View>
         </View>
-        <Text style={styles.previewNote}>Visual preview · shopping and booking are not connected yet.</Text>
       </HeroScrollView>
+      <Modal visible={service !== null} animationType="slide" transparent presentationStyle="overFullScreen" statusBarTranslucent navigationBarTranslucent onRequestClose={closeService}>
+        <Animated.View {...serviceSwipe.panHandlers} style={[serviceSwipe.animatedStyle, styles.serviceDetail, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+          {service && <StatusBar style="dark" />}
+          <View style={styles.serviceDetailBar}>
+            <Pressable accessibilityRole="button" onPress={closeService} style={styles.serviceBack}>
+              <IconLabel label="Back" name="back" color={atelier.petrol} style={styles.serviceBackText} />
+            </Pressable>
+            <Text style={styles.sectionEyebrow}>NY ATELIER SERVICES</Text>
+          </View>
+          {service && <ScrollView contentContainerStyle={styles.serviceDetailBody}>
+            <ImageBackground source={service.image} resizeMode="cover" style={styles.serviceDetailImage} />
+            <Text style={styles.sectionTitle}>{service.title}</Text>
+            <Text style={styles.sectionCopy}>{service.description}</Text>
+            <Pressable accessibilityRole="button" onPress={() => {
+              const book = service.id;
+              setService(null);
+              router.push({ pathname: '/atelier', params: { book } });
+            }} style={styles.serviceBook}>
+              <IconLabel label="BOOK THIS EXPERIENCE" name="arrow-up-right" color={atelier.white} style={styles.serviceBookText} />
+            </Pressable>
+          </ScrollView>}
+        </Animated.View>
+      </Modal>
     </View>
   );
 }
@@ -171,41 +178,43 @@ const styles = StyleSheet.create({
   topLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   wordmark: { color: atelier.white, fontFamily: atelier.body, fontWeight: '700', letterSpacing: 3.5, fontSize: 16 },
-  storyCopy: { minHeight: 151 },
   heroEyebrow: { color: atelier.brass, fontFamily: atelier.body, fontSize: 11, fontWeight: '700', letterSpacing: 2.2, marginBottom: 15 },
-  heroTitle: { color: atelier.white, fontFamily: atelier.display, fontSize: 42, lineHeight: 49, marginBottom: 27 },
+  heroTitle: { color: atelier.white, fontFamily: atelier.display, fontSize: 34, lineHeight: 40, maxWidth: 480, marginBottom: 27 },
   shopButton: { backgroundColor: atelier.alabaster, paddingVertical: 17, paddingHorizontal: 19, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 54, borderRadius: atelier.buttonRadius },
   shopButtonText: { color: atelier.petrol, fontFamily: atelier.body, fontWeight: '700', letterSpacing: 1.5, fontSize: 12 },
-  shopArrow: { color: atelier.petrol, fontSize: 22, lineHeight: 22 },
   storyFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 27 },
   storyNumber: { color: atelier.white, fontFamily: atelier.body, letterSpacing: 2, fontSize: 10 },
   storyDots: { flexDirection: 'row', gap: 8 },
   storyDot: { height: 4, width: 17, borderRadius: 99, backgroundColor: 'rgba(255,255,255,0.42)' },
   storyDotActive: { width: 33, backgroundColor: atelier.white },
   nextStory: { color: atelier.white, fontFamily: atelier.body, fontSize: 10, letterSpacing: 1.6 },
-  intro: { paddingHorizontal: 25, paddingTop: 47, paddingBottom: 38 },
+  intro: { width: '100%', maxWidth: 1200, alignSelf: 'center', paddingHorizontal: 24, paddingTop: 47, paddingBottom: 38 },
   sectionEyebrow: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 10, fontWeight: '700', letterSpacing: 2.1, marginBottom: 17 },
   sectionTitle: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 29, lineHeight: 38, marginBottom: 15 },
   sectionCopy: { color: atelier.muted, fontFamily: atelier.body, fontSize: 15, lineHeight: 23 },
-  feature: { marginHorizontal: 24, marginBottom: 30 },
-  featureImage: { height: 238, alignItems: 'flex-start', justifyContent: 'flex-start', borderRadius: 18, overflow: 'hidden' },
-  featureTag: { backgroundColor: atelier.alabaster, paddingHorizontal: 13, paddingVertical: 10, margin: 12 },
-  featureTagText: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 10, letterSpacing: 1.4 },
-  featureText: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 15 },
-  featureTitle: { color: atelier.slate, fontFamily: atelier.display, fontSize: 19, flex: 1 },
-  featureLink: { color: atelier.cognac, fontFamily: atelier.body, fontWeight: '700', fontSize: 9, letterSpacing: 1 },
-  promoSection: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 32 },
-  promoSectionTitle: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 26, lineHeight: 35, marginBottom: 24 },
-  promoCard: { borderRadius: 16, paddingHorizontal: 23, paddingVertical: 26, marginBottom: 14 },
-  promoCardDark: { backgroundColor: atelier.petrol },
-  promoCardLight: { backgroundColor: atelier.white, borderWidth: 1, borderColor: atelier.line },
-  promoEyebrowDark: { color: atelier.brass, fontFamily: atelier.body, fontWeight: '700', fontSize: 10, letterSpacing: 1.7, marginBottom: 13 },
-  promoEyebrowLight: { color: atelier.cognac, fontFamily: atelier.body, fontWeight: '700', fontSize: 10, letterSpacing: 1.7, marginBottom: 13 },
-  promoTitleDark: { color: atelier.white, fontFamily: atelier.display, fontSize: 23, lineHeight: 31, marginBottom: 10 },
-  promoTitleLight: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 23, lineHeight: 31, marginBottom: 10 },
-  promoCopyDark: { color: '#DCE4DE', fontFamily: atelier.body, fontSize: 14, lineHeight: 21, marginBottom: 21 },
-  promoCopyLight: { color: atelier.slate, fontFamily: atelier.body, fontSize: 14, lineHeight: 21, marginBottom: 21 },
-  promoLinkDark: { color: atelier.white, fontFamily: atelier.body, fontSize: 10, fontWeight: '700', letterSpacing: 1.1 },
-  promoLinkLight: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 10, fontWeight: '700', letterSpacing: 1.1 },
-  previewNote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 11, textAlign: 'center', paddingHorizontal: 24, paddingBottom: 40 },
+  featureRow: { flexDirection: 'row', gap: 14, paddingHorizontal: 24, marginBottom: 48, width: '100%', maxWidth: 1200, alignSelf: 'center' },
+  promoSection: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 32, width: '100%', maxWidth: 1200, alignSelf: 'center' },
+  promoSectionTitle: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 29, lineHeight: 39, marginBottom: 24, maxWidth: 650 },
+  serviceFeature: { borderRadius: 20, overflow: 'hidden', marginBottom: 20 },
+  serviceFeatureImage: { width: '100%', height: 350 },
+  serviceShade: { flex: 1, justifyContent: 'space-between', backgroundColor: 'rgba(6, 20, 24, 0.5)', padding: 24 },
+  serviceFeatureIndex: { color: atelier.white, fontFamily: atelier.body, fontSize: 10, letterSpacing: 1.5, fontWeight: '700' },
+  serviceFeatureTitle: { color: atelier.white, fontFamily: atelier.display, fontSize: 30, lineHeight: 40, maxWidth: 500 },
+  serviceFeatureCopy: { color: atelier.white, fontFamily: atelier.body, fontSize: 15, lineHeight: 22, maxWidth: 420, marginTop: 8 },
+  serviceFeatureLink: { color: atelier.white, fontFamily: atelier.body, fontSize: 10, letterSpacing: 1.4, fontWeight: '700', marginTop: 20 },
+  serviceGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  serviceCard: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 22, borderBottomWidth: 1, borderBottomColor: atelier.line },
+  serviceImage: { width: 72, height: 102, borderRadius: 8, overflow: 'hidden', backgroundColor: atelier.white },
+  serviceCardBody: { flex: 1, gap: 7 },
+  serviceIndex: { color: atelier.cognac, fontFamily: atelier.body, fontSize: 9, letterSpacing: 1.4, fontWeight: '700' },
+  serviceTitle: { color: atelier.petrol, fontFamily: atelier.body, fontWeight: '700', fontSize: 18, lineHeight: 24 },
+  serviceCopy: { color: atelier.muted, fontFamily: atelier.body, fontSize: 13, lineHeight: 19 },
+  serviceDetail: { flex: 1, backgroundColor: atelier.alabaster },
+  serviceDetailBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 10 },
+  serviceBack: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: atelier.white, justifyContent: 'center' },
+  serviceBackText: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 15, fontWeight: '700' },
+  serviceDetailBody: { gap: 16, padding: 24 },
+  serviceDetailImage: { height: 245, borderRadius: 16, overflow: 'hidden' },
+  serviceBook: { backgroundColor: atelier.petrol, borderRadius: 999, padding: 16, alignItems: 'center' },
+  serviceBookText: { color: atelier.white, fontFamily: atelier.body, fontWeight: '700', fontSize: 12, letterSpacing: 1 },
 });

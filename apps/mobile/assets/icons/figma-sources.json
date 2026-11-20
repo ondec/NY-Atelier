@@ -1,0 +1,227 @@
+[
+  {
+    "key": "home",
+    "nodeId": "2165:7440",
+    "name": "Home_light"
+  },
+  {
+    "key": "bag",
+    "nodeId": "2165:7630",
+    "name": "Bag_light"
+  },
+  {
+    "key": "heart",
+    "nodeId": "2165:6400",
+    "name": "Favorite_light"
+  },
+  {
+    "key": "filter",
+    "nodeId": "2165:7491",
+    "name": "Filter_alt_light"
+  },
+  {
+    "key": "order",
+    "nodeId": "2165:2311",
+    "name": "Order_light"
+  },
+  {
+    "key": "user",
+    "nodeId": "2165:3910",
+    "name": "User_light"
+  },
+  {
+    "key": "wallet",
+    "nodeId": "2165:7802",
+    "name": "Wallet_light"
+  },
+  {
+    "key": "calendar",
+    "nodeId": "2165:207",
+    "name": "Calendar_light"
+  },
+  {
+    "key": "calendar-days",
+    "nodeId": "2165:89",
+    "name": "Date_range_light"
+  },
+  {
+    "key": "package",
+    "nodeId": "2165:6741",
+    "name": "3d_box_light"
+  },
+  {
+    "key": "bell",
+    "nodeId": "2165:1749",
+    "name": "Bell_light"
+  },
+  {
+    "key": "arrow-right",
+    "nodeId": "2165:4854",
+    "name": "Arrow_right_light"
+  },
+  {
+    "key": "arrow-left",
+    "nodeId": "2165:4852",
+    "name": "Arrow_left_light"
+  },
+  {
+    "key": "chevron-left",
+    "nodeId": "2165:4872",
+    "name": "Expand_left_light"
+  },
+  {
+    "key": "chevron-right",
+    "nodeId": "2165:4874",
+    "name": "Expand_right_light"
+  },
+  {
+    "key": "chevron-down",
+    "nodeId": "2165:4878",
+    "name": "Expand_down_light"
+  },
+  {
+    "key": "chevron-up",
+    "nodeId": "2165:4876",
+    "name": "Expand_up_light"
+  },
+  {
+    "key": "plus",
+    "nodeId": "2165:35",
+    "name": "Add_round_light"
+  },
+  {
+    "key": "close",
+    "nodeId": "2165:270",
+    "name": "Close_round_light"
+  },
+  {
+    "key": "check",
+    "nodeId": "2165:3312",
+    "name": "Done_round_light"
+  },
+  {
+    "key": "ban",
+    "nodeId": "2165:493",
+    "name": "Cancel_light"
+  },
+  {
+    "key": "camera",
+    "nodeId": "2165:2678",
+    "name": "Camera"
+  },
+  {
+    "key": "download",
+    "nodeId": "2165:2402",
+    "name": "Download_light"
+  },
+  {
+    "key": "upload",
+    "nodeId": "2165:2405",
+    "name": "Upload_light"
+  },
+  {
+    "key": "expand",
+    "nodeId": "2165:4682",
+    "name": "Full_Screen_Corner_Light"
+  },
+  {
+    "key": "grid",
+    "nodeId": "2165:6480",
+    "name": "Widget_light"
+  },
+  {
+    "key": "history",
+    "nodeId": "2165:5297",
+    "name": "Time_progress_light"
+  },
+  {
+    "key": "list",
+    "nodeId": "2165:4140",
+    "name": "Menu"
+  },
+  {
+    "key": "lock",
+    "nodeId": "2165:3713",
+    "name": "Lock_light"
+  },
+  {
+    "key": "logout",
+    "nodeId": "2165:1635",
+    "name": "Sign_out_circle_light"
+  },
+  {
+    "key": "refresh",
+    "nodeId": "2165:4742",
+    "name": "Refresh_light"
+  },
+  {
+    "key": "scan",
+    "nodeId": "2165:6520",
+    "name": "Scan_light"
+  },
+  {
+    "key": "send",
+    "nodeId": "2165:5518",
+    "name": "Send_light"
+  },
+  {
+    "key": "tablet",
+    "nodeId": "2165:4376",
+    "name": "Tablet_light"
+  },
+  {
+    "key": "settings",
+    "nodeId": "2165:625",
+    "name": "Setting_line_light"
+  },
+  {
+    "key": "volume-on",
+    "nodeId": "2165:6251",
+    "name": "sound_max_light"
+  },
+  {
+    "key": "volume-off",
+    "nodeId": "2165:6258",
+    "name": "sound_mute_light"
+  },
+  {
+    "key": "search",
+    "nodeId": "2165:640",
+    "name": "Search_light"
+  },
+  {
+    "key": "trash",
+    "nodeId": "2165:7578",
+    "name": "Trash_light"
+  },
+  {
+    "key": "progress",
+    "nodeId": "2165:3508",
+    "name": "Progress_light"
+  },
+  {
+    "key": "clock",
+    "nodeId": "2165:5290",
+    "name": "Time_light"
+  },
+  {
+    "key": "home-filled",
+    "nodeId": "2165:7468",
+    "name": "Home_fill"
+  },
+  {
+    "key": "bag-filled",
+    "nodeId": "2165:7650",
+    "name": "Bag_fill"
+  },
+  {
+    "key": "order-filled",
+    "nodeId": "2165:2339",
+    "name": "Order_fill"
+  },
+  {
+    "key": "user-filled",
+    "nodeId": "2165:4042",
+    "name": "User_fill"
+  }
+]

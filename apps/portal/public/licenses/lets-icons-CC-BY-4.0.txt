@@ -1,0 +1,10 @@
+Lets Icons — Leonid Tsvetkov
+Source: https://www.figma.com/design/bLnt4vCpkjcImcpxdi7GfO/Free-Icon-Pack-1800--icons--Community-
+Original collection: https://www.figma.com/community/file/886554014393250663
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+
+Selected SVGs were exported directly from the supplied Figma pack. Original exports and node IDs are retained in assets/icons/lets and figma-sources.json.
+For NY Atelier, generated render data uses the current interface colour and a consistent 2.25-unit rounded outline stroke. The raw source exports are unchanged. Native and web renderers share the same geometry. Selected customer navigation tabs use solid variants from the same pack.
+
+NY Atelier additions (2026): tailoring symbols, workflow badges, Gantt/Kanban, warning, simplified customer group, connection status and diagonal arrows, drawn on the same 24-unit grid with rounded ends. Original NY Atelier additions are identified separately from the imported Lets Icons artwork. The NY Atelier brand mark is separate and is not part of this icon licence.

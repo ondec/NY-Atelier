@@ -1,33 +1,71 @@
+import { staffBackendHeaders } from "./staff-session";
+import type {OrderSource} from './order-source';
+export type OrderNotice = {
+  in_app: string | null;
+  channel: "email" | "sms" | null;
+  status: "pending" | "submitting" | "submitted" | "not_connected" | "no_contact" | "failed" | "superseded" | null;
+};
+export type OrderStage = {
+  key: string; label: string; action: string; help: string; phase: string;
+  optional?: boolean; terminal?: boolean; note_required?: boolean; notify?: boolean;
+  is_current?: boolean; recorded_at?: string | null; state?: "recorded" | "skipped" | "unrecorded" | "upcoming";
+};
+export type OrderWorkflow = {
+  version: number; current: string; closed: boolean; legacy: boolean;
+  steps: OrderStage[]; next: OrderStage | null;
+  can_manage: boolean; can_cancel: boolean; can_edit_handover: boolean; can_change_method: boolean; can_mark_items: boolean;
+  notification_route?: "email" | "sms" | "no_contact";
+  current_notification?: OrderNotice | null; latest_notification?: OrderNotice | null;
+};
+
 export type DemoOrder = {
+  source?: OrderSource | null;
+  workflow?: OrderWorkflow;
+  handover_instructions?: string | null;
+  courier_name?: string | null;
+  tracking_reference?: string | null;
   reference: string;
   category: "Ready-to-Wear" | "Custom" | "Alterations";
   customer_name: string;
   status: string;
+  service_offering?: string | null;
+  consultation_id?: string | null;
+  measurement_id?: number | null;
+  customer_id?: number;
   expected_completion_date: string | null;
   date_change_explanation: string | null;
   fulfilment_method: string | null;
   fulfilment_status: string | null;
   payment_status: string | null;
   client_action: string | null;
+  completed_at?: string | null;
   is_complete: boolean;
   item_count: number;
   completed_item_count: number;
   items: {
+    id?: number;
+    is_ready?: boolean;
     garment_name: string;
     wearer_name: string | null;
     status: string;
     expected_completion_date: string | null;
   }[];
   timeline: {
+    id?: number;
+    stage_key?: string | null;
+    action_type?: string | null;
+    client_visible?: boolean;
+    notified_at?: string | null;
+    notification?: OrderNotice | null;
     title: string;
     explanation: string | null;
     occurred_at: string;
   }[];
 };
 
-export async function getDemoOrders(): Promise<DemoOrder[]> {
+export async function getDemoOrders(staff = false): Promise<DemoOrder[]> {
   const baseUrl = process.env.API_BASE_URL ?? "http://127.0.0.1:8000";
-  const response = await fetch(`${baseUrl}/api/demo/orders`, { cache: "no-store" });
+  const response = await fetch(`${baseUrl}/api/demo/${staff ? "staff/orders" : "orders"}`, { cache: "no-store", ...(staff ? {headers:await staffBackendHeaders()}: {}) });
   if (!response.ok) throw new Error(`Demo orders unavailable (${response.status})`);
 
   const payload: { demo: boolean; orders: DemoOrder[] } = await response.json();

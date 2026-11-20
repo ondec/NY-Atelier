@@ -30,6 +30,13 @@ return [
 
     'disks' => [
 
+        'fittings' => [
+            'driver' => 'local',
+            'root' => storage_path('app/fittings'),
+            'visibility' => 'private',
+            'throw' => true,
+        ],
+
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),

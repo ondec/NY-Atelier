@@ -1,0 +1,228 @@
+<?php
+
+namespace App;
+
+use App\Models\Order;
+use App\Models\OrderEvent;
+use App\Models\OrderItem;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class OrderWorkflow
+{
+    public function stage(Order $order): string
+    {
+        if ($order->workflow_stage) {
+            return $order->workflow_stage;
+        }
+
+        $known = array_search($order->status, array_map(fn (array $stage): string => $stage['label'], config('order_workflows.stages')), true);
+
+        return match ($order->status) {
+            'Collected' => 'collected', 'Delivered' => 'delivered',
+            'Cancelled', 'Canceled' => 'cancelled',
+            'Preparing' => $order->category === 'Ready-to-Wear' ? 'picking' : 'received',
+            'Your outfit is being made' => 'sewing', 'Adjustments in progress' => 'alterations',
+            'Final checks', 'Final checks complete' => 'quality_check',
+            default => $known ?: ($order->completed_at ? ($order->fulfilment_method === 'Delivery' ? 'delivered' : 'collected') : 'received'),
+        };
+    }
+
+    public function steps(Order $order): array
+    {
+        $keys = [...config('order_workflows.preparation.'.$order->category, ['received']), ...config('order_workflows.handover.'.$order->fulfilment_method, [])];
+
+        return array_map(fn (string $key): array => ['key' => $key, ...config('order_workflows.stages.'.$key), 'phase' => in_array($key, config('order_workflows.preparation.'.$order->category, []), true) ? 'Preparation' : 'Handover'], $keys);
+    }
+
+    public function describe(Order $order, bool $staff): array
+    {
+        $steps = $this->steps($order);
+        if (! $staff) {
+            $steps = array_map(fn (array $step): array => [...$step, 'help' => config('order_workflows.customer_help.'.$step['key'], $step['help'])], $steps);
+        }
+        $current = $this->stage($order);
+        $index = array_search($current, array_column($steps, 'key'), true);
+        $closed = $order->completed_at !== null || $current === 'cancelled';
+        $latestNotice = $order->events->first(fn (OrderEvent $event): bool => $event->notified_at !== null);
+
+        return [
+            'version' => $order->workflow_version, 'current' => $current, 'closed' => $closed,
+            'legacy' => $order->workflow_stage === null,
+            'steps' => array_map(function (array $step, int $position) use ($order, $index, $current): array {
+                $event = $order->events->first(fn (OrderEvent $event): bool => ($event->stage_key === $step['key'] && in_array($event->action_type, ['advance', 'skip', 'created'], true)) || ($event->stage_key === null && $event->title === $step['label']));
+
+                return [...$step, 'is_current' => $step['key'] === $current, 'recorded_at' => $event?->occurred_at->toIso8601String(),
+                    'state' => $event ? ($event->action_type === 'skip' ? 'skipped' : 'recorded') : ($index !== false && $position <= $index ? 'unrecorded' : 'upcoming')];
+            }, $steps, array_keys($steps)),
+            'next' => ! $closed && $index !== false ? ($steps[$index + 1] ?? null) : null,
+            'can_manage' => $staff,
+            'can_cancel' => $staff && ! $closed && ! in_array($current, ['courier_en_route', 'courier_collected', 'out_for_delivery'], true),
+            'can_edit_handover' => $staff && ! $closed,
+            'can_change_method' => $staff && ! $closed && ! in_array($current, ['courier_booked', 'courier_en_route', 'courier_collected', 'out_for_delivery'], true),
+            'can_mark_items' => $staff && ! $closed && in_array($current, config('order_workflows.preparation.'.$order->category, []), true) && $current !== 'packaged',
+            ...($staff ? ['notification_route' => $order->customer->email ? 'email' : ($order->customer->phone ? 'sms' : 'no_contact'), 'latest_notification' => $latestNotice ? $this->notice($latestNotice) : null, 'current_notification' => ($currentNotice = $this->currentNotice($order)) ? $this->notice($currentNotice) : null] : []),
+        ];
+    }
+
+    private function currentNotice(Order $order): ?OrderEvent
+    {
+        $stage = $this->stage($order);
+        $stageEvent = $order->events->first(fn (OrderEvent $event): bool => $event->stage_key === $stage && in_array($event->action_type, ['advance', 'skip', 'created'], true));
+
+        return $order->events->first(fn (OrderEvent $event): bool => $event->stage_key === $stage && $event->notified_at !== null && (! $stageEvent || $event->id >= $stageEvent->id));
+    }
+
+    public function notice(OrderEvent $event): array
+    {
+        return ['in_app' => $event->notified_at?->toIso8601String(), 'channel' => $event->external_channel, 'status' => $event->external_status];
+    }
+
+    public function serialize(Order $order, bool $staff): array
+    {
+        $order->loadMissing(['customer', 'items', 'events']);
+
+        return [
+            ...($staff ? ['measurement_id' => $order->measurement_id, 'customer_id' => $order->customer_id] : []),
+            'reference' => $order->reference, 'category' => $order->category, 'customer_name' => $order->customer->name,
+            'source' => $order->source,
+            'status' => $order->status, 'service_offering' => config('demo.offerings')[$order->service_offering] ?? null,
+            'consultation_id' => $order->consultation_id,
+            'expected_completion_date' => $order->expected_completion_date?->toDateString(),
+            'date_change_explanation' => $order->date_change_explanation,
+            'fulfilment_method' => $order->fulfilment_method, 'fulfilment_status' => $order->fulfilment_status,
+            'handover_instructions' => $order->handover_instructions, 'courier_name' => $order->courier_name, 'tracking_reference' => $order->tracking_reference,
+            'payment_status' => $order->payment_status, 'client_action' => $order->client_action,
+            'completed_at' => $order->completed_at?->toIso8601String(), 'is_complete' => $order->completed_at !== null, 'item_count' => $order->items->count(), 'completed_item_count' => $order->items->whereNotNull('completed_at')->count(),
+            'items' => $order->items->map(fn (OrderItem $item): array => ['id' => $item->id, 'garment_name' => $item->garment_name, 'wearer_name' => $item->wearer_name, 'status' => $item->status, 'is_ready' => $item->completed_at !== null, 'expected_completion_date' => $item->expected_completion_date?->toDateString()])->values(),
+            'workflow' => $this->describe($order, $staff),
+            'timeline' => $order->events->filter(fn (OrderEvent $event): bool => $staff || $event->client_visible)->map(fn (OrderEvent $event): array => [
+                'id' => $event->id, 'title' => $event->title, 'explanation' => $event->explanation, 'occurred_at' => $event->occurred_at->toIso8601String(),
+                'stage_key' => $event->stage_key, 'action_type' => $event->action_type, 'notified_at' => $event->notified_at?->toIso8601String(),
+                ...($staff ? ['client_visible' => $event->client_visible, 'notification' => $event->notified_at ? $this->notice($event) : null] : []),
+            ])->values(),
+        ];
+    }
+
+    public function update(string $reference, array $data): OrderEvent
+    {
+        return DB::transaction(function () use ($reference, $data): OrderEvent {
+            $order = Order::query()->where('reference', $reference)->lockForUpdate()->firstOrFail();
+            $hash = hash('sha256', json_encode($data));
+            $existing = OrderEvent::query()->where('action_key', $data['request_id'])->first();
+            if ($existing) {
+                abort_unless($existing->order_id === $order->id && $existing->request_hash === $hash, 409, 'This update identifier was already used for a different action.');
+
+                return $existing;
+            }
+            abort_unless($order->workflow_version === $data['version'], 409, 'This order has changed. Refresh it before updating.');
+            $order->load(['items', 'events', 'customer']);
+            $state = $this->describe($order, true);
+            $action = $data['action'];
+            $note = trim($data['note'] ?? '');
+            $event = ['action_key' => $data['request_id'], 'request_hash' => $hash, 'action_type' => $action, 'occurred_at' => now(), 'client_visible' => true, 'explanation' => $note ?: null];
+            if (in_array($action, ['advance', 'skip'], true)) {
+                abort_if($state['closed'], 422, 'Closed orders cannot move to another stage.');
+                $next = $state['next'];
+                if (! $next || $next['key'] !== ($data['stage'] ?? null)) {
+                    throw ValidationException::withMessages(['stage' => 'Choose the next stage in this order’s workflow.']);
+                }
+                if ($action === 'skip' && (! ($next['optional'] ?? false) || ! $note)) {
+                    throw ValidationException::withMessages(['note' => 'Only an optional fitting may be skipped. Record why it is not required.']);
+                }
+                if (($next['note_required'] ?? false) && ! $note) {
+                    throw ValidationException::withMessages(['note' => 'Record the recipient and handover confirmation.']);
+                }
+                if ($next['key'] === 'packaged' && ($order->items->isEmpty() || $order->items->contains(fn (OrderItem $item): bool => $item->completed_at === null))) {
+                    throw ValidationException::withMessages(['stage' => 'Every garment must be marked ready before packaging.']);
+                }
+                if ($next['key'] === 'ready_delivery' && ! $order->handover_instructions) {
+                    throw ValidationException::withMessages(['handover_instructions' => 'Add the delivery address and instructions in Handover before marking ready for delivery.']);
+                }
+                if ($next['key'] === 'courier_booked' && ! $order->courier_name) {
+                    throw ValidationException::withMessages(['courier_name' => 'Add the courier name in Handover before arranging pickup.']);
+                }
+                $order->workflow_stage = $next['key'];
+                $order->status = $action === 'skip' ? 'Fitting not required' : $next['label'];
+                if ($next['phase'] === 'Handover' || $next['key'] === 'packaged') {
+                    $order->fulfilment_status = $order->status;
+                }
+                if ($next['terminal'] ?? false) {
+                    $order->completed_at = now();
+                    $order->client_action = null;
+                    $order->items()->update(['status' => $order->status]);
+                } elseif ($next['phase'] === 'Preparation' && $next['key'] !== 'packaged') {
+                    $order->items()->whereNull('completed_at')->update(['status' => $order->status]);
+                }
+                $event = [...$event, 'title' => $order->status, 'stage_key' => $next['key']];
+            } elseif ($action === 'item_ready') {
+                abort_unless($state['can_mark_items'], 422, 'Garment readiness can only change before packaging.');
+                $item = $order->items()->whereKey($data['item_id'] ?? 0)->firstOrFail();
+                $ready = $data['ready'] ?? true;
+                if (! $ready && ! $note) {
+                    throw ValidationException::withMessages(['note' => 'Explain the further work required for this garment.']);
+                }
+                $item->update(['status' => $ready ? 'Final checks complete' : 'Final quality check', 'completed_at' => $ready ? now() : null]);
+                $event = [...$event, 'order_item_id' => $item->id, 'title' => $ready ? 'Garment ready' : 'Garment needs further work', 'explanation' => $item->garment_name.($note ? ' · '.$note : '')];
+            } elseif ($action === 'handover') {
+                abort_unless($state['can_edit_handover'], 422, 'Handover is already complete.');
+                $method = $data['fulfilment_method'] ?? null;
+                if (! $method) {
+                    throw ValidationException::withMessages(['fulfilment_method' => 'Choose collection or delivery.']);
+                }
+                if ($method !== $order->fulfilment_method) {
+                    abort_unless($state['can_change_method'], 422, 'The courier handover has started. The fulfilment method cannot be changed.');
+                    if ($order->fulfilment_method && ! $note) {
+                        throw ValidationException::withMessages(['note' => 'Explain the change to collection or delivery.']);
+                    }
+                    if (in_array($state['current'], ['ready_collection', 'ready_delivery'], true)) {
+                        $order->workflow_stage = 'packaged';
+                        $order->status = 'Packaged';
+                        $order->fulfilment_status = 'Packaged';
+                    }
+                }
+                if ($method === 'Delivery' && in_array($state['current'], ['ready_delivery', 'courier_booked', 'courier_en_route', 'courier_collected', 'out_for_delivery'], true) && empty($data['handover_instructions'])) {
+                    throw ValidationException::withMessages(['handover_instructions' => 'Keep the agreed delivery address and instructions while delivery is in progress.']);
+                }
+                if ($method === 'Delivery' && in_array($state['current'], ['courier_booked', 'courier_en_route', 'courier_collected', 'out_for_delivery'], true) && empty($data['courier_name'])) {
+                    throw ValidationException::withMessages(['courier_name' => 'Keep the courier name while the handover is in progress.']);
+                }
+                $order->fulfilment_method = $method;
+                $order->handover_instructions = $data['handover_instructions'] ?? null;
+                $order->courier_name = $method === 'Delivery' ? ($data['courier_name'] ?? null) : null;
+                $order->tracking_reference = $method === 'Delivery' ? ($data['tracking_reference'] ?? null) : null;
+                $event = [...$event, 'title' => 'Handover arrangements updated', 'explanation' => implode("\n", array_filter([$method, $order->handover_instructions, $order->courier_name ? 'Courier: '.$order->courier_name : null, $order->tracking_reference ? 'Tracking: '.$order->tracking_reference : null, $note]))];
+            } elseif ($action === 'cancel') {
+                abort_unless($state['can_cancel'], 422, 'This order cannot be cancelled at its current stage.');
+                if (! $note) {
+                    throw ValidationException::withMessages(['note' => 'Record the reason for cancellation.']);
+                }
+                $order->workflow_stage = 'cancelled';
+                $order->status = 'Cancelled';
+                $order->completed_at = now();
+                $order->fulfilment_status = 'Cancelled';
+                $order->client_action = null;
+                $event = [...$event, 'title' => 'Cancelled', 'stage_key' => 'cancelled'];
+            } elseif ($action === 'notify') {
+                $previous = $this->currentNotice($order);
+                if ($previous) {
+                    return $previous;
+                }
+                $event = [...$event, 'title' => 'Customer update issued', 'stage_key' => $state['current'], 'explanation' => $order->status.($note ? ' · '.$note : '')];
+            } else {
+                if (! $note) {
+                    throw ValidationException::withMessages(['note' => 'Enter the update to record.']);
+                }
+                $event = [...$event, 'title' => 'Order note', 'client_visible' => $data['client_visible'] ?? true];
+            }
+            if ($action === 'notify' || (($data['notify'] ?? false) && $event['client_visible'])) {
+                $event['notified_at'] = now();
+                $event['external_status'] = 'pending';
+            }
+            $order->workflow_version++;
+            $order->save();
+
+            return $order->events()->create($event);
+        }, 3);
+    }
+}

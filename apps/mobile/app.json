@@ -3,19 +3,24 @@
     "name": "NY Atelier",
     "slug": "ny-atelier",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "nyatelier",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/icon.png"
+      "supportsTablet": true,
+      "bundleIdentifier": "com.thenyatelier.app",
+      "icon": "./assets/images/icon.png",
+      "associatedDomains": [
+        "webcredentials:thenyatelier.com"
+      ]
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/icon.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": true
     },
     "web": {
       "output": "static",
@@ -30,7 +35,9 @@
           "image": "./assets/images/ny-monogram.png",
           "imageWidth": 180
         }
-      ]
+      ],
+      "expo-video",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

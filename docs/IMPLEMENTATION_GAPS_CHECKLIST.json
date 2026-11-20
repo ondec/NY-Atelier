@@ -1,0 +1,332 @@
+{
+  "schema_version": "1.0",
+  "project": "NY Atelier",
+  "title": "Connected services and production readiness checklist",
+  "recorded_on": "2026-11-19",
+  "status": "maintained_shared_handoff",
+  "implementation_authorized_by_this_file": false,
+  "user_direction": "Maintain this future-work checklist and the shared Markdown handoff. Work has resumed since the original overnight pause; implement only the current user-authorized task, not the whole backlog.",
+  "resume_prompt": "Review this checklist against the current repository when the user resumes. Preserve working features and the shared records used by the customer app, NY Office and NY Studio. Distinguish implemented prototype behaviour from live integrations. Complete an agreed area at a time, verify it, and update its checklist status with evidence. Do not infer approval for production deployment, live payments or external messages from this document.",
+  "handling_notes": [
+    "This is a dated handoff, not a claim that every feature is production ready.",
+    "Keep provider credentials, passwords and private keys out of this file and source control.",
+    "Choose external providers after confirming business eligibility and requirements.",
+    "Do not restart services or change application behaviour merely to record this checklist."
+  ],
+  "checklist": [
+    {
+      "id": "staff-access",
+      "area": "Staff login and role restrictions",
+      "current_status": "implemented_with_production_follow_up",
+      "working_now": "Laravel Sanctum staff authentication, eight-hour sessions, server-side owner/manager/receptionist permissions, role-correct Office/Studio switching and direct-page permission messages. Production onboarding/recovery and deployed-domain acceptance remain follow-up work.",
+      "remaining": [
+        {
+          "done": false,
+          "task": "Retest each role with separate accounts across Office and Studio, including forbidden direct API requests."
+        },
+        {
+          "done": false,
+          "task": "Complete staff account activation, recovery and credential replacement for live staff; replace temporary test credentials before launch."
+        },
+        {
+          "done": false,
+          "task": "Verify login expiry, logout and shared login on the eventual HTTPS Office and Studio domains."
+        }
+      ]
+    },
+    {
+      "id": "customer-accounts",
+      "area": "Customer authentication and private records",
+      "current_status": "demo_customer_foundation",
+      "working_now": "Customer interfaces and connected sample order and consultation flows exist; some account data and preferences are stored locally.",
+      "remaining": [
+        {
+          "done": false,
+          "task": "Implement production customer registration, login and account recovery."
+        },
+        {
+          "done": false,
+          "task": "Replace demo identity and preview endpoints with authenticated access to each customer's own orders, consultations, measurements and addresses."
+        },
+        {
+          "done": false,
+          "task": "Persist account data that must follow the customer across devices in the shared backend."
+        },
+        {
+          "done": false,
+          "task": "Verify that one customer cannot read or change another customer's records."
+        }
+      ]
+    },
+    {
+      "id": "checkout-and-payments",
+      "area": "Customer checkout, Studio POS and outsourced payment processing",
+      "current_status": "manual_pos_recording_gateway_not_connected",
+      "working_now": "Studio can record manually confirmed payments, create linked sales and orders, deduct stock and produce receipts. This does not initiate or verify electronic money movement.",
+      "user_preference": "Outsource payment processing to a third-party provider. Keep order and payment status records in NY Atelier.",
+      "provider_decision": "Pending. Paystack was suggested for evaluation for the Ghanaian business; Stripe was an example raised by the user. Neither is selected or integrated.",
+      "remaining": [
+        {
+          "done": false,
+          "task": "Confirm provider eligibility, payment methods and merchant account requirements with the business."
+        },
+        {
+          "done": false,
+          "task": "Complete customer bag-to-checkout flow with collection or delivery, address and server-calculated charges."
+        },
+        {
+          "done": false,
+          "task": "Integrate provider-hosted checkout using test credentials first; keep secret keys on the backend."
+        },
+        {
+          "done": false,
+          "task": "Verify signed provider events and transaction amount, currency and order reference before marking an order paid."
+        },
+        {
+          "done": false,
+          "task": "Handle pending, failed, abandoned and repeated payment events without duplicate orders or stock deductions."
+        },
+        {
+          "done": false,
+          "task": "Unify online and Studio variant stock, including temporary checkout reservations and expiry."
+        },
+        {
+          "done": false,
+          "task": "Add returns, exchanges, provider-linked refunds and payment-to-settlement reconciliation."
+        },
+        {
+          "done": false,
+          "task": "Define and implement bespoke quotation, deposit and remaining-balance payments."
+        },
+        {
+          "done": false,
+          "task": "Complete Studio daily closing and comparison of recorded payments with actual takings."
+        }
+      ]
+    },
+    {
+      "id": "notifications",
+      "area": "Customer app, email and SMS notifications",
+      "current_status": "external_delivery_not_connected",
+      "working_now": "Order updates and customer attention interfaces exist. Laravel email is configured to log messages; no live email or SMS delivery provider is configured.",
+      "agreed_delivery_rule": "Update the customer app and send email when an email address is provided. Use SMS instead of email when no email address is provided. Automatic SMS fallback after email delivery failure has not been agreed.",
+      "remaining": [
+        {
+          "done": false,
+          "task": "Choose and configure email and SMS services with verified sender details."
+        },
+        {
+          "done": false,
+          "task": "Connect order, consultation, payment and collection or delivery events to notification templates."
+        },
+        {
+          "done": false,
+          "task": "Confirm whether customer app updates also require push notifications, and configure push delivery if agreed."
+        },
+        {
+          "done": false,
+          "task": "Run background delivery workers with retry handling, duplicate prevention and delivery history."
+        },
+        {
+          "done": false,
+          "task": "Test the app-plus-email rule and no-email SMS fallback without contacting real customers during testing."
+        }
+      ]
+    },
+    {
+      "id": "salary-scanning",
+      "area": "Paper salary-sheet scanning",
+      "current_status": "macos_local_prototype",
+      "working_now": "A local Swift and Apple Vision OCR integration extracts salary-sheet text for form population and review.",
+      "remaining": [
+        {
+          "done": false,
+          "task": "Choose a scanning implementation compatible with the eventual hosting environment."
+        },
+        {
+          "done": false,
+          "task": "Support tablet or phone camera capture and image upload to the hosted workflow."
+        },
+        {
+          "done": false,
+          "task": "Keep extracted names, quantities, dates and amounts editable and require review before saving or submitting for approval."
+        },
+        {
+          "done": false,
+          "task": "Verify handwritten-name matching, totals, unclear entries and upload privacy or retention handling."
+        }
+      ]
+    },
+    {
+      "id": "shared-finances",
+      "area": "Shared finance data and reporting",
+      "current_status": "partially_connected",
+      "working_now": "Salary approvals, payouts and Studio sales have shared backend records. Some other finance screens still use browser-saved drafts.",
+      "remaining": [
+        {
+          "done": false,
+          "task": "Audit which finance records remain local and move agreed operational records into the shared backend."
+        },
+        {
+          "done": false,
+          "task": "Connect bills, expenses and obligations to permissions and an activity history."
+        },
+        {
+          "done": false,
+          "task": "Reconcile sales, refunds, provider fees, settlements and payroll before extending financial reports."
+        },
+        {
+          "done": false,
+          "task": "Keep recorded sales, cash received and business profit clearly distinguished in reporting."
+        }
+      ]
+    },
+    {
+      "id": "fulfilment",
+      "area": "Collection, delivery and order completion",
+      "current_status": "timeline_foundation_requires_end_to_end_validation",
+      "working_now": "Detailed order timelines and staff workflow actions have been introduced.",
+      "remaining": [
+        {
+          "done": false,
+          "task": "Verify packing, ready-for-collection, dispatch and delivered or collected actions across customer, Office and Studio views."
+        },
+        {
+          "done": false,
+          "task": "Complete delivery charges, address handling and courier handoff or tracking according to the business's process."
+        },
+        {
+          "done": false,
+          "task": "Verify alteration pricing, customer agreement, assigned tailor and expected completion date against the related garment or order."
+        }
+      ]
+    },
+    {
+      "id": "hosting-and-subdomains",
+      "area": "Hosting, domains and installable Office and Studio web apps",
+      "current_status": "local_preview_domains_pending",
+      "working_now": "Office/Studio manifests, role-aware workspace links and opt-in HTTPS shared-cookie host configuration exist. Studio responsive/browser readiness checks passed locally. The service worker caches only a generic offline notice, not private records.",
+      "intended_domains": {
+        "office": "office.thenyatelier.com",
+        "studio": "studio.thenyatelier.com"
+      },
+      "constraint": "As of 20 November 2026 the user reports access to thenyatelier.com with Cloudflare DNS. Hosting remains undecided and no public application subdomain deployment is verified.",
+      "remaining": [
+        {
+          "done": false,
+          "task": "Choose hosting and deploy the Laravel API, Next.js portal and PostgreSQL database with HTTPS."
+        },
+        {
+          "done": false,
+          "task": "Configure the intended subdomains after hosting is selected, using the user-reported Cloudflare domain access; verify DNS and HTTPS before claiming them live."
+        },
+        {
+          "done": false,
+          "task": "Verify shared staff login and role-correct switching between Office and Studio on the deployed domains."
+        },
+        {
+          "done": false,
+          "task": "Test Add to Home Screen, session behaviour, updates and layout on iPad, phone and desktop."
+        },
+        {
+          "done": false,
+          "task": "Configure scheduled jobs, background workers, protected media storage, monitoring, backups and a tested restore procedure."
+        },
+        {
+          "done": false,
+          "task": "Review preview-only routes, sample data and deployment configuration before live use."
+        }
+      ]
+    },
+    {
+      "id": "customer-app-release",
+      "area": "Customer app testing and distribution",
+      "current_status": "expo_and_browser_preview",
+      "working_now": "The customer app runs through Expo and a browser preview. No App Store or Google Play release has been completed.",
+      "remaining": [
+        {
+          "done": false,
+          "task": "Connect the customer app to the deployed authenticated API and final media sources."
+        },
+        {
+          "done": false,
+          "task": "Test complete purchase, consultation, measurement and order-history journeys on physical iOS and Android devices."
+        },
+        {
+          "done": false,
+          "task": "Configure release builds, app signing and internal distribution or TestFlight."
+        },
+        {
+          "done": false,
+          "task": "Prepare agreed privacy, account deletion, support and store submission requirements before public release."
+        }
+      ]
+    },
+    {
+      "id": "studio-cross-screen-readiness",
+      "area": "Studio across phone, tablet and desktop",
+      "current_status": "browser_verified_physical_device_acceptance_pending",
+      "working_now": "Responsive layouts, browser-history panels, garment Back/Forward, custom fitting fields, 44px touch targets, mobile full-screen drawers, a floating sale dock and staff-scoped refresh-recoverable sale drafts exist.",
+      "remaining": [
+        {
+          "done": true,
+          "task": "Audit the Studio browser layouts across representative phone, landscape, tablet and desktop widths.",
+          "evidence": "20 November 2026: 320, 390, 768, 844, 1024 and 1440px layouts checked; local UI/backend tests and production build passed at that readiness pass."
+        },
+        {
+          "done": false,
+          "task": "Verify actual iPhone/iPad Safari edge swipes, virtual keyboard, safe areas and installed-PWA behavior; recheck a representative Android device."
+        },
+        {
+          "done": false,
+          "task": "Run final deployed acceptance with the NY team, individual staff accounts and realistic approved catalogue data."
+        }
+      ]
+    },
+    {
+      "id": "order-origin",
+      "area": "Order source and Studio sales history entry point",
+      "current_status": "implemented_for_current_staff_creation_paths",
+      "working_now": "Studio Settings contains Sales history. Orders persist source; list/board/details and filters display Studio, Office, Customer app or Not recorded. Studio sales/alterations and Office creation tag their source by server entry path. Unknown legacy origins are not guessed.",
+      "remaining": [
+        {
+          "done": true,
+          "task": "Persist and expose source for Studio POS, Studio alterations and Office-created orders.",
+          "evidence": "20 November 2026: source migration applied; 24 API tests and 8 portal logic/history tests passed; source list/filter/details and Settings entry verified in browser; production build passed."
+        },
+        {
+          "done": false,
+          "task": "Tag customer-app-created orders from the authenticated customer checkout once that creation/payment flow is implemented."
+        }
+      ]
+    },
+    {
+      "id": "wordpress-catalogue",
+      "area": "Authorized WordPress catalogue discovery and import",
+      "current_status": "access_reported_import_not_started",
+      "working_now": "The user reports WordPress admin access. No admin session, catalogue export/import or live website change has been completed in this workflow.",
+      "remaining": [
+        {
+          "done": false,
+          "task": "Confirm the correct admin URL, access method and product plugin/data source; inspect read-only first."
+        },
+        {
+          "done": false,
+          "task": "Map and review products, original IDs/SKUs, gender, garment parts, colours/fabrics, sizes, prices, stock and photos before importing into development."
+        },
+        {
+          "done": false,
+          "task": "Validate imported variants, image matching, collection memberships and chart assignments without modifying the live WordPress site unintentionally."
+        }
+      ]
+    }
+  ],
+  "suggested_next_milestone": "Complete Studio acceptance across phone, tablet and desktop; inspect/import the authorized WordPress catalogue; then host Studio with the shared Laravel API, database and durable media/chart storage. Connect HTTPS/domain and run a controlled team pilot before the later Office rollout.",
+  "completion_rule": "Mark a checklist task done only after implementation and appropriate verification. Record evidence and any remaining limitations rather than assuming that a working interface means an integration is live.",
+  "updated_on": "2026-11-20",
+  "shared_handoff": {
+    "guide": "AI_HANDOFF.md",
+    "work_log": "WORK_LOG.md",
+    "instruction": "Read the latest work log, verify current code, and update both files before handing between assistants."
+  }
+}

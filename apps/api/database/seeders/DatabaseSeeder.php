@@ -10,6 +10,8 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(TailorTeamSeeder::class);
+
         $customer = Customer::create(['name' => 'Ama Mensah (demo)']);
 
         $readyToWear = Order::create([

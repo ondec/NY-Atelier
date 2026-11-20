@@ -1,0 +1,15 @@
+{
+  "cli": {
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "testflight": {
+      "distribution": "store",
+      "environment": "preview",
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "testflight": {}
+  }
+}

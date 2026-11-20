@@ -1,0 +1,13 @@
+"use client";
+import { useEffect, useState } from 'react';
+import { Search } from '@/components/icons';
+import { paymentMethods, saleMoney, salesApi, type Receipt } from '@/lib/studio-sales';
+import StatusBadge from './status-badge';
+export default function StudioSalesRegister({onOpen,externalSearch}:{externalSearch?:string;onOpen:(receipt:Receipt)=>void}) {
+  const [data,setData]=useState<{sales:Receipt[];page:number;pages:number;total:number}>();const [error,setError]=useState('');const [search,setSearch]=useState('');const [page,setPage]=useState(1);const [revision,setRevision]=useState(0);
+  const query=externalSearch??search;
+  useEffect(()=>{let active=true;const timeout=setTimeout(()=>{setData(undefined);salesApi<{sales:Receipt[];page:number;pages:number;total:number}>(`?${new URLSearchParams({search:query,page:String(page)})}`).then(result=>{if(active){setData(result);setError('');}}).catch(failure=>{if(active)setError(failure.message);});},200);return()=>{active=false;clearTimeout(timeout);};},[query,page,revision]);
+  return <div className="studio-sales-register">{externalSearch===undefined&&<label className="inventory-search"><Search size={17}/><span className="sr-only">Search recorded sales</span><input type="search" placeholder="Search receipt, customer or payment reference" value={search} maxLength={150} onChange={event=>{setSearch(event.target.value);setPage(1);}}/></label>}
+    {error?<p role="alert">{error} <button onClick={()=>setRevision(value=>value+1)}>Retry</button></p>:!data?<p role="status">Loading recorded sales…</p>:!data.sales.length?<p className="empty-state">{query?'No sales match your search.':'Completed Studio sales will appear here.'}</p>:<><div className="table-wrap"><table className="order-table"><thead><tr><th>Receipt / Customer</th><th>Payment</th><th>Total</th><th>Date</th><th/></tr></thead><tbody>{data.sales.map(receipt=><tr key={receipt.id}><td><strong>{receipt.reference}</strong><small>{receipt.customer.name}</small></td><td>{paymentMethods.find(method=>method.id===receipt.payment_method)?.label}<small>{receipt.payment_reference}</small><StatusBadge status="Paid"/></td><td>{saleMoney(receipt.total_minor)}</td><td>{new Date(receipt.paid_at).toLocaleDateString('en-GH')}</td><td><button className="showroom-secondary" onClick={()=>onOpen(receipt)}>View receipt</button></td></tr>)}</tbody></table></div><div className="studio-sales-pagination"><button disabled={page<=1} onClick={()=>setPage(value=>value-1)}>Previous</button><span>Page {data.page} of {data.pages} · {data.total} sales</span><button disabled={page>=data.pages} onClick={()=>setPage(value=>value+1)}>Next</button></div></>}
+  </div>;
+}
