@@ -2,7 +2,17 @@
 
 Use this file for dated handoffs between Claude, Codex and maintainers. Read the latest entry first, then [AI_HANDOFF.md](AI_HANDOFF.md) for architecture and design. Dates use Africa/Accra. Write facts and results, not hidden reasoning or a chat transcript. Do not include credentials or private fitting values.
 
-## 2026-11-23 — Claude — Owner import of WordPress products into the hosted catalogue (local, NOT pushed)
+## 2026-11-23 — Claude — Standalone public website prototype added at `codebase/website` (local only, NOT committed)
+
+**User direction:** the user supplied `ny-atelier-react-website.zip` (built by another AI, incomplete) for the new public website. It is **standalone** from the existing WordPress site and from the staff portal, runs **locally only** until the user approves the design and behaviour, and will later go to GitHub **as its own branch** (not `main`) with a **live preview** for the website; integration with the portal/API happens later only where necessary. Do not deploy it, publish `dist/`, or commit it to `main` without the user's say.
+
+**Done:** the zip (15 files, React 19 + Vite 6 + React Router 7, no `node_modules`) was extracted to a scratch folder and read before use: no network calls besides Google Fonts and product photos linked from NY's own WordPress sites; scripts are plain Vite. Copied to `codebase/website` (untracked). `npm install --ignore-scripts` (70 packages), `npm run check` and `npm run build` pass (`dist/` removed afterwards). The Render Dockerfile copies only `apps/…`, so this folder cannot affect the live deploy. **Fix:** the page was blank because one-line `useEffect` callbacks returned values (`window.scrollTo` returns a Promise in current Chromium) and React threw `destroy is not a function`; `src/App.jsx` lines 52/57/67 now use block bodies. Home, RTW Store, Services, Our Story and Contact render; clicking through all nav links logs no errors. Run it with the session launch config `website` (`npm --prefix codebase/website run dev`, http://localhost:5173), outside `codebase/` in `../.claude/launch.json`. Pages are labelled as a concept preview; bag/wishlist use browser storage only; checkout, consultation form and catalogue are demonstrations.
+
+**Later (not done):** branch (README suggests `feature/ny-atelier-website`), a live preview host (the Render free workspace's 2 custom domains are used by studio./office.), and any integration with the shared catalogue/consultations API.
+
+## 2026-11-23 — Claude — Owner import of WordPress products into the hosted catalogue (pushed `8de30c2`, live)
+
+**Deployed:** pushed with the user's approval as `8de30c2`; Render ran migration `create_studio_catalogue_backups_table` (18.74 ms) and the portal route answers 403 to guests on `office.thenyatelier.com`. The owner has not run the import on the live site yet.
 
 **User request:** build the step that copies the 111 imported WordPress styles to the live site.
 
