@@ -2,15 +2,15 @@
 
 Use this file for dated handoffs between Claude, Codex and maintainers. Read the latest entry first, then [AI_HANDOFF.md](AI_HANDOFF.md) for architecture and design. Dates use Africa/Accra. Write facts and results, not hidden reasoning or a chat transcript. Do not include credentials or private fitting values.
 
-## 2026-11-23 — Claude — Team: change role, deactivate/reactivate (local, NOT pushed)
+## 2026-11-23 — Claude — Team: change role, deactivate/reactivate (pushed)
 
-**Status:** built and tested locally; not pushed. Owner-only. Email design (`75d8dcc`) is live on Render; the real invitation email in the new design was not yet confirmed by the user.
+**Status:** pushed to main as `b314cbd` with the user's approval and deployed to the Render preview (the migration runs on deploy). Owner-only. The local test account used for the browser check was deleted afterwards. Email design (`75d8dcc`) is live on Render; the real invitation email in the new design was not yet confirmed by the user.
 
 **API:** migration `2026_11_23_140055_add_staff_deactivated_at_to_users_table` (nullable `users.staff_deactivated_at`; run locally, Render runs it on deploy). `app/StaffTeam.php` + `DemoTeamController::{role,deactivate,reactivate}`; routes `PATCH /api/demo/staff/team/{member}/role`, `POST …/{member}/deactivate`, `POST …/{member}/reactivate` (`can:staff.team`, throttled). Rules: never the signed-in owner's own account or any owner account (409); roles limited to manager/receptionist/records; role changes apply immediately to open sessions (permissions are read per request) and update the staff_members job title. Deactivation sets `staff_active=false`, records the time, deletes Sanctum sessions and any setup link; invitations/resends to deactivated accounts are refused and setup links are refused for them. Reactivation clears the flag and restores sign-in with the existing password if the person had finished setup (tracked with `email_verified_at`, which deactivation fills for working accounts that lacked it); never-completed invitees return to "expired" and need a new invitation. Team listing adds status `deactivated`, `is_self`, `manageable`.
 
 **Portal:** `team-workspace.tsx` row "Manage" button opens a drawer (existing `InventoryDrawer`): role radio cards with plain descriptions + Save role; Resend/Send new invitation for pending/expired; Deactivate with confirmation, or Reactivate. Owner's own row shows "You". Proxies: `api/staff-team/[member]/[action]` (POST invitation/deactivate/reactivate, PATCH role) replacing `[member]/invitation`.
 
-**Checks:** API 154 passed / 1185 assertions (new `StaffTeamManagementTest`, 8 tests); Pint; portal TypeScript, scoped ESLint, 75 logic tests, `NY_STAFF_PREVIEW=1` build passed. Browser check of the drawer is pending the owner signing in locally.
+**Checks:** API 154 passed / 1185 assertions (new `StaffTeamManagementTest`, 8 tests); Pint; portal TypeScript, scoped ESLint, 75 logic tests, `NY_STAFF_PREVIEW=1` build passed. Browser check passed locally as owner: role change, deactivate (with confirmation) and reactivate, and the owner's own row shows "You". Not yet exercised on Render.
 
 ## 2026-11-23 — Claude — Branded email design and Microsoft mail working
 
