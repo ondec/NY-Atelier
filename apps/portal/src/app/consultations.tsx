@@ -5,7 +5,7 @@ import StatusBadge from "./status-badge";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { CalendarDays, ChartGantt, ChevronLeft, ChevronRight, Columns3, List, Search, X } from "@/components/icons";
-import type { ConsultationRequest } from "../../../mobile/src/lib/consultations";
+import type { ConsultationRequest } from "../../../mobile/src/lib/consultation-types";
 import { calendarDays, consultationDay, consultationSlots, consultationStatuses as statusLabels, filterConsultations, shiftConsultationMonth, type ConsultationFilters, type StaffConsultation } from "@/lib/consultations";
 import { statusTone } from "@/lib/status";
 import { InventoryDrawer } from "./catalogue-editor";

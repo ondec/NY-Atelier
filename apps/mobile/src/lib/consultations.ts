@@ -1,22 +1,6 @@
 import { Platform } from 'react-native';
 
-export type ConsultationSlot = { date: string; time: string };
-export type ConsultationInput = {
-  method: 'in-person' | 'virtual';
-  purpose: string;
-  preferredDate: string;
-  preferredTime: string;
-  notes: string;
-};
-export type ConsultationRequest = ConsultationInput & {
-  id: string;
-  status: 'awaiting-confirmation' | 'awaiting-customer' | 'needs-alternatives' | 'confirmed' | 'local-draft';
-  options: ConsultationSlot[];
-  confirmedDate: string | null;
-  confirmedTime: string | null;
-  version: number;
-  order_reference?: string | null;
-};
+export type { ConsultationSlot, ConsultationInput, ConsultationRequest } from './consultation-types';
 
 export function formatConsultationTime(time: string) {
   const match = /^(\d{2}):(\d{2})$/.exec(time);

@@ -1,4 +1,4 @@
-import type { ConsultationRequest } from "../../../mobile/src/lib/consultations";
+import type { ConsultationRequest } from "../../../mobile/src/lib/consultation-types";
 
 export type StaffConsultation = ConsultationRequest & {
   created_at?: string;

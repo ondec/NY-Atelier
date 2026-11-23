@@ -12,6 +12,10 @@ gosu www-data php artisan config:cache --no-interaction
 gosu www-data php artisan migrate --force --no-interaction
 if [[ "${NY_HOSTED_PREVIEW:-0}" == "1" ]]; then
     gosu www-data php artisan staff:bootstrap-preview --no-interaction
+    if [[ -f /etc/secrets/ny-customer-copy.json ]]; then
+        php artisan staff:restore-preview-customers /etc/secrets/ny-customer-copy.json --no-interaction
+        chown -R www-data:www-data /srv/api/storage
+    fi
 fi
 
 apache2-foreground &
