@@ -7,7 +7,7 @@ async function forward(request: Request, path = "", init?: RequestInit): Promise
       ...init,
       cache: "no-store",
       headers: await staffBackendHeaders(request),
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(20000),
     });
     return Response.json(await response.json(), { status: response.status });
   } catch {

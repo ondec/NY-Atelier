@@ -32,7 +32,12 @@ export function useConsultations() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const load = () => { if (!document.hidden) void refresh(controller.signal); };
+    let pending = false;
+    const load = () => {
+      if (document.hidden || pending) return;
+      pending = true;
+      void refresh(controller.signal).finally(() => { pending = false; });
+    };
     queueMicrotask(load);
     const interval = window.setInterval(load, 8000);
     document.addEventListener("visibilitychange", load);

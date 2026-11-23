@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const auth = await staffBackendHeaders(request);
   const paths = ['orders', 'consultations', `overview?period=${period}`];
   const results = await Promise.allSettled(paths.map(async path => {
-    const response = await fetch(`${base}/api/demo/staff/${path}`, {cache: 'no-store', headers: auth, signal: AbortSignal.timeout(8000)});
+    const response = await fetch(`${base}/api/demo/staff/${path}`, {cache: 'no-store', headers: auth, signal: AbortSignal.timeout(20000)});
     if (!response.ok) throw new Error('Unavailable');
     return response.json();
   }));
