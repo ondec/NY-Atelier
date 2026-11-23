@@ -169,7 +169,8 @@ class WordPressCatalogueImport
         return $attributes;
     }
 
-    private function images(string $value): array
+    /** @return list<string> Validated https://rtw.thenyatelier.com upload links from a comma-separated list. */
+    public function images(string $value): array
     {
         $images = array_filter(array_map('trim', explode(',', $value)));
         foreach ($images as $url) {

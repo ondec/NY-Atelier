@@ -15,6 +15,7 @@ import { Fragment, FormEvent, useEffect, useState } from "react";
 import { ArrowLeft, ArrowDownLeft, ArrowUpRight, Minus, PackagePlus, Plus, Search, X } from "@/components/icons";
 
 import { GalleryFields, InventoryDrawer, preparePhoto, readGallery } from "./catalogue-editor";
+import CatalogueImport from "./catalogue-import";
 
 export type InventoryView = "overview" | "products" | "activity";
 type FormMode = "edit-gallery" | "edit-product" | "product" | "variant" | "movement" | "restock" | null;
@@ -82,7 +83,7 @@ function VariantAppearance() {
   </fieldset>;
 }
 
-export default function ReadyToWearInventory({ view, productId }: { view: InventoryView; productId?: string }) {
+export default function ReadyToWearInventory({ view, productId, canImport = false }: { view: InventoryView; productId?: string; canImport?: boolean }) {
   const [inventory, setInventory] = useState<Inventory>(emptyInventory);
   const [loaded, setLoaded] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>(null);
@@ -427,7 +428,7 @@ export default function ReadyToWearInventory({ view, productId }: { view: Invent
       </InventoryDrawer>
     )}
     {view === "overview" && <><div className="inventory-summary-grid"><article className="summary-card primary"><span>Products</span><strong>{loaded ? inventory.products.length : "—"}</strong><small>Ready-to-wear only</small></article><article className="summary-card"><span>Units on hand</span><strong>{loaded ? totalOnHand : "—"}</strong><small>Across all variants</small></article><article className="summary-card" data-tone={lowStock.length ? "warning" : "neutral"}><span>Low stock</span><strong>{loaded ? lowStock.length : "—"}</strong><small>At or below alert level</small></article><article className="summary-card" data-tone={outOfStock.length ? "danger" : "neutral"}><span>Out of stock</span><strong>{loaded ? outOfStock.length : "—"}</strong><small>Size entries with zero units</small></article></div><div className="inventory-overview-grid"><section className="panel inventory-overview-panel"><div className="eyebrow">NEEDS ATTENTION</div><h2>Stock alerts</h2>{lowStock.length || outOfStock.length ? <div className="inventory-alerts">{[...outOfStock, ...lowStock].slice(0, 5).map((variant) => <div key={variant.id}><Link prefetch={false} href={`${catalogueHref}&product=${encodeURIComponent(variant.productId)}`}><strong>{variantName(variant.id)}</strong></Link><StatusBadge status={variant.quantity === 0 ? "Out of stock" : `${variant.quantity} left`} tone={variant.quantity === 0 ? "danger" : "warning"} /></div>)}</div> : <p>No low-stock alerts. Alerts will appear when variants are added and reach their threshold.</p>}</section></div></>}
-    {view === "products" && !detailView && <>{catalogueToolbar}<section className="panel inventory-list-panel inventory-catalogue">
+    {view === "products" && !detailView && <>{canImport && <CatalogueImport />}{catalogueToolbar}<section className="panel inventory-list-panel inventory-catalogue">
       <div className="panel-heading"><h2>Product catalogue <span className="heading-count">{visibleProducts.length}</span></h2></div>
       <div className="table-wrap">
         <table className="order-table inventory-catalogue-table">

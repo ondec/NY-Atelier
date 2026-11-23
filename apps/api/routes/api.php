@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CatalogueTransferController;
 use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\CustomerPasskeyController;
 use App\Http\Controllers\DemoConsultationController;
@@ -116,6 +117,8 @@ Route::prefix('demo/staff')->middleware(['auth:sanctum', 'can:staff.office'])->g
         Route::get('/catalogue', [DemoStudioSaleController::class, 'catalogue']);
         Route::post('/catalogue/initialize', [DemoStudioSaleController::class, 'initialize'])->middleware('can:staff.catalogue.manage');
         Route::post('/catalogue', [DemoStudioSaleController::class, 'saveCatalogue'])->middleware('can:staff.catalogue.manage');
+        Route::post('/catalogue/transfer', [CatalogueTransferController::class, 'store'])->middleware(['can:staff.catalogue.manage', 'can:staff.team', 'throttle:20,1']);
+        Route::post('/catalogue/transfer/{backup}/undo', [CatalogueTransferController::class, 'undo'])->whereNumber('backup')->middleware(['can:staff.catalogue.manage', 'can:staff.team', 'throttle:20,1']);
         Route::get('/sales', [DemoStudioSaleController::class, 'index']);
         Route::get('/sales/{id}', [DemoStudioSaleController::class, 'show'])->whereUuid('id');
         Route::post('/sales/quote', [DemoStudioSaleController::class, 'quote']);
