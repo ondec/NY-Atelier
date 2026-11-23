@@ -304,25 +304,37 @@
     {
       "id": "wordpress-catalogue",
       "area": "Authorized WordPress catalogue discovery and import",
-      "current_status": "access_reported_import_not_started",
-      "working_now": "The user reports WordPress admin access. No admin session, catalogue export/import or live website change has been completed in this workflow.",
+      "current_status": "imported_locally_hosted_pending",
+      "working_now": "WooCommerce rtw.thenyatelier.com export imported locally on 23 November: 111 published styles (9 matches, 102 new), 751 confirmed new variations, 550 working full WordPress image links. All 110 existing variants/stock, collections and movements preserved. New variants are Not counted and blocked from sale in Studio/API; Office supports entering counts. Repeat import creates no duplicates or revision change. Code and catalogue are not on Render; customer Expo catalogue remains static/separate. R2 setup/copying is paused; WordPress content unchanged.",
       "remaining": [
         {
-          "done": false,
-          "task": "Confirm the correct admin URL, access method and product plugin/data source; inspect read-only first."
+          "done": true,
+          "task": "Confirmed rtw.thenyatelier.com / WooCommerce via authorized admin export and public published-product snapshot."
+        },
+        {
+          "done": true,
+          "task": "Imported approved published styles, confirmed prices/sizes and full image links into local catalogue with private backup, reviewed source IDs, stock preservation and repeat-import checks."
         },
         {
           "done": false,
-          "task": "Map and review products, original IDs/SKUs, gender, garment parts, colours/fabrics, sizes, prices, stock and photos before importing into development."
+          "task": "Count new stock in Office and review the 26 held variations (20 unspecified attributes, 6 missing prices), 14 Other classifications, preserved sample stock, source colour/image matching, collection memberships and chart assignments."
         },
         {
           "done": false,
-          "task": "Validate imported variants, image matching, collection memberships and chart assignments without modifying the live WordPress site unintentionally."
+          "task": "Authorize and perform code deployment plus a reviewed revision-safe hosted catalogue transfer; a GitHub push alone does not copy local database content. Preserve hosted edits and verify live Studio/Office before claiming the import is live."
+        },
+        {
+          "done": false,
+          "task": "Connect customer Expo shop to approved shared catalogue when authorized; it still uses its separate nine-piece preview."
+        },
+        {
+          "done": false,
+          "task": "Resume durable catalogue media storage only if requested; R2 is paused and current full image links depend on WordPress remaining available."
         }
       ]
     }
   ],
-  "suggested_next_milestone": "Run controlled NY team acceptance on the free Render staff preview, including physical phone/tablet/PWA checks. Arrange custom domains and durable database/media/chart storage plus backups before permanent use. Import the approved WordPress catalogue when requested; customer app release remains separate.",
+  "suggested_next_milestone": "Run controlled NY team acceptance on the free Render staff preview, including physical phone/tablet/PWA checks. Review/count the locally imported WordPress catalogue, then authorize safe hosted publishing; staff subdomains and password reset are live per Claude/user acceptance. Arrange durable database/media/chart storage and backups before permanent use. Customer app release remains separate.",
   "completion_rule": "Mark a checklist task done only after implementation and appropriate verification. Record evidence and any remaining limitations rather than assuming that a working interface means an integration is live.",
   "updated_on": "2026-11-23",
   "shared_handoff": {

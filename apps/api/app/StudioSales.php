@@ -31,7 +31,7 @@ class StudioSales
         foreach ($data['lines'] as $line) {
             $variant = $variants->get($line['variantId']);
             $product = $variant ? $products->get($variant['productId']) : null;
-            if (! $product || $variant['quantity'] < $line['quantity']) {
+            if (! $product || ($variant['stockVerified'] ?? true) === false || $variant['quantity'] < $line['quantity']) {
                 throw ValidationException::withMessages(['lines' => 'Stock changed. Review the selected garments and quantities.']);
             }
             $key = json_encode([$variant['productId'], mb_strtolower(trim($variant['colour'])), mb_strtolower(trim($variant['fabric'] ?? ''))], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

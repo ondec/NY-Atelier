@@ -6,7 +6,7 @@ import type { StatusTone } from "@/lib/status";
 import { demoStock } from "../../../mobile/src/data/demo-stock";
 import Image from "next/image";
 import Link from "next/link";
-import { emptyInventory, inventoryChanged, isLowStock, normalize, parseInventory, productTypes, storageKey, variantKey, variantLabel, type Inventory, type Movement, type Product, type Variant, type VariantVisual } from "@/lib/inventory";
+import { emptyInventory, inventoryChanged, isLowStock, stockKnown, normalize, parseInventory, productTypes, storageKey, variantKey, variantLabel, type Inventory, type Movement, type Product, type Variant, type VariantVisual } from "@/lib/inventory";
 import SizeChartEditor from "./size-chart-editor";
 import { productSizing } from "../../../mobile/src/data/product-sizing";
 import { sizingProductId } from "../../../mobile/src/lib/sizing";
@@ -223,7 +223,7 @@ export default function ReadyToWearInventory({ view, productId }: { view: Invent
       knownSizes.add(stockKey(row));
     }
     const occurredAt = new Date().toISOString();
-    const movements = rows.filter((row) => row.quantity > 0).map((row) => ({
+    const movements = rows.filter((row) => stockKnown(row) && row.quantity > 0).map((row) => ({
       id: crypto.randomUUID(), variantId: row.id, change: row.quantity,
       reason: "Opening stock", note: "Initial counted quantity", occurredAt,
     }));
@@ -276,13 +276,13 @@ export default function ReadyToWearInventory({ view, productId }: { view: Invent
     if (!Number.isSafeInteger(variant.quantity + change)) { showMessage("Enter a smaller quantity."); return; }
     const reason = restocking ? "Received" : field(data, "reason");
     const movement: Movement = { id: crypto.randomUUID(), variantId: variant.id, change, reason, note: field(data, "note"), occurredAt: new Date().toISOString() };
-    save({ ...inventory, variants: inventory.variants.map((item) => item.id === variantId ? { ...item, quantity: item.quantity + change } : item), movements: [movement, ...inventory.movements] });
+    save({ ...inventory, variants: inventory.variants.map((item) => item.id === variantId ? { ...item, quantity: item.quantity + change, stockVerified: true } : item), movements: [movement, ...inventory.movements] });
     setFormMode(null); showMessage(`${variant.sku} updated by ${change > 0 ? "+" : ""}${change}.`, "success");
   }
 
   const totalOnHand = inventory.variants.reduce((sum, variant) => sum + variant.quantity, 0);
   const lowStock = inventory.variants.filter(isLowStock);
-  const outOfStock = inventory.variants.filter((variant) => variant.quantity === 0);
+  const outOfStock = inventory.variants.filter((variant) => stockKnown(variant) && variant.quantity === 0);
   const productName = (id: string) => inventory.products.find((product) => product.id === id)?.name ?? "Archived product";
   const variantName = (id: string) => {
     const variant = inventory.variants.find((item) => item.id === id);
@@ -318,7 +318,7 @@ export default function ReadyToWearInventory({ view, productId }: { view: Invent
     const product = inventory.products.find((item) => item.id === variant.productId);
     const matchesSearch = !search || (product && productMatches(product)) ||
       [variant.sku, variant.colour, variant.fabric ?? ""].some((value) => normalize(value).includes(search));
-    const matchesStock = filter === "all" || (filter === "low" ? isLowStock(variant) : variant.quantity === 0);
+    const matchesStock = filter === "all" || (filter === "uncounted" ? !stockKnown(variant) : filter === "low" ? isLowStock(variant) : stockKnown(variant) && variant.quantity === 0);
     return matchesSearch && matchesStock;
   });
   const matchingProductIds = new Set(visibleVariants.map((row) => row.productId));
@@ -383,7 +383,7 @@ export default function ReadyToWearInventory({ view, productId }: { view: Invent
         <div className="inventory-form-footer"><span>Enter the quantity counted for each size.</span><button type="submit" disabled={savingVariant}>{savingVariant ? "Saving…" : sizeVariant ? "Save sizes" : "Save variant"}</button></div>
       </form>}
       {formMode === "restock" && restockRow && <form key={restockRow.id} className="inventory-restock-form" onSubmit={adjustStock}>
-        <p className="inventory-restock-context">{variantName(restockRow.id)} · {restockRow.quantity} on hand</p>
+        <p className="inventory-restock-context">{variantName(restockRow.id)} · {stockKnown(restockRow) ? `${restockRow.quantity} on hand` : "Not counted yet"}</p>
         <div className="inventory-form-grid inventory-restock-fields">
           <div className="inventory-restock-quantity">
             <label htmlFor="restock-quantity">Quantity to add</label>
@@ -406,7 +406,7 @@ export default function ReadyToWearInventory({ view, productId }: { view: Invent
       {formMode === "movement" && <form onSubmit={adjustStock}><div className="inventory-form-grid"><label>Variant / SKU<select name="variantId" required>{movementRows.map((variant) => <option key={variant.id} value={variant.id}>{variant.sku} · {productName(variant.productId)} · {variantLabel(variant)} / {variant.size} · {variant.quantity} on hand</option>)}</select></label><label>Direction<select name="direction"><option value="in">Stock in</option><option value="out">Stock out</option></select></label><label>Quantity<input name="quantity" type="number" min="1" step="1" required /></label><label>Reason<select name="reason"><option>Received</option><option>Sale</option><option>Return</option><option>Transfer</option><option>Damaged</option><option>Count correction</option><option>Other</option></select></label><label className="inventory-wide-field">Note<input name="note" placeholder="What changed, and why?" required /></label></div><div className="inventory-form-footer"><span>Stock cannot be reduced below zero.</span><button type="submit" disabled={!movementRows.length}>Record movement</button></div></form>}
     </section>;
 
-  const catalogueToolbar = <><div className="inventory-toolbar"><label className="inventory-search"><Search size={17} /><span className="sr-only">Search products, SKU, colour or fabric</span><input value={query} onChange={(event) => { setQuery(event.target.value); if (formMode === "movement") setFormMode(null); }} placeholder="Search product, SKU, colour or fabric" /></label><select aria-label="Filter stock status" value={filter} onChange={(event) => { setFilter(event.target.value); if (formMode === "movement") setFormMode(null); }}><option value="all">All stock states</option><option value="low">Low stock</option><option value="out">Out of stock</option></select><button type="button" className="inventory-quiet-button" disabled={!movementRows.length} title="Adjust stock for a SKU and record the reason" onClick={() => { setFormMode("movement"); showMessage(""); }}>Record movement</button></div>{formMode === "movement" && formPanel}</>;
+  const catalogueToolbar = <><div className="inventory-toolbar"><label className="inventory-search"><Search size={17} /><span className="sr-only">Search products, SKU, colour or fabric</span><input value={query} onChange={(event) => { setQuery(event.target.value); if (formMode === "movement") setFormMode(null); }} placeholder="Search product, SKU, colour or fabric" /></label><select aria-label="Filter stock status" value={filter} onChange={(event) => { setFilter(event.target.value); if (formMode === "movement") setFormMode(null); }}><option value="all">All stock states</option><option value="uncounted">Not counted</option><option value="low">Low stock</option><option value="out">Out of stock</option></select><button type="button" className="inventory-quiet-button" disabled={!movementRows.length} title="Adjust stock for a SKU and record the reason" onClick={() => { setFormMode("movement"); showMessage(""); }}>Record movement</button></div>{formMode === "movement" && formPanel}</>;
 
   return <>
     <div className="eyebrow">READY-TO-WEAR / GARMENT INVENTORY</div>
@@ -435,17 +435,17 @@ export default function ReadyToWearInventory({ view, productId }: { view: Invent
           <tbody>{visibleProducts.map((product) => {
             const rows = rowsByProduct.get(product.id) ?? [];
             const colours = distinctLabels([...(product.colours ?? []), ...rows.map((row) => row.colour || row.fabric || "")]);
-            const sizes = distinctLabels(rows.filter((row) => row.quantity > 0).map((row) => row.size));
-            const outCount = rows.filter((row) => row.quantity === 0).length;
-            const lowCount = rows.filter((row) => row.quantity > 0 && row.quantity <= row.reorderAt).length;
+            const sizes = distinctLabels(rows.filter((row) => stockKnown(row) && row.quantity > 0).map((row) => row.size));
+            const outCount = rows.filter((row) => stockKnown(row) && row.quantity === 0).length;
+            const lowCount = rows.filter((row) => stockKnown(row) && row.quantity > 0 && row.quantity <= row.reorderAt).length;
             return <Fragment key={product.id}><tr>
               <td><Link prefetch={false} className="inventory-catalogue-product" href={`${catalogueHref}&product=${encodeURIComponent(product.id)}`}>
-                {product.photo && <Image src={product.photo} width={38} height={50} alt="" />}<strong>{product.name}</strong>
+                {product.photo && <Image src={product.photo} width={38} height={50} alt="" unoptimized />}<strong>{product.name}</strong>
               </Link></td>
               <td>{product.type}</td><td>{money(product.price)}</td>
               <td>{colours.join(", ") || "—"}</td>
-              <td>{sizes.join(", ") || (rows.length ? "None in stock" : "—")}</td>
-              <td>{rows.length ? rows.reduce((sum, row) => sum + row.quantity, 0) : "Not counted"}</td>
+              <td>{sizes.join(", ") || (rows.some(row => !stockKnown(row)) ? "Not counted" : rows.length ? "None in stock" : "—")}</td>
+              <td>{rows.some(row => !stockKnown(row)) ? "Counts needed" : rows.length ? rows.reduce((sum, row) => sum + row.quantity, 0) : "Not counted"}</td>
               <td><div className="order-status-stack">{outCount > 0 && <StatusBadge status={`${outCount} out`} tone="danger" />}{lowCount > 0 && <StatusBadge status={`${lowCount} low`} tone="warning" />}{!outCount && !lowCount && "—"}</div></td>
               <td><button type="button" className="inventory-quiet-button" aria-label={`Add variant for ${product.name}`} onClick={() => {
                 openVariantForm(product.id);
@@ -458,7 +458,7 @@ export default function ReadyToWearInventory({ view, productId }: { view: Invent
       {!visibleProducts.length && <p className="empty-state">{inventory.products.length ? "No products match this search or stock filter." : "No ready-to-wear products yet. Add a product to get started."}</p>}
     </section></>}
     {detailView && selected && <><section className="panel inventory-product-detail">
-      {selected.photo && <Image src={selected.photo} width={112} height={148} alt={selected.name} />}
+      {selected.photo && <Image src={selected.photo} width={112} height={148} alt={selected.name} unoptimized />}
       <div>
         <h2>Product details</h2>
         <div className="inventory-detail-colours">
@@ -479,7 +479,7 @@ export default function ReadyToWearInventory({ view, productId }: { view: Invent
           </ul> : <span>No colours recorded</span>}
         </div>
         <p><strong>Fabrics</strong> {distinctLabels(stockRows.map((row) => row.fabric ?? "")).join(", ") || "No fabrics recorded"}</p>
-        <p><strong>Units on hand</strong> {stockRows.length ? stockRows.reduce((sum, row) => sum + row.quantity, 0) : "Not counted"}</p>
+        <p><strong>Units on hand</strong> {stockRows.some(row => !stockKnown(row)) ? "Counts needed" : stockRows.length ? stockRows.reduce((sum, row) => sum + row.quantity, 0) : "Not counted"}</p>
 
       </div>
       <div className="inventory-actions inventory-product-actions">
@@ -511,8 +511,8 @@ export default function ReadyToWearInventory({ view, productId }: { view: Invent
         if (!matchingRows.length) return null;
         const variant = rows[0];
         const onHand = rows.reduce((sum, row) => sum + row.quantity, 0);
-        const low = rows.filter((row) => row.quantity > 0 && row.quantity <= row.reorderAt).length;
-        const soldOut = rows.filter((row) => row.quantity === 0).length;
+        const low = rows.filter((row) => stockKnown(row) && row.quantity > 0 && row.quantity <= row.reorderAt).length;
+        const soldOut = rows.filter((row) => stockKnown(row) && row.quantity === 0).length;
         const swatch = productSwatches.find((option) =>
           normalize(option.colour) === normalize(variant.colour) &&
           normalize(option.fabric ?? "") === normalize(variant.fabric ?? "")
@@ -530,7 +530,7 @@ export default function ReadyToWearInventory({ view, productId }: { view: Invent
             </h3>
             <dl>
               <div><dt>Price</dt><dd>{money(selected.price)}</dd></div>
-              <div><dt>On hand</dt><dd>{onHand} units</dd></div>
+              <div><dt>On hand</dt><dd>{rows.some(row => !stockKnown(row)) ? "Counts needed" : `${onHand} units`}</dd></div>
               <div><dt>Low stock</dt><dd>{low ? <StatusBadge status={`${low} size entries`} tone="warning" /> : "0 size entries"}</dd></div>
               <div><dt>Out of stock</dt><dd>{soldOut ? <StatusBadge status={`${soldOut} size entries`} tone="danger" /> : "0 size entries"}</dd></div>
             </dl>
@@ -557,8 +557,8 @@ export default function ReadyToWearInventory({ view, productId }: { view: Invent
                   return <Fragment key={row.id}><tr>
                     <th scope="row"><strong>{row.size}</strong></th>
                     <td>{row.sku}{row.location && <small className="inventory-sku">{row.location}</small>}</td>
-                    <td>{row.quantity}</td>
-                    <td><StatusBadge status={row.quantity === 0 ? "Sold out" : low ? "Low stock" : "In stock"} /></td>
+                    <td>{stockKnown(row) ? row.quantity : "Not counted"}</td>
+                    <td><StatusBadge status={!stockKnown(row) ? "Not counted" : row.quantity === 0 ? "Sold out" : low ? "Low stock" : "In stock"} /></td>
                     <td><button type="button" className="inventory-restock-button" aria-expanded={formMode === "restock" && restockRow?.id === row.id} aria-label={`Add stock for ${variantLabel(row)}, size ${row.size}, SKU ${row.sku}`} onClick={() => {
                       setRestockRow(row);
                       setFormMode("restock");

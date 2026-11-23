@@ -12,10 +12,10 @@ This is the current implementation guide for continuing work in Claude, Codex or
 - Three applications: customer Expo app, Next.js staff web app containing NY Studio and NY Office, and one shared Laravel API/PostgreSQL database.
 - **NY Studio is a responsive, installable web app. It is not the customer Expo app.** Studio must work across phones, tablets and desktop, not just mobile.
 - Staff authentication and the Studio POS are connected local implementations. Customer authentication, customer checkout and payment-provider processing remain unfinished. **Customer passwordless sign-in is paused (2026-11-21), and its file locks are released. The current priority is hosting NY Studio for staff testing. See the latest [work log](WORK_LOG.md) entry.**
-- Latest pushed work (23 November, `1311e47`, live on Render): customer search and paging for ~10,000 records (Claude) plus Codex's Studio Save & add measurement, round back buttons and in-app fitting image viewer. Next requested step: import the user's real customer records (source format unknown; free Render Postgres is deleted 23 December 2026 with no backups). Read the newest work log entries before continuing.
-- Current position: Studio and Office have a protected free Render preview at [ny-atelier-preview.onrender.com](https://ny-atelier-preview.onrender.com/showroom). Physical-device/team acceptance, approved WordPress catalogue import and permanent hosting remain follow-up work; do not execute that backlog without the current user request.
-- Domain access is available; Cloudflare manages DNS. The user selected **Render, free testing only**. No paid resources, DNS changes or custom application domains were configured. Do not assume earlier temporary preview tunnels still work.
-- The user reports WordPress admin access, but no admin session or catalogue import has been completed here. Verify which site and catalogue/plugin are involved before integration.
+- Latest pushed application work (23 November, `48c7e0e`, live per Claude): staff password reset and verified Studio/Office subdomains, following customer-search, fitting UX, duplicate checks and photo compression. User reports successful live password-reset acceptance. Codex's WordPress catalogue import is newer LOCAL work and is not deployed. Read the newest work log entries before continuing.
+- Current position: protected free Render staff preview, also at [studio.thenyatelier.com](https://studio.thenyatelier.com) and [office.thenyatelier.com](https://office.thenyatelier.com). Physical-device/team acceptance, publishing the locally imported WordPress catalogue and permanent hosting remain follow-up work; do not execute that backlog without the current user request.
+- Domain access is available; Cloudflare manages DNS. The user selected **Render, free testing only**. Claude records both staff CNAMEs verified and live, with shared staff cookies configured in `48c7e0e`. No paid resources are authorized. Do not assume earlier temporary preview tunnels still work.
+- WordPress source is **rtw.thenyatelier.com / WooCommerce**. User-signed-in export imported locally: 111 published styles, 751 confirmed variations, 550 full image links. New stock is Not counted/unavailable for sale; existing 110 variants and counts preserved. 26 incomplete variations and 14 clothing classifications need review. See the WordPress import section below. R2 setup/copying is paused at the user's request.
 - This project contains shared Codex/Claude implementation. Check the current Git status and preserve any uncommitted work. **Do not reset, clean, reseed or replace it to obtain a clean starting point.**
 
 ## 2. Shared working protocol
@@ -227,14 +227,14 @@ Customer auth is a separate unfinished task. Demo customer routes are not suitab
 ### Free Render staff preview
 
 - `render.yaml` manages one **Free** Frankfurt Docker web service and a **Free** PostgreSQL 17 database. The Hobby workspace has no card on file; billing showed $0 on 23 November. Paid resources are not authorized.
-- Studio: `https://ny-atelier-preview.onrender.com/showroom`. Office: the same host at `/office/{signed-in-role}`. HTTPS and secure HttpOnly cookies work. The custom `thenyatelier.com` domains remain unconfigured; the existing WordPress site/DNS were left alone.
+- Studio: `https://studio.thenyatelier.com`; Office: `https://office.thenyatelier.com`. Claude verified DNS/HTTPS and deployed the shared cookie/origin settings in `48c7e0e`; the built-in `https://ny-atelier-preview.onrender.com/showroom` URL also remains usable. Root/WordPress records were preserved. Separate browser/PWA sessions still need device acceptance.
 - `deploy/render/Dockerfile` builds Next standalone from the monorepo, preserving shared mobile data imports. Shared consultation types are in the runtime-independent `apps/mobile/src/lib/consultation-types.ts`; do not import React Native runtime modules into the portal. Next listens publicly on Render's port; Apache/Laravel listens only on loopback 8080. The database rejects all external IPs. `/healthz` checks both app processes.
 - Startup migrates without seeders. `staff:bootstrap-preview` requires the explicit preview flag and platform-supplied emails/password, creates missing configured staff only and never resets existing passwords/roles/active status. The application key is a persistent platform-generated secret, prefixed for Laravel at startup. Local and hosted passwords are separate; keep credentials out of Git and these documents.
 - The user authorized copying existing customers/fittings and keeping new uploads enabled temporarily. The private snapshot is outside Git in `~/NY-Atelier-render-private/`. Render mounts `ny-customer-copy.1` and `.2` under `/etc/secrets/`; startup joins them into a mode-0600 temporary file and runs the preview-only restore command. Two parts are necessary because BuildKit limits each secret to 500 KiB even though Render permits 1 MB in total. No private data is built into the image or published in GitHub.
 - The copied records are **two customers, one fitting and one original attachment**. The importer runs only into an empty database, repairs ID sequences, uses a persistent import marker to avoid recreating deleted customers, and preserves existing hosted edits. Missing ORIGINAL media is restored only while its original attachment/fitting still exists. This is a one-time test snapshot, not general media storage or a backup system.
 - Free web services sleep after 15 idle minutes. **New uploads and published chart files remain ephemeral** and can disappear on restart/deploy/sleep; the user explicitly accepted this for now. The free database expires **23 December 2026**, has no automatic backups and must not be treated as permanent storage. The local originals remain intact.
 - Consultation/owner-overview proxy timeouts are 20 seconds to tolerate the free instance. Consultation polling does not overlap an already pending automatic request. This does not turn the free instance into an always-on production service.
-- Native Expo releases, public customer API authentication/checkout, durable new uploads/chart storage, staff recovery, real domain acceptance and salary scanning remain separate follow-up work. The Mac Swift scanner cannot run in this Linux container; manual payroll remains available.
+- Native Expo releases, public customer API authentication/checkout, durable new uploads/chart storage, physical-device acceptance and salary scanning remain follow-up work. Staff recovery and custom domains were deployed by Claude and reset acceptance was reported by the user. The Mac Swift scanner cannot run in this Linux container; manual payroll remains available.
 
 ## 8. Persistence, API boundaries and data safety
 
@@ -349,13 +349,22 @@ Maintain [IMPLEMENTATION_GAPS_CHECKLIST.json](IMPLEMENTATION_GAPS_CHECKLIST.json
 ### Agreed near-term sequence
 
 1. Finish physical-device acceptance of Studio across phone/tablet and normal desktop review.
-2. Inspect the authorized WordPress site and import approved catalogue content. Confirm whether WooCommerce or another plugin holds products; do not assume an integration already exists. Map original IDs/SKUs, gender, garment type, prices, variant colours/fabrics/sizes, stock and photographs carefully. Confirm actual stock/measurements rather than importing visual placeholders as facts. Preserve the existing live website while preparing the development import.
-3. Select hosting for the Next.js app, Laravel API, PostgreSQL and durable private media/chart storage. Studio can launch before the Office UI, but it still needs its shared backend and database.
-4. Connect `studio.thenyatelier.com`, HTTPS, staff accounts and backups/restore arrangements; validate a controlled team pilot. Office rollout follows on the shared system.
+2. Review/count the locally imported WooCommerce catalogue and held variations/classifications, then authorize a revision-safe hosted catalogue transfer plus code deployment. Preserve source WordPress content and existing local/hosted stock. The Expo customer catalogue is still separate.
+3. Free Render staff testing is running. Arrange durable database/private media/chart storage and backups before permanent use; R2 configuration is paused. Studio still depends on the shared backend/database.
+4. Both staff subdomains/HTTPS are live per Claude. Validate role-aware switching, individual staff accounts and backups/restore arrangements in the controlled team pilot.
 
 The user now reports Cloudflare domain access. WordPress admin access is also reported. DNS management, website hosting, app hosting and WordPress admin are separate pieces; do not assume a DNS record alone deploys this application.
 
-### Subdomain implementation already present, not live
+### WordPress RTW catalogue: local import, hosted pending
+
+- Source `https://rtw.thenyatelier.com` is WooCommerce. The user approved importing now with stock counts later and keeping full WordPress image links. R2 setup/copying is paused. Source WordPress content was not modified.
+- Local catalogue revision **2** contains **111 published styles** (9 original app IDs matched, 102 added), **751 new confirmed variations** and the original **110 variants** unchanged. Existing collections, movements and stock counts were preserved. Missing WordPress counts are `stockVerified=false`, displayed as Not counted and blocked by Studio plus API sales validation. Legacy variants without the flag retain their existing behavior. Office stock adjustments verify counts; pending counts are excluded from sold-out notifications.
+- **26 published variations** held: 20 unspecified size/colour, 6 missing prices. **14 styles** imported as Other for clothing-type review. No source SKUs: `WP-RTW-{variationId}` is app-generated. Clothing types inferred only from explicit name keywords; fabrics, collection memberships and size charts were not invented.
+- CSV-confirmed variation prices are used; the public Store API returned incorrect zero current prices. Only uniform confirmed prices per style are accepted. Drafts/unpublished rows were excluded. Full galleries/descriptions/source IDs are retained; plain text is rendered safely. All **550** linked image URLs returned HTTP 200/image MIME. An inspected original is 600×700 px, not a guarantee of higher-resolution source media.
+- `apps/api/app/WordPressCatalogueImport.php` and local/testing-only Artisan `catalogue:import-wordpress` provide dry-run, row lock, expected revision, private backup and repeat-safe import. See the newest work log for command options. Do not bypass its hosted guard. `../imports/wordpress/2026-11-23/` is private/outside Git and contains source exports, the exact pre-apply backup and reports; do not commit the raw admin CSV or overwrite those backups.
+- Import code/data are **not deployed**. A code push alone does not copy local catalogue data to Render; hosted transfer needs separate authorization, review and current revision protection. Expo customer Shop still has its separate static nine-piece catalogue. WordPress links require the source site to remain available; private fitting uploads remain a separate storage concern.
+
+### Staff subdomains (deployed by Claude, 23 November)
 
 `src/lib/workspace-hosts.ts` supports the following portal server variables **together**, or none for local development:
 
@@ -365,9 +374,9 @@ NY_STUDIO_ORIGIN=https://studio.thenyatelier.com
 NY_STAFF_COOKIE_DOMAIN=thenyatelier.com
 ```
 
-These are intended public origins, not evidence that DNS/hosting is configured. The code requires both valid HTTPS workspace origins and the cookie domain. Do not turn on only one variable. A Studio-first deployment must deliberately accommodate the Office link/host and user permissions rather than partially configuring this contract.
+Both origins and the cookie domain were configured together in Render by `48c7e0e`, after DNS/HTTPS verification. `NY_STAFF_PORTAL_URL` points to Studio for invitation/reset emails. Keep these values together; local development can leave the workspace-host variables unset.
 
-Role-aware switching and parent-domain secure cookies are implemented, but must be tested on the eventual hosting/proxy configuration. Protect every subdomain receiving a shared cookie; the production proxy must set trustworthy forwarded host/protocol headers. Separate Safari/PWA containers or browser profiles may need an initial sign-in of their own.
+Role-aware switching and parent-domain secure cookies are deployed; physical-device and per-role acceptance still matter. Protect every subdomain receiving a shared cookie; the proxy must set trustworthy forwarded host/protocol headers. Separate Safari/PWA containers or browser profiles may need an initial sign-in of their own.
 
 ### Other important unfinished areas
 

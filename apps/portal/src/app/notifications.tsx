@@ -49,7 +49,7 @@ export default function Notifications({ items, unavailable }: { items: PortalNot
     function refreshStockAlerts() {
       const inventory = parseInventory(localStorage.getItem(storageKey));
       const alerts = inventory.variants
-        .filter((row) => row.quantity === 0 || isLowStock(row))
+        .filter((row) => row.stockVerified !== false && (row.quantity === 0 || isLowStock(row)))
         .sort((a, b) => a.quantity - b.quantity)
         .flatMap((row) => {
           const product = inventory.products.find((item) => item.id === row.productId);

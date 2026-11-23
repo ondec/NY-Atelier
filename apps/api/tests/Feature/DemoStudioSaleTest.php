@@ -142,6 +142,21 @@ class DemoStudioSaleTest extends TestCase
         $this->getJson('/api/demo/staff/studio/catalogue')->assertJsonPath('inventory.variants.0.quantity', 4);
     }
 
+    public function test_uncounted_imported_stock_cannot_be_sold_even_if_a_quantity_is_present(): void
+    {
+        $data = $this->prepare();
+        $catalogue = $this->catalogue();
+        $catalogue['inventory']['variants'][0]['stockVerified'] = false;
+        $catalogue['inventory']['products'][0] += ['wordpressId' => 25, 'sourceUrl' => 'https://rtw.thenyatelier.com/product/test/', 'description' => 'A real source description.'];
+        $this->postJson('/api/demo/staff/studio/catalogue', [...$catalogue, 'revision' => 1])->assertOk()
+            ->assertJsonPath('inventory.variants.0.stockVerified', false)->assertJsonPath('inventory.products.0.wordpressId', 25);
+        $this->postJson('/api/demo/staff/studio/sales/quote', $data)->assertUnprocessable()->assertJsonValidationErrors('lines');
+        $this->assertDatabaseCount('studio_sales', 0);
+        $catalogue['inventory']['variants'][0]['stockVerified'] = true;
+        $this->postJson('/api/demo/staff/studio/catalogue', [...$catalogue, 'revision' => 2])->assertOk();
+        $this->postJson('/api/demo/staff/studio/sales/quote', $data)->assertOk();
+    }
+
     public function test_catalogue_rejects_invalid_prices_and_sale_routes_work_for_hosted_staff(): void
     {
         $data = $this->prepare();

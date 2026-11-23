@@ -3,8 +3,8 @@ import { shopCatalogue } from "./shop-catalogue";
 
 export const productTypes = ["Tops & shirts", "Trousers", "Two-piece sets", "Kaftans", "Agbadas", "Suits", "Dresses", "Skirts", "Other"] as const;
 export type ProductType = (typeof productTypes)[number];
-export type Product = { id: string; name: string; type: ProductType; price: number; createdAt?: string; catalogueId?: string; photo?: string; gallery?: string[]; colours?: readonly string[] };
-export type Variant = { id: string; productId: string; colour: string; fabric?: string; size: string; sku: string; location?: string; quantity: number; reorderAt: number };
+export type Product = { id: string; name: string; type: ProductType; price: number; createdAt?: string; catalogueId?: string; wordpressId?: number; sourceUrl?: string; description?: string; photo?: string; gallery?: string[]; colours?: readonly string[] };
+export type Variant = { id: string; productId: string; colour: string; fabric?: string; size: string; sku: string; location?: string; quantity: number; stockVerified?: boolean; reorderAt: number };
 export type Movement = { id: string; variantId: string; change: number; reason: string; note: string; occurredAt: string };
 export type VariantVisual = { swatch?: string; photo?: string; gallery?: string[] };
 export type Inventory = { visuals?: Record<string, VariantVisual>; products: Product[]; variants: Variant[]; movements: Movement[] };
@@ -18,6 +18,7 @@ function withDemoStock(products: Product[], saved: Variant[]): Variant[] {
   const skus = new Set(saved.map((row) => normalize(row.sku)));
   const sampleRows = shopCatalogue.flatMap((item) => {
     const product = products.find((row) => row.id === item.id || row.catalogueId === item.id);
+    if (product?.wordpressId) return [];
     const code = item.id.slice(5);
     return (demoStock[code] ?? []).flatMap((variant) => Object.entries(variant.stock).map(([size, quantity]) => ({
       id: `demo-${code}-${variant.id}-${size}`,
@@ -37,7 +38,7 @@ function withDemoStock(products: Product[], saved: Variant[]): Variant[] {
 
 function withRedCloverGalleries(products: Product[], saved: Inventory["visuals"] = {}) {
   const product = products.find((item) => (item.catalogueId ?? item.id) === "shop-redclover-navy");
-  if (!product) return saved;
+  if (!product || product.wordpressId) return saved;
 
   const visuals = { ...saved };
   for (const edition of demoStock["redclover-navy"]) {
@@ -81,4 +82,5 @@ export function parseInventory(value: string | null): Inventory {
 }
 
 export const inventoryChanged = "ny-atelier-inventory-changed";
-export const isLowStock = (row: Variant) => row.quantity > 0 && row.quantity <= row.reorderAt;
+export const stockKnown = (row: Pick<Variant, 'stockVerified'>) => row.stockVerified !== false;
+export const isLowStock = (row: Variant) => stockKnown(row) && row.quantity > 0 && row.quantity <= row.reorderAt;

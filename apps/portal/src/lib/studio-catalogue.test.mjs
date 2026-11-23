@@ -25,6 +25,13 @@ test('availability is checked for the selected size rather than other sizes', ()
   assert.equal(filterStudioCatalogue(inventory, undefined, { ...filters, availability: 'low-stock' })[0].id, 'kaftan');
 });
 
+test('uncounted imported stock is visible for review and never presented as sellable or sold out', () => {
+  const imported = {products: [{id: 'imported', name: 'Imported set', type: 'Two-piece sets', wordpressId: 25}], variants: [{productId: 'imported', colour: 'As shown', size: 'M', sku: 'WP-25', quantity: 10, stockVerified: false, reorderAt: 2}]};
+  assert.equal(filterStudioCatalogue(imported, undefined, filters).length, 1);
+  assert.equal(filterStudioCatalogue(imported, undefined, {...filters, availability: 'not-counted'}).length, 1);
+  for (const availability of ['in-stock', 'out-of-stock', 'low-stock']) assert.equal(filterStudioCatalogue(imported, undefined, {...filters, availability}).length, 0);
+});
+
 test('both apps show a truthful pending message when the selected size has no approved chart', () => {
   assert.equal(selectedSizeSummary('shop-shirt', 'Tops & shirts', 'M'), 'Size M · Measurements will be available once NY Atelier adds the size chart.');
 });

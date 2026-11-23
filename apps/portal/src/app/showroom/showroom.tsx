@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { ArrowLeft, ArrowRight, Check, ChevronRight, History, Ruler, Search, Shirt, UserRound, Plus, ShoppingBag, X } from "@/components/icons";
 import { useEffect, useRef, useState } from "react";
-import { emptyInventory, isLowStock, productTypes, variantKey, variantLabel, type Variant } from "@/lib/inventory";
+import { emptyInventory, isLowStock, stockKnown, productTypes, variantKey, variantLabel, type Variant } from "@/lib/inventory";
 import { demoStock } from "../../../../mobile/src/data/demo-stock";
 import { sampleCollections, type Collection } from "../collections-workspace";
 import { customerApi, CustomerEditor, useCustomerSearch, type Directory, type Profile } from "../customers-workspace";
@@ -314,13 +314,13 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
 
   function updateSale(variantId: string, quantity: number) {
     const row = inventory.variants.find((item) => item.id === variantId);
-    if (quantity > 0 && (!row || quantity > row.quantity)) return;
+    if (quantity > 0 && (!row || !stockKnown(row) || quantity > row.quantity)) return;
     setSale((current) => quantity <= 0 ? current.filter((item) => item.variantId !== variantId)
       : current.map((item) => item.variantId === variantId ? { ...item, quantity } : item));
   }
 
   function addToSale() {
-    if (!selectedStock || !product || selectedStock.quantity <= 0) return;
+    if (!selectedStock || !stockKnown(selectedStock) || !product || selectedStock.quantity <= 0) return;
     setSale((current) => {
       const existing = current.find((line) => line.variantId === selectedStock.id);
       if ((existing?.quantity ?? 0) >= selectedStock.quantity) return current;
@@ -381,6 +381,7 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
           <GarmentGallery key={`${product.id}-${selected ? variantKey(selected) : "default"}`} photos={gallery} label={`${product.name} · ${selected ? variantLabel(selected) : "Garment"}`} />
           <section className="showroom-spec">
             <p className="showroom-kicker">01 / CHOOSE YOUR PIECE</p><h2>{product.name}</h2><p className="showroom-price">{money(product.price)}<span>{product.type}</span></p>
+            {product.description && <p className="showroom-hint">{product.description}</p>}
             {!visual?.gallery?.length && selected && selected !== editions[0] && <p className="showroom-hint">Garment reference image. A photo of this colour or fabric has not been added yet.</p>}
             <div className="showroom-step"><p className="showroom-kicker">02 / COLOUR & FABRIC</p><h3>{selected ? variantLabel(selected) : "No variants added"}</h3>
               <div className="showroom-swatches">{editions.map((row) => {
@@ -388,11 +389,11 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
                 return <button key={variantKey(row)} aria-label={variantLabel(row)} aria-pressed={selected && variantKey(selected) === variantKey(row)} onClick={() => { setEdition(variantKey(row)); setSize(""); }} style={{ backgroundColor: swatch(row) }}>{fabric && <Image src={fabric} alt="" fill sizes="48px" unoptimized />}{selected && variantKey(selected) === variantKey(row) && <Check size={17} />}</button>;
               })}</div>
             </div>
-            <div className="showroom-step"><p className="showroom-kicker">03 / FIND THE FIT</p><div className="showroom-sizes">{stock.map((row) => <button key={row.id} disabled={row.quantity <= 0} aria-pressed={size === row.size} onClick={() => setSize(row.size)}>{row.size}</button>)}</div>
+            <div className="showroom-step"><p className="showroom-kicker">03 / FIND THE FIT</p><div className="showroom-sizes">{stock.map((row) => <button key={row.id} disabled={row.quantity <= 0 || !stockKnown(row)} aria-pressed={size === row.size} onClick={() => setSize(row.size)}>{row.size}</button>)}</div>
               {size && <p className="studio-size-measurements" aria-live="polite">{selectedSizeSummary(product.catalogueId ?? product.id, product.type, size, undefined, "in")}</p>}
-              <p className="showroom-availability">{selectedStock && <><StatusBadge status={selectedStock.quantity === 0 ? "Out of stock" : isLowStock(selectedStock) ? "Low stock" : "In stock"} /> </>}{selectedStock ? `${selectedStock.quantity} available in ${selectedStock.size}` : stock.length ? "Choose an available size to check stock." : "Stock has not been set up for this piece."}</p>
+              <p className="showroom-availability">{selectedStock && <><StatusBadge status={!stockKnown(selectedStock) ? "Not counted" : selectedStock.quantity === 0 ? "Out of stock" : isLowStock(selectedStock) ? "Low stock" : "In stock"} /> </>}{selectedStock ? stockKnown(selectedStock) ? `${selectedStock.quantity} available in ${selectedStock.size}` : "Enter a stock count in NY Office before selling this size." : stock.some(row => !stockKnown(row)) ? "Stock has not been counted. Enter counts in NY Office before selling these sizes." : stock.length ? "Choose an available size to check stock." : "Stock has not been set up for this piece."}</p>
             </div>
-            <button className="showroom-primary showroom-add-sale" disabled={!selectedStock || selectedStock.quantity <= (sale.find((line) => line.variantId === selectedStock.id)?.quantity ?? 0)} onClick={addToSale}><ShoppingBag size={19} />{!size ? "Choose a size to add" : "Add to sale"}<Plus size={18} /></button>
+            <button className="showroom-primary showroom-add-sale" disabled={!selectedStock || !stockKnown(selectedStock) || selectedStock.quantity <= (sale.find((line) => line.variantId === selectedStock.id)?.quantity ?? 0)} onClick={addToSale}><ShoppingBag size={19} />{!size ? "Choose a size to add" : "Add to sale"}<Plus size={18} /></button>
             <CreateStaffOrder disabled={!selectedStock} category="Alterations" preferredCustomerId={profileReady ? profile.customer.id : undefined} initialGarments={alterationContext(product, selectedStock).garments} garmentContext={alterationContext(product, selectedStock).notes} requireNotes buttonClassName="showroom-secondary showroom-alteration-button" onCreated={reference => setSaleNotice(`Alteration order ${reference} created.`)} />
             <button className="showroom-secondary" onClick={() => customerId ? openFittingCustomer(customerId) : showFittingCustomers()}><Ruler size={19} /> Measurements & fit notes<ArrowRight size={18} /></button>
             <p className="showroom-hint">Review a previous fitting or record measurements with your customer.</p>
@@ -404,7 +405,7 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
               <label>Clothing type<select aria-label="Clothing type" value={clothingType} onChange={event => setClothingType(event.target.value)}><option value="all">All clothing</option>{productTypes.map(type => <option key={type}>{type}</option>)}</select></label>
               <label>Collection<select aria-label="Filter by collection" value={collectionId} onChange={event => setCollectionId(event.target.value)}><option value="all">All collections</option>{collections.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
               <label>Size<select aria-label="Filter by size" value={availableSize} onChange={event => setAvailableSize(event.target.value)}><option value="all">All sizes</option>{[...new Set([...sizes, ...inventory.variants.map(row => row.size)])].map(size => <option key={size}>{size}</option>)}</select></label>
-              <label>Stock<select aria-label="Filter by stock" value={availability} onChange={event => setAvailability(event.target.value)}><option value="all">All stock</option><option value="in-stock">In stock</option><option value="low-stock">Low stock</option><option value="out-of-stock">Out of stock</option></select></label>
+              <label>Stock<select aria-label="Filter by stock" value={availability} onChange={event => setAvailability(event.target.value)}><option value="all">All stock</option><option value="not-counted">Not counted</option><option value="in-stock">In stock</option><option value="low-stock">Low stock</option><option value="out-of-stock">Out of stock</option></select></label>
               {filtersActive && <button type="button" className="showroom-secondary" onClick={clearProductFilters}>Clear filters</button>}
             </div>
           </div>
@@ -412,9 +413,10 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
           <div className="showroom-pos-grid">{catalogue.map((item) => {
             const itemVariants = inventory.variants.filter((row) => row.productId === item.id);
             const colourVariants = [...new Map(itemVariants.map((row) => [variantKey(row), row])).values()];
-            const onHand = itemVariants.reduce((sum, row) => sum + row.quantity, 0);
+            const onHand = itemVariants.filter(stockKnown).reduce((sum, row) => sum + row.quantity, 0);
+            const notCounted = itemVariants.some(row => !stockKnown(row)) || (!itemVariants.length && Boolean(item.wordpressId));
             return <button key={item.id} className="showroom-pos-card" onClick={() => chooseProduct(item.id)} aria-label={`View ${item.name}`}>
-              <div className="showroom-pos-card-photo">{item.photo ? <Image src={item.photo} alt="" fill sizes="(max-width: 700px) 45vw, 24vw" unoptimized style={{objectFit:"cover",objectPosition:"center top"}} /> : <Shirt size={45} />}<span className={onHand ? "showroom-stock-badge" : "showroom-stock-badge is-empty"}><StatusBadge status={onHand ? "In stock" : "Out of stock"} /></span></div>
+              <div className="showroom-pos-card-photo">{item.photo ? <Image src={item.photo} alt="" fill sizes="(max-width: 700px) 45vw, 24vw" unoptimized style={{objectFit:"cover",objectPosition:"center top"}} /> : <Shirt size={45} />}<span className={onHand ? "showroom-stock-badge" : "showroom-stock-badge is-empty"}><StatusBadge status={onHand ? "In stock" : notCounted ? "Not counted" : "Out of stock"} /></span></div>
               <div className="showroom-pos-card-copy"><small>{item.type}</small><strong>{item.name}</strong><div><span>{money(item.price)}</span><Plus size={18} /></div><span className="showroom-card-swatches">{colourVariants.slice(0, 4).map((row) => <i key={variantKey(row)} title={variantLabel(row)} style={{backgroundColor:swatch(row)}} />)}<small>{colourVariants.length} {colourVariants.length === 1 ? "option" : "options"}</small></span></div>
             </button>;
           })}</div>
