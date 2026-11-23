@@ -2,7 +2,9 @@
 
 Use this file for dated handoffs between Claude, Codex and maintainers. Read the latest entry first, then [AI_HANDOFF.md](AI_HANDOFF.md) for architecture and design. Dates use Africa/Accra. Write facts and results, not hidden reasoning or a chat transcript. Do not include credentials or private fitting values.
 
-## 2026-11-23 — Claude — Email duplicates, photo compression and Cloudflare R2 storage (local, NOT pushed)
+## 2026-11-23 — Claude — Email duplicates, photo compression and Cloudflare R2 storage (pushed `2f8e27d`)
+
+**Status:** pushed with the user's approval and live on Render. **R2 is NOT configured:** the user reports Cloudflare R2 needs a subscription/payment method, which is difficult for NY, and asked about WordPress media instead; storage choice is open. The S3-compatible code works with other S3-compatible providers (endpoint/bucket/keys; region currently fixed to `auto`). Until a provider is configured, fitting files remain on the wiped Render disk.
 
 **Duplicates:** the customer form now checks email as well as phone. `DemoCustomerController::duplicateOf()` returns 409 `{message, duplicate, field, can_save_anyway}`. A repeated email (case-insensitive) always blocks and only offers **Open <name>**; a repeated phone offers Open or **No, save as a new customer** (`allow_duplicate`). The email `Rule::unique` was replaced by this check; the database unique index stays as a backstop.
 
@@ -12,7 +14,7 @@ Use this file for dated handoffs between Claude, Codex and maintainers. Read the
 
 **Checks:** API 165 passed / 1275 assertions (email duplicate test; new `FittingStorageTest`: config switch, R2 relay with Range and no bucket link, missing file 404). Portal TypeScript, scoped ESLint, 84 logic tests (new `image-compression.test.mjs`), `NY_STAFF_PREVIEW=1` build. Browser (local): email duplicate prompt, photo compression, attachment 200 and 206 Range. The R2 path itself is untested against real Cloudflare. `composer audit` lists 8 advisories in already-installed laravel/framework and symfony packages (none from the new package).
 
-## 2026-11-23 — Claude — Ready for staff manual data entry: duplicate-phone warning (local, NOT pushed; extended to email in the entry above)
+## 2026-11-23 — Claude — Ready for staff manual data entry: duplicate-phone warning (pushed in `2f8e27d`; extended to email in the entry above)
 
 **User plan:** NY personnel will test-drive the live preview by typing customer records (name, phone, measurements) by hand, hourly. No bulk import for now.
 
