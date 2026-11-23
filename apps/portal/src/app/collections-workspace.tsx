@@ -161,7 +161,7 @@ export default function CollectionsWorkspace() {
             groups.set(key, [...(groups.get(key) ?? []), row]);
           }
           return <div className="collection-garment" key={id}>
-            <div className="collection-garment-heading"><h3>{product.name} · {money(product.price)}</h3><Link className="inventory-quiet-button" href={`/?section=inventory&view=products&product=${encodeURIComponent(product.id)}`}>Manage garment</Link></div>
+            <div className="collection-garment-heading"><h3>{product.name} · {money(product.price)}</h3><Link prefetch={false} className="inventory-quiet-button" href={`/?section=inventory&view=products&product=${encodeURIComponent(product.id)}`}>Manage garment</Link></div>
             {groups.size ? <div className="collection-editions">{Array.from(groups, ([key, rows]) => {
               const variant = rows[0];
               const visual = inventory.visuals?.[key];

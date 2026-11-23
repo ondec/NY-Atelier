@@ -66,7 +66,7 @@ export default function CustomersWorkspace({ customerId, fittingId }: { customer
 
   return <>
     <div className="eyebrow">CUSTOMER WORKSPACE</div>
-    {customerId && <Link className="text-link inventory-back" href="/?section=customers"><ArrowLeft size={14} /> Back to customers</Link>}
+    {customerId && <Link prefetch={false} className="text-link inventory-back" href="/?section=customers"><ArrowLeft size={14} /> Back to customers</Link>}
     <div className="page-heading">
       <div><h1>{customer?.name ?? (customerId ? "Customer profile" : "Customers.")}</h1><p>{customerId ? "Contact details, fittings and linked orders." : "Keep client details and dated fitting records together."}</p></div>
       {!customerId && directory && <button className="create-bill-button" type="button" onClick={() => setEditor("customer")}><Plus size={16} /> Add customer</button>}
@@ -82,11 +82,11 @@ export default function CustomersWorkspace({ customerId, fittingId }: { customer
         {results.map((row) => {
           const profileHref = `/?section=customers&customer=${row.id}`;
           return <tr key={row.id}>
-            <td><Link className="text-link" href={profileHref}>{row.name}</Link></td>
+            <td><Link prefetch={false} className="text-link" href={profileHref}>{row.name}</Link></td>
             <td>{row.email ?? "—"}</td>
             <td>{row.phone ?? "—"}</td>
             <td>{row.account_reference ?? "—"}</td>
-            <td className="customer-row-action"><Link className="inventory-quiet-button" href={profileHref} aria-label={`View customer: ${row.name}`}>View customer</Link></td>
+            <td className="customer-row-action"><Link prefetch={false} className="inventory-quiet-button" href={profileHref} aria-label={`View customer: ${row.name}`}>View customer</Link></td>
           </tr>;
         })}
       </tbody></table></div> : <p className="empty-state">{needle ? "No customers match this search." : "No customers yet."}</p>}
@@ -114,7 +114,7 @@ export default function CustomersWorkspace({ customerId, fittingId }: { customer
       <section className="panel inventory-form-panel">
         <h2>Linked orders</h2>
         {profile.orders.length ? <div className="inventory-alerts">{profile.orders.map((order) => <div key={order.reference}>
-          <Link href={orderHref(order.reference)}><strong>{order.reference} · {order.category}</strong></Link><StatusBadge status={order.status} />
+          <Link prefetch={false} href={orderHref(order.reference)}><strong>{order.reference} · {order.category}</strong></Link><StatusBadge status={order.status} />
         </div>)}</div> : <p className="consultation-muted">No orders linked to this customer yet.</p>}
       </section>
     </>}

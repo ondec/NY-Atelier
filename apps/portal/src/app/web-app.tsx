@@ -11,7 +11,7 @@ const InstallContext = createContext<{installed: boolean; prompt?: InstallPrompt
 
 export function WorkspaceLink({href, ...props}: Omit<ComponentProps<typeof Link>, 'href'> & {href: string}) {
   const {installed} = useContext(InstallContext);
-  return <Link {...props} href={workspaceNavigationHref(href, installed)}/>;
+  return <Link prefetch={false} {...props} href={workspaceNavigationHref(href, installed)}/>;
 }
 
 export function WebAppProvider({children}: {children: React.ReactNode}) {

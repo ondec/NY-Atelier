@@ -95,7 +95,7 @@ export default function ServiceOrderDesk({ section, orders, unavailable, onOpenO
               {section === "alterations" && <span className="order-board-fulfilment">{order.fulfilment_method ?? "Fulfilment to be agreed"}</span>}
               <small>{order.is_complete ? order.status : order.expected_completion_date ? `Expected ${orderDate(order.expected_completion_date)}` : "Completion to be agreed"}</small>
               </>;
-              return onOpenOrder ? <button type="button" className="order-board-card" data-attention={attention?.tone} key={order.reference} onClick={() => onOpenOrder(order)} aria-label={`View order ${order.reference}`}>{content}</button> : <Link className="order-board-card" data-attention={attention?.tone} key={order.reference} href={orderHref(order.reference, section)}>{content}</Link>;
+              return onOpenOrder ? <button type="button" className="order-board-card" data-attention={attention?.tone} key={order.reference} onClick={() => onOpenOrder(order)} aria-label={`View order ${order.reference}`}>{content}</button> : <Link prefetch={false} className="order-board-card" data-attention={attention?.tone} key={order.reference} href={orderHref(order.reference, section)}>{content}</Link>;
             })}
           </section>;
         })}

@@ -139,7 +139,7 @@ export default function Notifications({ items, unavailable }: { items: PortalNot
         {groups.some((group) => group.items.length) ? <div className="notification-list">
           {groups.filter((group) => group.items.length).map(({ id, label, items, Icon }) => <div key={id}>
             <h3 className="notification-group-label">{label}</h3>
-            {items.map((item) => <Link key={item.id} href={item.href} onClick={closeDrawer} className="notification-item" data-tone={item.tone ?? "info"}>
+            {items.map((item) => <Link prefetch={false} key={item.id} href={item.href} onClick={closeDrawer} className="notification-item" data-tone={item.tone ?? "info"}>
               <span className="notification-item-icon"><Icon size={17} /></span>
               <span><strong>{item.title}</strong><p>{item.detail}</p>{item.tone === "danger" && <StatusBadge className="notification-priority" status="Urgent" tone="danger" />}{item.tone === "warning" && <StatusBadge className="notification-priority" status="Needs attention" tone="warning" />}</span><ChevronRight size={15} aria-hidden="true" />
             </Link>)}

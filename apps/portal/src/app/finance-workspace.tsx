@@ -19,6 +19,6 @@ export default function FinanceWorkspace({ id, initialType }: { id: FinancePageI
       <section className="panel orders-panel"><div className="panel-heading"><h2>Financial reports</h2></div><p className="empty-state">Reports will use connected financial records once payment and expense tracking are available.</p></section>
       <div className="offering-grid finance-report-options">{["Income & expenses", "Sales by service", "Outstanding obligations", "Refund history"].map(title => <div className="offering-card" key={title}><strong>{title}</strong><span>Awaiting records</span></div>)}</div>
     </>}
-    <Link href="/?section=finances" className="text-link finance-back-link">Finance overview <ArrowRight size={16} /></Link>
+    <Link prefetch={false} href="/?section=finances" className="text-link finance-back-link">Finance overview <ArrowRight size={16} /></Link>
   </>;
 }

@@ -410,7 +410,7 @@ export default function ReadyToWearInventory({ view, productId }: { view: Invent
 
   return <>
     <div className="eyebrow">READY-TO-WEAR / GARMENT INVENTORY</div>
-    {detailView && <Link className="text-link inventory-back" href={catalogueHref}><ArrowLeft size={14} /> Back to product catalogue</Link>}
+    {detailView && <Link prefetch={false} className="text-link inventory-back" href={catalogueHref}><ArrowLeft size={14} /> Back to product catalogue</Link>}
     <div className="page-heading inventory-heading">
       <div><h1>{title}</h1><p>{intro}</p></div>
       {view !== "activity" && !detailView && <div className="inventory-actions">
@@ -426,7 +426,7 @@ export default function ReadyToWearInventory({ view, productId }: { view: Invent
         {formPanel}
       </InventoryDrawer>
     )}
-    {view === "overview" && <><div className="inventory-summary-grid"><article className="summary-card primary"><span>Products</span><strong>{loaded ? inventory.products.length : "—"}</strong><small>Ready-to-wear only</small></article><article className="summary-card"><span>Units on hand</span><strong>{loaded ? totalOnHand : "—"}</strong><small>Across all variants</small></article><article className="summary-card" data-tone={lowStock.length ? "warning" : "neutral"}><span>Low stock</span><strong>{loaded ? lowStock.length : "—"}</strong><small>At or below alert level</small></article><article className="summary-card" data-tone={outOfStock.length ? "danger" : "neutral"}><span>Out of stock</span><strong>{loaded ? outOfStock.length : "—"}</strong><small>Size entries with zero units</small></article></div><div className="inventory-overview-grid"><section className="panel inventory-overview-panel"><div className="eyebrow">NEEDS ATTENTION</div><h2>Stock alerts</h2>{lowStock.length || outOfStock.length ? <div className="inventory-alerts">{[...outOfStock, ...lowStock].slice(0, 5).map((variant) => <div key={variant.id}><Link href={`${catalogueHref}&product=${encodeURIComponent(variant.productId)}`}><strong>{variantName(variant.id)}</strong></Link><StatusBadge status={variant.quantity === 0 ? "Out of stock" : `${variant.quantity} left`} tone={variant.quantity === 0 ? "danger" : "warning"} /></div>)}</div> : <p>No low-stock alerts. Alerts will appear when variants are added and reach their threshold.</p>}</section></div></>}
+    {view === "overview" && <><div className="inventory-summary-grid"><article className="summary-card primary"><span>Products</span><strong>{loaded ? inventory.products.length : "—"}</strong><small>Ready-to-wear only</small></article><article className="summary-card"><span>Units on hand</span><strong>{loaded ? totalOnHand : "—"}</strong><small>Across all variants</small></article><article className="summary-card" data-tone={lowStock.length ? "warning" : "neutral"}><span>Low stock</span><strong>{loaded ? lowStock.length : "—"}</strong><small>At or below alert level</small></article><article className="summary-card" data-tone={outOfStock.length ? "danger" : "neutral"}><span>Out of stock</span><strong>{loaded ? outOfStock.length : "—"}</strong><small>Size entries with zero units</small></article></div><div className="inventory-overview-grid"><section className="panel inventory-overview-panel"><div className="eyebrow">NEEDS ATTENTION</div><h2>Stock alerts</h2>{lowStock.length || outOfStock.length ? <div className="inventory-alerts">{[...outOfStock, ...lowStock].slice(0, 5).map((variant) => <div key={variant.id}><Link prefetch={false} href={`${catalogueHref}&product=${encodeURIComponent(variant.productId)}`}><strong>{variantName(variant.id)}</strong></Link><StatusBadge status={variant.quantity === 0 ? "Out of stock" : `${variant.quantity} left`} tone={variant.quantity === 0 ? "danger" : "warning"} /></div>)}</div> : <p>No low-stock alerts. Alerts will appear when variants are added and reach their threshold.</p>}</section></div></>}
     {view === "products" && !detailView && <>{catalogueToolbar}<section className="panel inventory-list-panel inventory-catalogue">
       <div className="panel-heading"><h2>Product catalogue <span className="heading-count">{visibleProducts.length}</span></h2></div>
       <div className="table-wrap">
@@ -439,7 +439,7 @@ export default function ReadyToWearInventory({ view, productId }: { view: Invent
             const outCount = rows.filter((row) => row.quantity === 0).length;
             const lowCount = rows.filter((row) => row.quantity > 0 && row.quantity <= row.reorderAt).length;
             return <Fragment key={product.id}><tr>
-              <td><Link className="inventory-catalogue-product" href={`${catalogueHref}&product=${encodeURIComponent(product.id)}`}>
+              <td><Link prefetch={false} className="inventory-catalogue-product" href={`${catalogueHref}&product=${encodeURIComponent(product.id)}`}>
                 {product.photo && <Image src={product.photo} width={38} height={50} alt="" />}<strong>{product.name}</strong>
               </Link></td>
               <td>{product.type}</td><td>{money(product.price)}</td>
