@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\OrderCustomerNotice;
 use App\OrderWorkflow;
+use App\StaffAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -13,7 +14,7 @@ class DemoOrderWorkflowController extends Controller
 {
     public function show(Request $request, string $reference, OrderWorkflow $workflow): JsonResponse
     {
-        abort_unless(config('demo.enabled') && in_array($request->ip(), ['127.0.0.1', '::1'], true), 404);
+        StaffAccess::requireStaffToken($request);
         $order = Order::query()->where('reference', $reference)->with(['customer', 'items', 'events'])->firstOrFail();
 
         return response()->json(['order' => $workflow->serialize($order, $request->user()->can('staff.orders.manage'))]);
@@ -21,7 +22,7 @@ class DemoOrderWorkflowController extends Controller
 
     public function update(Request $request, string $reference, OrderWorkflow $workflow, OrderCustomerNotice $notices): JsonResponse
     {
-        abort_unless(config('demo.enabled') && in_array($request->ip(), ['127.0.0.1', '::1'], true), 404);
+        StaffAccess::requireStaffToken($request);
         $data = $request->validate([
             'request_id' => ['required', 'uuid'], 'version' => ['required', 'integer', 'min:1'],
             'action' => ['required', Rule::in(['advance', 'skip', 'item_ready', 'handover', 'cancel', 'notify', 'note'])],

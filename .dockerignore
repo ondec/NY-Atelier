@@ -1,0 +1,16 @@
+.git
+**/node_modules
+**/vendor
+**/.env
+**/.env.*
+**/.next*
+**/.expo
+**/.studio-data
+**/.local-previews
+**/storage
+**/bootstrap/cache/*.php
+**/database/*.sqlite*
+**/*.log
+**/*.tsbuildinfo
+**/.DS_Store
+docs

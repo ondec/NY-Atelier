@@ -79,17 +79,18 @@ class DemoCustomersTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('garment_type');
     }
 
-    public function test_customer_routes_require_local_demo_staff_and_at_least_one_contact_method(): void
+    public function test_customer_routes_work_for_hosted_staff_and_require_at_least_one_contact_method(): void
     {
         $url = '/api/demo/staff/customers';
         $this->signInStaff();
+        // Staff access no longer depends on demo mode or a local IP; the staff token and gates protect it.
         config(['demo.enabled' => false]);
-        $this->getJson($url)->assertNotFound();
+        $this->getJson($url)->assertOk();
         config(['demo.enabled' => true]);
         $this->signInStaff();
         $this->postJson($url, ['name' => 'Walk-in'])->assertUnprocessable();
         $this->postJson($url, ['name' => config('demo.customer_name'), 'email' => 'invalid-claim@example.test'])
             ->assertUnprocessable()->assertJsonValidationErrors('name');
-        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.1'])->getJson($url)->assertNotFound();
+        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.1'])->getJson($url)->assertOk();
     }
 }

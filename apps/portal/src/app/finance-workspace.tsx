@@ -1,17 +1,13 @@
 import { ArrowRight } from "@/components/icons";
 import Link from "next/link";
 import FinanceRegister from "./finance-register";
-import { financePages, financeHref, type FinancePageId } from "@/lib/finance-navigation";
+import FinanceDashboard from "./finance-overview";
+import { financePages, type FinancePageId } from "@/lib/finance-navigation";
 
 export { financePages, financeHref, financeNavigation, resolveFinancePage, type FinancePageId } from "@/lib/finance-navigation";
 
-export function FinanceOverview() {
-  return <>
-    <div className="eyebrow">FINANCES / OVERVIEW</div>
-    <div className="page-heading"><div><h1>Finances.</h1><p>Manage day-to-day operations and payroll.</p></div><Link className="inventory-quiet-button" href={financeHref("reports")}>View reports <ArrowRight size={16} /></Link></div>
-    <section className="finance-overview-section"><div className="eyebrow">OPERATIONS</div><div className="offering-grid finance-overview-cards">{financePages.filter(page => page.id === "sales" || page.id === "bills").map(page => <Link className="offering-card" key={page.id} href={financeHref(page.id)}><strong>{page.title}</strong><span>{page.intro}</span><ArrowRight size={18} /></Link>)}</div></section>
-    <section className="finance-overview-section"><div className="eyebrow">PAYROLL</div><div className="offering-grid finance-overview-cards"><Link className="offering-card" href={financeHref("salaries")}><strong>Salary approvals</strong><span>Prepare tailor earnings, review approvals and record payments.</span><ArrowRight size={18} /></Link></div></section>
-  </>;
+export function FinanceOverview({ canViewReports = true }: { canViewReports?: boolean }) {
+  return <FinanceDashboard canViewReports={canViewReports}/>;
 }
 
 export default function FinanceWorkspace({ id, initialType }: { id: FinancePageId; initialType?: string }) {

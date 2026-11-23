@@ -38,7 +38,11 @@
     ".next-top-preview/types/**/*.ts",
     ".next-top-preview/dev/types/**/*.ts",
     ".next-staff-preview/types/**/*.ts",
-    ".next-staff-preview/dev/types/**/*.ts"
+    ".next-staff-preview/dev/types/**/*.ts",
+    ".next-staff-test/types/**/*.ts",
+    ".next-staff-test/dev/types/**/*.ts",
+    ".next-render-check/types/**/*.ts",
+    ".next-render-check/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

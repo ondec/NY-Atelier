@@ -7,7 +7,7 @@ import { Download, Upload } from "@/components/icons";
 const keys = ["ny-atelier-rtw-inventory-draft-v1", "ny-atelier-collections-v1", "ny-atelier-recurring-bills-draft-v1"];
 type Copy = { app: string; version: number; records: [string, string | null][] };
 
-export default function LayoutDataCopy({ comparison }: { comparison: boolean }) {
+export default function LayoutDataCopy({ comparison, comparisonLinks }: { comparison: boolean; comparisonLinks: boolean }) {
   const [error, setError] = useState("");
   const [complete, setComplete] = useState(false);
   function download() {
@@ -36,6 +36,6 @@ export default function LayoutDataCopy({ comparison }: { comparison: boolean }) 
   return <main className="workspace layout-copy-page"><section className="panel inventory-form-panel"><div className="eyebrow">LAYOUT COMPARISON / SETUP</div><h2>{comparison ? "Import catalogue drafts" : "Copy catalogue drafts"}</h2><p className="portal-form-help">{comparison ? "Import the copy from the original workspace to start both layouts with the same products, collections and recurring bills. This replaces drafts in this comparison preview only." : "Copy the products, collections and recurring bills saved in this browser. The database records are copied separately."}</p>
     {comparison ? <label className="layout-copy-upload inventory-quiet-button"><Upload size={16} /> Choose layout copy<input type="file" aria-label="Choose layout copy" accept="application/json,.json" onChange={event => void upload(event)} /></label> : <button className="create-bill-button" onClick={download}><Download size={16} /> Download layout copy</button>}
     {error && <p role="alert" className="collection-error">{error}</p>}{complete && <p className="inventory-message" role="status">{comparison ? "Catalogue drafts copied into this comparison preview." : "Layout copy downloaded. The original drafts have not been changed."}</p>}
-    <div className="layout-copy-links">{!comparison && <a className="text-link" href="http://127.0.0.1:3002/layout-data-copy">Open comparison import</a>}<Link className="text-link" href="/">{comparison ? "Open top-navigation preview" : "Return to original workspace"}</Link></div>
+    <div className="layout-copy-links">{!comparison && comparisonLinks && <a className="text-link" href="http://127.0.0.1:3002/layout-data-copy">Open comparison import</a>}<Link className="text-link" href="/">{comparison ? "Open top-navigation preview" : "Return to original workspace"}</Link></div>
   </section></main>;
 }

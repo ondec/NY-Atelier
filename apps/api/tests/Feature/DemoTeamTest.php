@@ -30,13 +30,13 @@ class DemoTeamTest extends TestCase
         $this->assertDatabaseCount('users', 1);
     }
 
-    public function test_team_records_are_restricted_to_local_demo_staff(): void
+    public function test_team_records_are_restricted_to_owner_staff_tokens(): void
     {
         $this->signInStaff();
         config(['demo.enabled' => false]);
-        $this->getJson('/api/demo/staff/team')->assertNotFound();
-        config(['demo.enabled' => true]);
-        $this->signInStaff();
-        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.1'])->getJson('/api/demo/staff/team')->assertNotFound();
+        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.1'])->getJson('/api/demo/staff/team')->assertOk();
+        $this->app['auth']->forgetGuards();
+        $this->signInStaff('manager');
+        $this->getJson('/api/demo/staff/team')->assertForbidden();
     }
 }

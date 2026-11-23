@@ -1,6 +1,6 @@
 # NY Atelier — shared implementation and design handoff
 
-Last verified: **20 November 2026**, Africa/Accra. Maintained jointly by the assistant currently working with Benjamin.
+Last verified: **23 November 2026**, Africa/Accra. Maintained jointly by the assistant currently working with Benjamin.
 
 This is the current implementation guide for continuing work in Claude, Codex or another coding assistant. It describes an actively developed local application, not a production launch. Read the newest [work log](WORK_LOG.md) entry after this guide. The older [project plan](PROJECT_PLAN.md) preserves business requirements and historical proposals; its early implementation claims are superseded by this guide where they conflict.
 
@@ -11,10 +11,10 @@ This is the current implementation guide for continuing work in Claude, Codex or
 - Source repository: [ondec/NY-Atelier](https://github.com/ondec/NY-Atelier), branch `main`. Publishing the source does not deploy the applications.
 - Three applications: customer Expo app, Next.js staff web app containing NY Studio and NY Office, and one shared Laravel API/PostgreSQL database.
 - **NY Studio is a responsive, installable web app. It is not the customer Expo app.** Studio must work across phones, tablets and desktop, not just mobile.
-- Staff authentication and the Studio POS are connected local implementations. Customer authentication, customer checkout and payment-provider processing remain unfinished. **Customer passwordless sign-in is in progress (Claude). See the latest [work log](WORK_LOG.md) entry for its file lock list before you edit customer-auth, mobile account/orders/bag or `routes/api.php`.**
-- Latest completed feature: Sales history moved into Studio Settings; orders now persist a source and Office shows source labels, filtering and order details.
+- Staff authentication and the Studio POS are connected local implementations. Customer authentication, customer checkout and payment-provider processing remain unfinished. **Customer passwordless sign-in is paused (2026-11-21), and its file locks are released. The current priority is hosting NY Studio for staff testing. See the latest [work log](WORK_LOG.md) entry.**
+- Latest completed feature: the cash-based Finance overview, with received/spent/net totals, cash flow, income/spending and category charts, period filters and recent activity. Studio Sales history and order-source tracking are also implemented. See the work log for exact data coverage and remaining gaps.
 - Current priority: finish physical-device acceptance, bring in approved WordPress catalogue content, then host Studio and its API/database. Office can be released later using the same backend.
-- Domain access is now available according to the user; Cloudflare manages DNS. Hosting is not selected/connected. Do not assume earlier temporary preview tunnels still work.
+- Domain access is available; Cloudflare manages DNS. The user selected **Render, free testing only**, created an account and connected GitHub on 23 November. Render preview deployment is being prepared; consult the latest work log before assuming it is live. Do not assume earlier temporary preview tunnels still work.
 - The user reports WordPress admin access, but no admin session or catalogue import has been completed here. Verify which site and catalogue/plugin are involved before integration.
 - This checkout has many existing modified and untracked files. **Do not reset, clean, reseed or replace it to obtain a clean starting point.**
 
@@ -175,7 +175,7 @@ The approved direction combines clean editorial fashion shopping with restrained
 - Catalogue administration covers products, actual variants, price, quantity/reorder information, movements, variant photos/galleries and collections. Shared catalogue persistence is now in Laravel/PostgreSQL, with revision conflict protection.
 - Staff can publish size charts at product or gender-specific collection scope. Published sizing JSON is still a separate portal file-backed store.
 - Consultations include staff review, confirmation, alternative-slot handling, customer responses and a scheduling view. Meeting-provider automation/live calendar integration is not established merely by these screens.
-- Finances includes shared Studio sales and connected salary approvals/payout records. Recurring bills and some other finance work remain browser-local/planned. Refunds, reconciliation, daily closing and complete business accounting are unfinished.
+- Finances now has a cash-based overview with period-filtered totals, cumulative cash flow, income/spending bars, service/expense doughnuts, payment methods, recent activity and chart data. The new read-only staff-finance endpoint aggregates confirmed Studio receipts and salary payout dates in integer minor units; it excludes unpaid orders and browser-local bill drafts. Unconnected income sources stay null. Net movement is not profit or a bank/cash balance. Recurring bills, other income/expenses, refunds, reconciliation, daily closing and complete business accounting remain unfinished. The new panels have responsive browser checks, but the shared Office mobile navigation still needs a separate layout pass.
 - Salary scanning uses a local Mac Swift/Apple Vision helper with human review. It is not a portable hosted OCR service yet.
 - Team directory records do not automatically grant login. The salary-sheet explanatory banner and Salary approvals shortcut were removed from Team at the user's request.
 - Production/material inventory and some Atelier offering destinations remain planned views. A working navigation item is not a completed module.

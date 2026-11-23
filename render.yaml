@@ -1,0 +1,60 @@
+# TEMPORARY FREE PREVIEW. Database expires after 30 days; local uploads/charts
+# are ephemeral. Keep private records out of this file and out of GitHub.
+services:
+  - type: web
+    name: ny-atelier-preview
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./deploy/render/Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_URL
+        fromDatabase:
+          name: ny-atelier-preview-db
+          property: connectionString
+      - key: DB_SSLMODE
+        value: require
+      - key: NY_RENDER_KEY
+        generateValue: true
+      - key: NY_HOSTED_PREVIEW
+        value: "1"
+      - key: NY_DEMO_API_ENABLED
+        value: "false"
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: warning
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: MAIL_MAILER
+        value: log
+      - key: NY_PREVIEW_STAFF_PASSWORD
+        generateValue: true
+      - key: NY_PREVIEW_OWNER_EMAIL
+        sync: false
+      - key: NY_PREVIEW_MANAGER_EMAIL
+        sync: false
+      - key: NY_PREVIEW_RECEPTIONIST_EMAIL
+        sync: false
+
+databases:
+  - name: ny-atelier-preview-db
+    plan: free
+    region: frankfurt
+    postgresMajorVersion: "17"
+    databaseName: ny_atelier_preview
+    user: ny_atelier_preview
+    ipAllowList: []

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\StaffAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
@@ -13,7 +14,7 @@ class OwnerOverviewController extends Controller
 {
     public function __invoke(Request $request): JsonResponse
     {
-        abort_unless(config('demo.enabled') && in_array($request->ip(), ['127.0.0.1', '::1'], true), 404);
+        StaffAccess::requireStaffToken($request);
         $data = $request->validate(['period' => ['sometimes', Rule::in(['month', '30days', 'year'])]]);
         $period = $data['period'] ?? 'month';
         $today = CarbonImmutable::now('Africa/Accra')->startOfDay();

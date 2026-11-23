@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\StaffAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -190,6 +191,6 @@ class DemoSalaryController extends Controller
 
     private function staffOnly(Request $request): void
     {
-        abort_unless(config('demo.enabled') && in_array($request->ip(), ['127.0.0.1', '::1'], true), 404);
+        StaffAccess::requireStaffToken($request);
     }
 }

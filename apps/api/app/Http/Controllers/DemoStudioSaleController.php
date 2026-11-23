@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\StaffAccess;
 use App\StudioSales;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -153,6 +154,6 @@ class DemoStudioSaleController extends Controller
 
     private function requireStaff(Request $request): void
     {
-        abort_unless(config('demo.enabled') && in_array($request->ip(), ['127.0.0.1', '::1'], true), 404);
+        StaffAccess::requireStaffToken($request);
     }
 }

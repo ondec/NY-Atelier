@@ -9,20 +9,21 @@ use App\Http\Controllers\DemoSalaryController;
 use App\Http\Controllers\DemoStaffOrderController;
 use App\Http\Controllers\DemoStudioSaleController;
 use App\Http\Controllers\DemoTeamController;
+use App\Http\Controllers\FinanceOverviewController;
 use App\Http\Controllers\OwnerOverviewController;
 use App\Http\Controllers\StaffAuthController;
 use App\Models\Customer;
 use App\Models\Order;
 use App\OrderWorkflow;
+use App\StaffAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 $listOrders = function (Request $request, OrderWorkflow $workflow) {
-    abort_unless(config('demo.enabled'), 404);
-
     $staff = $request->routeIs('demo.staff.order-list');
-    abort_if($staff && ! in_array($request->ip(), ['127.0.0.1', '::1'], true), 404);
+    // The staff list is protected by its staff token and gates; the customer demo list only exists in demo mode.
+    $staff ? StaffAccess::requireStaffToken($request) : abort_unless(config('demo.enabled'), 404);
     $demoId = Customer::query()->where('name', config('demo.customer_name'))->oldest('id')->value('id');
     $orders = Order::query()
         ->when(! $staff, fn ($query) => $query->where('customer_id', $demoId))
@@ -73,6 +74,7 @@ Route::prefix('demo/consultations')->group(function () {
 });
 Route::prefix('demo/staff')->middleware(['auth:sanctum', 'can:staff.office'])->group(function () use ($listOrders) {
     Route::get('/overview', OwnerOverviewController::class)->middleware('can:staff.owner-overview');
+    Route::get('/finances/overview', FinanceOverviewController::class)->middleware('can:staff.finances');
     Route::get('/orders', $listOrders)->name('demo.staff.order-list')->middleware('can:staff.orders.read');
     Route::get('/orders/options', [DemoStaffOrderController::class, 'options'])->middleware('can:staff.orders.read');
     Route::get('/orders/{reference}', [DemoOrderWorkflowController::class, 'show'])->middleware('can:staff.orders.read');

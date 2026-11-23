@@ -228,26 +228,24 @@ class DemoOrderWorkflowTest extends TestCase
         $this->getJson('/api/demo/staff/orders')->assertOk()->assertJsonFragment(['explanation' => 'Internal workshop note']);
     }
 
-    public function test_nonlocal_and_disabled_writes_are_refused_and_cancellation_requires_a_reason(): void
+    public function test_hosted_staff_writes_work_and_cancellation_requires_a_reason(): void
     {
         $order = $this->order();
         $this->update($order, ['action' => 'cancel'])->assertUnprocessable()->assertJsonValidationErrors('note');
         $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.1']);
-        $this->update($order, ['action' => 'cancel', 'note' => 'Customer requested cancellation'])->assertNotFound();
-        $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1']);
         $this->update($order, ['action' => 'cancel', 'note' => 'Customer requested cancellation'])->assertOk()->assertJsonPath('order.status', 'Cancelled');
         config(['demo.enabled' => false]);
-        $this->update($order, ['action' => 'note', 'note' => 'Not allowed'])->assertNotFound();
+        $this->update($order, ['action' => 'note', 'note' => 'Still allowed for staff'])->assertOk();
     }
 
-    public function test_order_details_load_the_latest_record_and_refuse_unknown_or_nonlocal_reads(): void
+    public function test_order_details_load_the_latest_record_and_refuse_unknown_reads(): void
     {
         $order = $this->order();
         $this->advance($order, 'picking');
         $url = '/api/demo/staff/orders/'.$order->reference;
         $this->getJson($url)->assertOk()->assertJsonPath('order.workflow.current', 'picking');
         $this->getJson('/api/demo/staff/orders/UNKNOWN')->assertNotFound();
-        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.1'])->getJson($url)->assertNotFound();
+        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.1'])->getJson($url)->assertOk();
     }
 
     public function test_legacy_history_is_not_fabricated_and_mail_escapes_customer_text(): void

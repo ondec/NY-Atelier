@@ -142,16 +142,16 @@ class DemoStudioSaleTest extends TestCase
         $this->getJson('/api/demo/staff/studio/catalogue')->assertJsonPath('inventory.variants.0.quantity', 4);
     }
 
-    public function test_catalogue_rejects_invalid_prices_and_sale_routes_reject_remote_or_disabled_access(): void
+    public function test_catalogue_rejects_invalid_prices_and_sale_routes_work_for_hosted_staff(): void
     {
         $data = $this->prepare();
         $invalid = $this->catalogue();
         $invalid['inventory']['products'][0]['price'] = -10;
         $this->postJson('/api/demo/staff/studio/catalogue', [...$invalid, 'revision' => 1])->assertUnprocessable();
-        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.1'])->postJson('/api/demo/staff/studio/sales', $data)->assertNotFound();
-        $this->getJson('/api/demo/staff/studio/sales')->assertNotFound();
+        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.1'])->postJson('/api/demo/staff/studio/sales', $data)->assertCreated();
+        $this->getJson('/api/demo/staff/studio/sales')->assertOk();
         config(['demo.enabled' => false]);
-        $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])->getJson('/api/demo/staff/studio/catalogue')->assertNotFound();
-        $this->assertSame(0, DB::table('studio_sales')->count());
+        $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])->getJson('/api/demo/staff/studio/catalogue')->assertOk();
+        $this->assertSame(1, DB::table('studio_sales')->count());
     }
 }

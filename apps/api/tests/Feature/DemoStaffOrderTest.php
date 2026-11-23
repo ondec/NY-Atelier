@@ -58,6 +58,7 @@ class DemoStaffOrderTest extends TestCase
         $url = '/api/demo/staff/orders';
         $this->postJson($url, [...$payload, 'category' => 'Ready-to-Wear'])->assertUnprocessable();
         $this->postJson($url, $payload)->assertCreated();
-        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.1'])->postJson($url, $payload)->assertNotFound();
+        // A repeated request id from a hosted (non-local) address is accepted as the same order, not refused.
+        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.1'])->postJson($url, $payload)->assertSuccessful();
     }
 }

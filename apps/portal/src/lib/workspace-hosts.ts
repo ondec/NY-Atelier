@@ -54,3 +54,14 @@ export function staffCookieSettings(headers: HeaderSource, requestUrl: string, e
     options: { httpOnly: true, sameSite: 'lax' as const, path: '/', maxAge: 28800, secure, ...(hosts ? { domain: hosts.domain } : {}) },
   };
 }
+
+const loopbackHost = /^(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i;
+
+// Office catalogue drafts publish to the shared Studio catalogue from the developer's Mac or from the configured
+// HTTPS Office host. Other hosts (for example a LAN address used to preview on a phone) never publish.
+export function catalogueSyncAllowed(headers: HeaderSource, env: Environment = process.env) {
+  const host = publicHost(headers);
+  if (loopbackHost.test(host)) return true;
+  const hosts = activeHosts(headers, env);
+  return Boolean(hosts && host === hosts.office.host);
+}

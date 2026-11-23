@@ -2,6 +2,142 @@
 
 Use this file for dated handoffs between Claude, Codex and maintainers. Read the latest entry first, then [AI_HANDOFF.md](AI_HANDOFF.md) for architecture and design. Dates use Africa/Accra. Write facts and results, not hidden reasoning or a chat transcript. Do not include credentials or private fitting values.
 
+## 2026-11-23 — Codex — Render free preview setup
+
+**Status:** in progress. User selected Render and explicitly limited this deployment to free testing. They signed into Render and completed the GitHub connection; Render can list `ondec/NY-Atelier`. No paid plan is authorized.
+
+**Deployment preparation:** `codebase/render.yaml` defines one free Frankfurt Docker web service (Next.js public; PHP/Apache reachable only on 127.0.0.1:8080) and a free PostgreSQL 17 database, with external database connections disabled. `deploy/render/` supplies the container and supervised startup. Production startup applies migrations, never seeders. Explicit preview-only staff setup uses platform secrets and existing `staff:invite`; redeploys never reset existing passwords, reactivate staff or change their roles. The standalone Next build retains the monorepo context for mobile-source imports. `/healthz` checks that both app processes are available. No dependencies were changed.
+
+**Limits:** free web instances sleep after 15 idle minutes, share 750 running hours/month and cannot attach persistent disks. Free Postgres expires after 30 days and has no backups. Fitting media and published size-chart JSON remain ephemeral in this preview. Do not describe this setup as permanent/production hosting. Salary scanning still requires macOS and is unavailable on Render; manual payroll remains available. Custom domains have not been configured.
+
+**Data authorization:** after being told why the initial database would be empty, the user explicitly requested that a copy of local customer records can go to Render. Preserve the local originals. A transfer has NOT occurred yet. Transfer customer/fitting data directly to protected hosted storage, never GitHub; do not copy staff/session/customer-auth credentials, unrelated salary records or tailor seed data. Media needs a separate durability decision before claiming that the hosted copy is complete.
+
+**Checks:** full API suite 127 passed / 1007 assertions including preview account setup and hosted authorization; Pint passed. Portal logic 73 passed. Standalone production build passed, including TypeScript. ESLint initially scanned the newly generated standalone build folder; fixed its ignore to cover `.next*` output directories, then lint passed. Local `/healthz` returned 200. Docker is not installed locally; the actual image build/start still needs verification on Render. All development services remain running and local data/env files are unchanged.
+
+**Next:** publish sanitized deployment source to GitHub, create the all-free Blueprint, verify the actual Docker build and hosted staff login/permissions, then perform the separately protected customer transfer. Keep secrets out of this log. Update this entry with actual URLs and outcomes.
+
+## 2026-11-23 — Codex — Resume local development
+
+**Status:** local development services restarted after the user's request to resume work. PostgreSQL 17 is running on 5432, Laravel preview on 8000, Studio/Office Next.js development server on 3000, and Expo/Metro on 8081. The isolated staff-test instance and external tunnels remain stopped.
+
+**Checks:** database accepts connections; all existing development migrations show Ran (no migrations or seeders were executed). Laravel `/up`, the staff sign-in page and Expo `/status` return 200. Unauthenticated staff identity/finance requests with `Accept: application/json` return 401 as intended. Authenticated workflows were not retested for this startup. A direct unauthenticated request without the JSON Accept header returned 500; this was not changed during startup.
+
+**Preserved:** existing environment files, source changes, database records and uploads. No framework/dependency changes, hosting purchases, deployments or feature implementation. Salary-photo scanning removal remains discussed but unimplemented; future work should follow the user's next instruction rather than execute the backlog automatically.
+
+## 2026-11-21 — Codex — Bedtime shutdown
+
+**Status:** project services stopped at the user's request. Verified no listeners on the development/preview/staff-test ports 3000, 3001, 3002, 3100, 8000, 8081, 8100 and 9088. No cloudflared or ngrok process was running. The staff-test PID files were already cleared by the earlier shutdown.
+
+**Database:** PostgreSQL 17 was the only remaining project service. It had no other client connections and was stopped cleanly through Homebrew; port 5432 is closed. Database files, private uploads and source changes were preserved. Other applications were left alone. Start PostgreSQL again before starting the development or staff-test apps.
+
+**Discussion handoff:** Render was recommended for the combined Next.js/Laravel/PostgreSQL deployment. No Render account, subscription or deployment was created. The user expressed intent to remove salary-photo scanning; removal has been discussed but not implemented. Manual payroll and customer inspiration uploads should remain. Customer native app distribution, Expo update channels and a tested production version/release process remain future configuration work; the current TestFlight build profile is only a starting point.
+
+## 2026-11-21 — Claude — PIVOT: host NY Studio for staff testing (PLANNING, nothing deployed)
+
+**Status:** planning only. Nothing has been deployed, bought or reconfigured; no `.env` changes.
+
+**Decision:** customer passwordless sign-in is paused at its current state. 105/105 API tests pass; its remaining items are listed in the 2026-11-20 Claude entry below. The next priority is hosting NY Studio at `studio.thenyatelier.com`, with the API at `api.thenyatelier.com`, so the team can test with NY Atelier staff emails. No hosting provider has been chosen or purchased yet.
+
+**Findings (read-only):**
+
+- **Staff sign-in:**
+  - Email + password through `POST /api/staff/auth/login` (`app/Http/Controllers/StaffAuthController.php`). It returns an 8-hour Sanctum bearer token with the `staff` ability.
+  - The portal's `/staff/sign-in` page posts to the portal route `src/app/api/staff-auth/[action]`. That route stores the token base64-encoded in an httpOnly cookie (`ny_staff`, or `__Secure-ny_staff` when subdomains are configured) and calls the API server-side with `Authorization: Bearer` (`src/lib/staff-session.ts`, `staff-cookie.ts`, `workspace-hosts.ts`).
+  - The browser never calls the API directly.
+- **Staff accounts:**
+  - Created only with `php artisan staff:invite {email} {owner|manager|receptionist} --name= --portal=<url>` (`app/Console/Commands/InviteStaff.php`). It prints a one-use, 24-hour `/staff/activate#token=…` link, where the staff member chooses a password (at least 12 characters, letters and numbers).
+  - There is no add-staff screen. The Team page (`GET /api/demo/staff/team`) is read-only.
+  - Roles and permissions are in `app/StaffAccess.php`, enforced by `staff.*` gates in AppServiceProvider. Studio needs `studio`/`office` at minimum; receptionist is the smallest role.
+- **Email:**
+  - There is no staff password-reset flow; a lost password needs a new invite.
+  - Invite links are printed in the terminal, not emailed. `MAIL_MAILER=log` in `.env.example`.
+- **Blocker for split hosting:**
+  - Most staff controllers require `config('demo.enabled')` (`NY_DEMO_API_ENABLED`) and a request IP of `127.0.0.1`/`::1`: DemoStaffOrder, DemoCustomer, DemoStudioSale, DemoSalary, DemoTeam, OwnerOverview, FinanceOverview, DemoOrderWorkflow and staff consultations.
+  - So the portal's server must reach the API over localhost (same machine). Otherwise these routes return 404.
+  - There is also no TrustProxies configuration. Behind a reverse proxy on the same box, every public request would appear to come from 127.0.0.1, so the localhost guard would no longer restrict anything. Sanctum + `can:staff.*` still apply.
+  - Recommended for the test hosting: run the portal and API on one server, keep the API bound to localhost for Studio, and replace the IP guard with proper gating before exposing `api.thenyatelier.com` publicly.
+- **Production configuration (names only):**
+  - API: `APP_ENV`, `APP_KEY`, `APP_URL`, `APP_DEBUG`, `DB_*` (pgsql), `SESSION_DRIVER`/`CACHE_STORE`/`QUEUE_CONNECTION` (database), `MAIL_*`, `NY_DEMO_API_ENABLED`, `CUSTOMER_*` (sign-in), `CUSTOMER_PASSKEY_RP_ID`, `CUSTOMER_PASSKEY_ORIGINS`, `PASSKEYS_USER_HANDLE_SECRET` (optional), `SANCTUM_STATEFUL_DOMAINS` (unused by the bearer flow).
+  - No `config/cors.php`; it isn't needed because the browser doesn't call the API.
+  - Portal: `API_BASE_URL`, `NY_OFFICE_ORIGIN`, `NY_STUDIO_ORIGIN`, `NY_STAFF_COOKIE_DOMAIN` (all three together, HTTPS only), `NY_STUDIO_DATA_DIR`, `NY_SIZE_CHART_DATA_DIR`. `NY_STAFF_PREVIEW`/`NY_WORKSPACE_LAYOUT` only choose preview build folders.
+- **Storage:**
+  - Fitting uploads go to the local private disk `storage/app/fittings`.
+  - The portal catalogue and size charts are JSON files in `apps/portal/.studio-data`.
+  - Both need persistent disk and backups; there is no S3 yet.
+  - No queues, scheduler or websockets are used.
+  - The API needs PHP ^8.3 with pdo_pgsql, mbstring, intl, bcmath, gd and sodium, plus PostgreSQL. The portal uses Next 16.4.6; Node 22 was used locally.
+- **Build:**
+  - `NY_STAFF_PREVIEW=1 next build --webpack` succeeds (separate `.next-staff-preview` folder, so the running dev server was not touched).
+  - Every API call falls back to `http://127.0.0.1:8000` when `API_BASE_URL` is unset.
+  - Hard-coded `http://127.0.0.1:3000` / `:3002` links remain in `top-workspace-shell.tsx` (layout-comparison links) and `layout-data-copy/transfer.tsx`; these should be hidden or removed for hosting.
+  - `studio-catalogue-sync.tsx` only syncs on localhost hosts.
+- **Data:**
+  - The local DB has 3 preview staff users (personal email domains), 2 customers (one demo, one apparently real, with a stored fitting), 4 orders, 6 consultations and 17 staff_members (tailor names from `TailorTeamSeeder`).
+  - Do not copy the local database to a hosted server. Start it fresh with migrations, then invite real staff with work emails.
+  - The `DatabaseSeeder` demo customer/orders and `DemoConsultationSeeder` are optional demo data. Tailor names are real people, so seed them only if wanted.
+
+**Locks:** the 2026-11-20 customer sign-in locks are released (entry marked PAUSED). Codex may edit those files.
+
+**Progress, 21 Nov 2026, about 01:00 (Claude): staff-test instance built on the Mac. The Cloudflare Tunnel is not connected yet.**
+
+- **Lock list (Claude is editing; Codex please avoid):**
+  - API: `app/StaffAccess.php`, `app/Http/Controllers/{DemoSalary,DemoCustomer,DemoConsultation,DemoOrderWorkflow,DemoStaffOrder,OwnerOverview,DemoTeam,FinanceOverview,DemoStudioSale}Controller.php`, `routes/api.php`, `config/trustedproxy.php` (new), `tests/Feature/HostedStaffAccessTest.php` (new), and the updated assertions in `tests/Feature/{DemoCustomers,DemoOrderWorkflow,DemoSalary,DemoStaffOrder,DemoStudioSale,DemoTeam,FinanceOverview,OwnerOverview}Test.php`.
+  - Portal: `next.config.ts`, `src/lib/dev-links.ts` (+ test), `src/lib/workspace-hosts.ts` (+ test), `src/app/layout.tsx`, `src/app/studio-catalogue-sync.tsx`, `src/app/top-workspace-shell.tsx`, `src/app/layout-data-copy/{page,transfer}.tsx`.
+  - New: `scripts/staff-test-up.sh`, `scripts/staff-test-down.sh`.
+  - Codex: FinanceOverviewController/FinanceOverviewTest overlap your Finance overview entry. Only the access check and the two old 404 assertions changed; please merge rather than revert.
+- **Staff gating:**
+  - The `NY_DEMO_API_ENABLED && IP 127.0.0.1` check on all staff endpoints is replaced by `StaffAccess::requireStaffToken()`: an active staff user, a `staff`-ability Sanctum token and a known role. This is in addition to the existing `auth:sanctum` and `can:staff.*` route gates.
+  - Public demo routes (`/api/demo/orders`, the public consultation endpoints) still need `NY_DEMO_API_ENABLED`.
+  - `config/trustedproxy.php` reads `TRUSTED_PROXIES` (comma list) and trusts no proxy by default.
+  - The old "non-local/disabled → 404" test assertions now assert hosted staff access.
+  - New `HostedStaffAccessTest`: guests get 401 and customer tokens 403 on 9 staff endpoints; non-staff-ability or inactive staff are refused; an owner works from a non-local IP with demo mode off; a receptionist is limited by role gates; X-Forwarded-For is ignored; public demo routes 404 without demo mode.
+  - Full API suite: 118 passed, 970 assertions. Pint was run.
+- **Portal:**
+  - The 127.0.0.1:3000/:3002 layout-comparison links now show only with the server-only flag `NY_LAYOUT_COMPARISON_LINKS=1`. Set it locally if you still want them.
+  - The Office catalogue sync previously ran only on localhost. It now runs on localhost or the configured HTTPS Office host (`catalogueSyncAllowed`), and still never on LAN addresses or the Studio host.
+  - `NY_NEXT_DIST_DIR` selects a separate build folder.
+  - Node tests 73/73 pass; tsc and eslint pass; `next build --webpack` passes (separate folders; dev `.next` untouched).
+- **Staff-test instance (isolated from dev):**
+  - Postgres database `ny_atelier_staff_test` was created with createdb. Migrations only; it is empty, with no seeders, no tailor list and no customer data.
+  - API env file: `apps/api/.env.stafftest`, gitignored, chmod 600. It has its own APP_KEY, APP_DEBUG=false, MAIL_MAILER=log and NY_DEMO_API_ENABLED=false. It is loaded through `APP_ENV=stafftest`.
+  - Storage: `LARAVEL_STORAGE_PATH=~/NY-Atelier-staff-test/api-storage`, covering fittings, logs and cache.
+  - Portal data: `~/NY-Atelier-staff-test/portal-data` holds a copy of `catalogue.json` only.
+  - Ports: the API serves 127.0.0.1:8100 (PHP built-in server, 4 workers). The portal is a production build in `apps/portal/.next-staff-test`, served on 127.0.0.1:3100 with `NY_STUDIO_ORIGIN=https://studio.thenyatelier.com`, `NY_OFFICE_ORIGIN=https://office.thenyatelier.com` and `NY_STAFF_COOKIE_DOMAIN=thenyatelier.com`.
+- **Start/stop:**
+  - Start with `codebase/scripts/staff-test-up.sh`; add `--build` to rebuild the portal. It also applies any new migrations, to the staff-test database only.
+  - Stop with `codebase/scripts/staff-test-down.sh`.
+  - Logs and pids are in `~/NY-Atelier-staff-test/{logs,run}`. The dev servers on 3000/8000/8081 are not touched.
+- **Verified locally:**
+  - `/up` returns 200; staff endpoints without a token return 401; the public demo route returns 404; `/staff/sign-in` returns 200.
+  - A throwaway receptionist invite was activated through the portal, then signed out, signed in and opened `/showroom` (200) and staff orders (200). A wrong password gets 401.
+  - The probe user, tokens and staff_members row were then deleted, so the test DB has 0 users.
+  - The shared catalogue is initialised on first read by an owner or manager. A receptionist gets 403 until then, so an owner should open Office first.
+- **Tunnel:**
+  - `cloudflared` 2026.10.7 is already installed through Homebrew. No tunnel or service has been configured.
+  - Star creates the tunnel in Cloudflare Zero Trust and runs the `cloudflared service install <token>` command.
+  - Public hostnames needed: `studio.thenyatelier.com` and `office.thenyatelier.com`, both pointing to `http://127.0.0.1:3100`. Do not publish 8100.
+  - The Mac must stay on and awake while staff test.
+- **Staff invites (not yet sent):** `cd codebase/apps/api && APP_ENV=stafftest LARAVEL_STORAGE_PATH=~/NY-Atelier-staff-test/api-storage php artisan staff:invite <work email> <owner|manager|receptionist> --name="<name>" --portal=https://studio.thenyatelier.com`. This prints a one-use 24-hour link to send by hand.
+- **Stopped 21 Nov 2026, 01:50, at Star's request (bedtime):** the staff-test instance (3100/8100) was stopped with `codebase/scripts/staff-test-down.sh`. Restart it with `codebase/scripts/staff-test-up.sh`. On Star's instruction to shut down anything running, the dev servers Codex had started (portal 3000 `npm run dev`, API 8000 `composer run preview`, Expo 8081) were also stopped; restart them as usual. Postgres (5432) was left running.
+
+## 2026-11-21 — Codex — Finance overview
+
+**Status:** implemented and checked locally.
+
+**Scope:** replaced the finance landing links with compact money-received, recorded-spending and net-movement totals; cumulative cash flow; income/spending bars; service and expense category doughnuts; payment-method totals; recent activity; and an exact-value table. One period filter controls this year, this month and the last 30 days. Refresh reloads the selected period. Existing finance workspaces remain accessible.
+
+**Data and boundaries:** new read-only `GET /api/demo/staff/finances/overview`, protected by staff Office/finance permissions, is forwarded through the authenticated, no-store portal `/api/finance-overview`. It sums all confirmed Studio receipts and actual salary payments, uses integer minor units, groups by Accra calendar dates, excludes future dates and keeps negative cash movement. Unconnected bespoke/alteration/other income is null, distinct from a connected zero. Local recurring-bill drafts, unpaid order labels and salary approvals are excluded. No opening cash/bank balance, complete expenses or profit is claimed. No migrations, seeds, business-record changes or dependencies.
+
+**Coordination update:** Claude aligned the new finance endpoint with hosting access while this task was being checked: `StaffAccess::requireStaffToken` plus the existing finance route permission replaces the old local-only/demo check. The matching test now allows authorized remote staff with demo mode disabled. These overlapping edits are preserved; the access guard and financial aggregation are checked together.
+
+**Paths:** API `FinanceOverviewController.php`, `FinanceOverviewTest.php` and one staff-only route added outside the customer-auth group. Portal `finance-overview.tsx/.css`, `finance-charts.tsx`, `src/lib/finance-overview.ts` and tests, API proxy, finance workspace wrapper and owner-only Reports link visibility. Claude's customer-auth/passkey files remain untouched.
+
+**Checks:** finance/owner API suites **16 tests, 120 assertions passed** after Pint. After the shared hosting-access update, finance/owner/hosted-access suites passed together: **23 tests, 160 assertions**. Finance chart/navigation logic **6 tests passed**. Scoped ESLint, portal TypeScript and isolated production build passed. Additional server renders covered populated/negative charts and zero/populated category rings without React warnings. Browser verified all period filters, refresh, the exact-value table, unauthenticated proxy rejection and layouts at 390, 768 and default 1481px. Current local financial records have no confirmed receipts or salary payouts, so the live charts correctly show zero/empty states; test figures were not inserted into the development database.
+
+**Responsive limit:** the new panels fit the checked viewports without page overflow, but the existing shared Office mobile/tablet navigation expands vertically when a section is open. That shell layout is a separate follow-up; this task does not certify all Office screens for phones. Physical-device/chart touch acceptance remains pending.
+
+**Handoff:** to cover the whole business next, connect bespoke/alteration collections and shared expense/payment records. Recurring bills are still browser-local drafts and reports/refunds/reconciliation remain incomplete. Source changes are local, not automatically committed or pushed. A self-contained opening-view comparison and screenshots are in the ignored parent `.local-previews/finance/` directory. Existing app services were left running; the temporary comparison viewer is stopped after capture.
+
 ## 2026-11-20 — Codex — GitHub source checkpoint
 
 **Status:** published to [ondec/NY-Atelier](https://github.com/ondec/NY-Atelier), branch `main`. The first application checkpoint is `33a57fb`; its complete commit ID was verified against the GitHub API after the push. The original 31 local commits were preserved. This follow-up documentation records that verified result.
@@ -26,9 +162,9 @@ Use this file for dated handoffs between Claude, Codex and maintainers. Read the
 
 **Verification:** `npx eslint src/components/customer-tab-bar.tsx` and `npx tsc --noEmit` passed. The actual home-indicator spacing still needs the user's Expo phone preview check. No new dependencies, API changes or data changes; running services were left alone.
 
-## 2026-11-20 — Claude — Customer passwordless sign-in (IN PROGRESS)
+## 2026-11-20 — Claude — Customer passwordless sign-in (PAUSED, locks released)
 
-**Status:** in progress. Claude is editing the files listed below. Codex: please avoid these paths until this entry is marked complete, and add a note here before touching them.
+**Status:** PAUSED on 2026-11-21 for the NY Studio hosting pivot. The file locks below are released, and Codex may edit these files. When resuming, add a note here first. The state at pause: 105/105 API tests pass, and the remaining items are in the latest progress section below.
 
 **User request:** passwordless customer sign-in for the Expo app. Customers browse freely; sign-in is asked at checkout, booking, Orders and Account. First sign-in by email (magic link plus 6-digit code) or phone (SMS code); codes expire after 15 minutes and are single use. A passkey is offered after the first order and required on the first app open 30 days after first sign-in, with a "this device can't" fallback. The email/phone code then becomes the backup. A phone code alone cannot change email/phone or remove a passkey. A verified email/phone links to an existing Studio customer record. Lost email access goes through logged staff recovery. WordPress and payments are out of scope. The user approved adding a Laravel WebAuthn/passkey package.
 

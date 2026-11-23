@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\StaffAccess;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,8 @@ class DemoConsultationController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        abort_unless(config('demo.enabled'), 404);
+        // Staff always see consultations; the customer demo list exists only while the demo API is enabled.
+        abort_unless(config('demo.enabled') || $request->user()?->can('staff.consultations'), 404);
 
         return response()->json($this->records()
             ->when(! $request->user()?->can('staff.consultations'), fn ($query) => $query->where('consultations.customer_id', Customer::query()->where('name', config('demo.customer_name'))->oldest('id')->value('id')))
@@ -48,7 +50,7 @@ class DemoConsultationController extends Controller
 
     public function staff(Request $request, string $id): JsonResponse
     {
-        abort_unless(config('demo.enabled') && in_array($request->ip(), ['127.0.0.1', '::1'], true), 404);
+        StaffAccess::requireStaffToken($request);
         $data = $request->validate([
             'action' => ['required', 'in:confirm,propose'],
             'version' => ['required', 'integer', 'min:1'],

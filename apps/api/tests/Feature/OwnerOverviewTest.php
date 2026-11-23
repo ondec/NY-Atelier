@@ -130,13 +130,13 @@ class OwnerOverviewTest extends TestCase
             ->assertJsonPath('salary_approvals', 1);
     }
 
-    public function test_invalid_report_period_is_rejected_and_disabled_preview_remains_unavailable(): void
+    public function test_invalid_report_period_is_rejected_and_hosted_owner_can_read_the_overview(): void
     {
         config(['demo.enabled' => true]);
         $this->signInStaff();
         $this->getJson('/api/demo/staff/overview?period=all-time')->assertUnprocessable()->assertJsonValidationErrors('period');
         config(['demo.enabled' => false]);
 
-        $this->getJson('/api/demo/staff/overview')->assertNotFound();
+        $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])->getJson('/api/demo/staff/overview')->assertOk();
     }
 }

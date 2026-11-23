@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {staffCookieSettings, workspaceForHost, workspaceHosts, workspaceLinks} from './workspace-hosts.ts';
+import {catalogueSyncAllowed, staffCookieSettings, workspaceForHost, workspaceHosts, workspaceLinks} from './workspace-hosts.ts';
 import {workspaceNavigationHref} from './workspace-navigation.ts';
 import {tokenFromCookie} from './staff-cookie.ts';
 const env={NY_OFFICE_ORIGIN:'https://office.thenyatelier.com',NY_STUDIO_ORIGIN:'https://studio.thenyatelier.com',NY_STAFF_COOKIE_DOMAIN:'thenyatelier.com'};
@@ -42,4 +42,15 @@ test('installed app switches stay in their current session while browser links u
  assert.equal(workspaceNavigationHref(office,false),office);
  assert.equal(workspaceNavigationHref('https://studio.thenyatelier.com/showroom',true),'/showroom');
  assert.equal(workspaceNavigationHref('/office/receptionist',true),'/office/receptionist');
+});
+
+test('the shared catalogue syncs from local previews and the configured Office host only',()=>{
+  assert.equal(catalogueSyncAllowed(new Headers({host:'127.0.0.1:3000'}),{}),true);
+  assert.equal(catalogueSyncAllowed(new Headers({host:'localhost:3100'}),env),true);
+  assert.equal(catalogueSyncAllowed(headers('office.thenyatelier.com'),env),true);
+  assert.equal(catalogueSyncAllowed(headers('studio.thenyatelier.com'),env),false);
+  assert.equal(catalogueSyncAllowed(new Headers({host:'192.168.1.20:3000'}),{}),false);
+  assert.equal(catalogueSyncAllowed(headers('office.thenyatelier.com'),{}),false);
+  assert.equal(catalogueSyncAllowed(new Headers({host:'127.0.0.1:3100','x-forwarded-host':'office.thenyatelier.com'}),env),true);
+  assert.equal(catalogueSyncAllowed(new Headers({host:'127.0.0.1:3100','x-forwarded-host':'evil.example'}),env),false);
 });

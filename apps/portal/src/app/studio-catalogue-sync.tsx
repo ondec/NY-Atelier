@@ -25,12 +25,13 @@ function publish() {
   publications = work;
   return work;
 }
-export default function StudioCatalogueSync() {
+/** `enabled` is decided on the server from the request host (see catalogueSyncAllowed). */
+export default function StudioCatalogueSync({ enabled }: { enabled: boolean }) {
   const pathname = usePathname();
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
   useEffect(() => {
-    if (pathname.startsWith("/showroom") || !["127.0.0.1", "localhost"].includes(location.hostname)) return;
+    if (!enabled || pathname.startsWith("/showroom")) return;
     let active = true; let hydrating = false;
     const hydrate = async () => {
       try {
@@ -53,6 +54,6 @@ export default function StudioCatalogueSync() {
     const interval = setInterval(() => { if (document.visibilityState === "visible") void hydrate(); },15000);
     window.addEventListener("storage", storage); window.addEventListener(inventoryChanged, sync); window.addEventListener("ny-atelier-collections-changed", sync); window.addEventListener("online", hydrate); window.addEventListener("focus",hydrate);
     return () => { active = false; clearInterval(interval); window.removeEventListener("storage", storage); window.removeEventListener(inventoryChanged, sync); window.removeEventListener("ny-atelier-collections-changed", sync); window.removeEventListener("online", hydrate); window.removeEventListener("focus",hydrate); };
-  }, [pathname,reload]);
+  }, [enabled,pathname,reload]);
   return error && !pathname.startsWith("/showroom") ? <div className="studio-catalogue-error" role="alert"><span>{error} Reloading replaces the local draft with shared stock.</span><button type="button" onClick={() => { localStorage.removeItem(pendingKey); setReload(value=>value+1); }}>Reload shared catalogue</button></div> : null;
 }

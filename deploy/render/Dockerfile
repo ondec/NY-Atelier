@@ -1,0 +1,53 @@
+# One preview web service: Next.js is public; Laravel listens only on loopback.
+FROM node:22-bookworm-slim AS portal-build
+WORKDIR /build/apps/portal
+COPY apps/portal/package*.json ./
+RUN npm ci --no-audit --no-fund
+COPY apps/portal/ ./
+COPY apps/mobile/src/ /build/apps/mobile/src/
+ENV NY_STANDALONE=1 NEXT_TELEMETRY_DISABLED=1
+RUN npm run build -- --webpack
+
+FROM php:8.4-apache-bookworm AS api-build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev libicu-dev libonig-dev libzip-dev libpng-dev libjpeg62-turbo-dev libfreetype6-dev unzip \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j2 pdo_pgsql intl mbstring bcmath zip gd opcache \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+WORKDIR /srv/api
+COPY apps/api/composer.json apps/api/composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction --no-progress
+COPY apps/api/artisan ./
+COPY apps/api/app/ app/
+COPY apps/api/bootstrap/ bootstrap/
+COPY apps/api/config/ config/
+COPY apps/api/routes/ routes/
+COPY apps/api/resources/ resources/
+COPY apps/api/database/migrations/ database/migrations/
+COPY apps/api/public/index.php apps/api/public/.htaccess public/
+RUN mkdir -p bootstrap/cache storage/app/fittings storage/app/private storage/app/public \
+    storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs \
+    && composer dump-autoload --no-dev --classmap-authoritative --no-interaction
+
+FROM api-build AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends tini gosu \
+    && rm -rf /var/lib/apt/lists/* \
+    && a2enmod rewrite \
+    && printf 'Listen 127.0.0.1:8080\n' > /etc/apache2/ports.conf \
+    && printf 'StartServers 1\nMinSpareServers 1\nMaxSpareServers 2\nMaxRequestWorkers 2\nMaxConnectionsPerChild 1000\n' > /etc/apache2/mods-available/mpm_prefork.conf
+COPY --from=portal-build /usr/local/bin/node /usr/local/bin/node
+COPY --from=portal-build /build/apps/portal/.next/standalone/ /srv/portal/
+COPY --from=portal-build /build/apps/portal/.next/static/ /srv/portal/apps/portal/.next/static/
+COPY --from=portal-build /build/apps/portal/public/ /srv/portal/apps/portal/public/
+COPY deploy/render/apache.conf /etc/apache2/sites-available/000-default.conf
+COPY deploy/render/php.ini /usr/local/etc/php/conf.d/ny-preview.ini
+COPY deploy/render/start.sh /usr/local/bin/ny-start
+RUN chmod 755 /usr/local/bin/ny-start \
+    && mkdir -p /srv/portal-data \
+    && chown -R www-data:www-data /srv/api/storage /srv/api/bootstrap/cache /srv/portal /srv/portal-data
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 API_BASE_URL=http://127.0.0.1:8080 \
+    NY_STUDIO_DATA_DIR=/srv/portal-data NY_SIZE_CHART_DATA_DIR=/srv/portal-data
+EXPOSE 10000
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["/usr/local/bin/ny-start"]

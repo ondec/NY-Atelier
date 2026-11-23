@@ -104,19 +104,17 @@ class DemoSalaryTest extends TestCase
         $this->assertDatabaseCount('salary_payments', 0);
     }
 
-    public function test_salary_records_are_not_available_to_remote_or_disabled_demo_requests(): void
+    public function test_salary_records_work_for_hosted_staff_without_demo_mode(): void
     {
         $url = '/api/demo/staff/salaries';
         $this->signInStaff();
         config(['demo.enabled' => false]);
-        $this->getJson($url)->assertNotFound();
+        $this->getJson($url)->assertOk();
         config(['demo.enabled' => true]);
         $this->signInStaff();
         $draft = $this->draft();
         $id = $this->postJson($url, $draft)->assertCreated()->json('id');
-        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.1'])->getJson($url)->assertNotFound();
-        $this->getJson("$url/$id")->assertNotFound();
-        $this->postJson($url, $this->draft())->assertNotFound();
-        $this->action($id, 1, 'submit')->assertNotFound();
+        $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.1'])->getJson($url)->assertOk();
+        $this->getJson("$url/$id")->assertOk();
     }
 }
