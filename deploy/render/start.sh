@@ -12,8 +12,13 @@ gosu www-data php artisan config:cache --no-interaction
 gosu www-data php artisan migrate --force --no-interaction
 if [[ "${NY_HOSTED_PREVIEW:-0}" == "1" ]]; then
     gosu www-data php artisan staff:bootstrap-preview --no-interaction
-    if [[ -f /etc/secrets/ny-customer-copy.json ]]; then
-        php artisan staff:restore-preview-customers /etc/secrets/ny-customer-copy.json --no-interaction
+    if [[ -f /etc/secrets/ny-customer-copy.1 && -f /etc/secrets/ny-customer-copy.2 ]]; then
+        # BuildKit caps each secret at 500 KiB, below Render's 1 MB total limit.
+        umask 077
+        snapshot_file="$(mktemp /tmp/ny-customer-copy.XXXXXX)"
+        cat /etc/secrets/ny-customer-copy.1 /etc/secrets/ny-customer-copy.2 > "$snapshot_file"
+        php artisan staff:restore-preview-customers "$snapshot_file" --no-interaction
+        rm -f "$snapshot_file"
         chown -R www-data:www-data /srv/api/storage
     fi
 fi
