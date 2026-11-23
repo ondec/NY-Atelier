@@ -204,17 +204,18 @@
     {
       "id": "hosting-and-subdomains",
       "area": "Hosting, domains and installable Office and Studio web apps",
-      "current_status": "local_preview_domains_pending",
-      "working_now": "Office/Studio manifests, role-aware workspace links and opt-in HTTPS shared-cookie host configuration exist. Studio responsive/browser readiness checks passed locally. The service worker caches only a generic offline notice, not private records.",
+      "current_status": "free_render_staff_preview_live_domains_pending",
+      "working_now": "Studio and Office are deployed behind staff login at https://ny-atelier-preview.onrender.com, with an internal Laravel API and PostgreSQL 17 in Frankfurt. GitHub main auto-deploys the free preview. Secure HttpOnly sessions and role restrictions were verified; customer/fitting snapshot and its original media were copied privately. Manifests and generic offline notice remain; physical installed-PWA acceptance is pending.",
       "intended_domains": {
         "office": "office.thenyatelier.com",
         "studio": "studio.thenyatelier.com"
       },
-      "constraint": "As of 20 November 2026 the user reports access to thenyatelier.com with Cloudflare DNS. Hosting remains undecided and no public application subdomain deployment is verified.",
+      "constraint": "User authorized free testing only. Render Hobby has no card on file and $0 billing as verified 23 November 2026. Free database expires 23 December 2026; new uploads and published chart JSON are ephemeral. The initial copied image is restored from the protected snapshot. Cloudflare custom subdomains and durable production storage/backups remain pending.",
       "remaining": [
         {
-          "done": false,
-          "task": "Choose hosting and deploy the Laravel API, Next.js portal and PostgreSQL database with HTTPS."
+          "done": true,
+          "task": "Choose hosting and deploy the Laravel API, Next.js portal and PostgreSQL database with HTTPS.",
+          "evidence": "23 November 2026: free Render Docker service plus PostgreSQL 17 deployed, HTTPS /healthz 200, three role logins/API restrictions checked; free test limits remain as documented above."
         },
         {
           "done": false,
@@ -321,9 +322,9 @@
       ]
     }
   ],
-  "suggested_next_milestone": "Complete Studio acceptance across phone, tablet and desktop; inspect/import the authorized WordPress catalogue; then host Studio with the shared Laravel API, database and durable media/chart storage. Connect HTTPS/domain and run a controlled team pilot before the later Office rollout.",
+  "suggested_next_milestone": "Run controlled NY team acceptance on the free Render staff preview, including physical phone/tablet/PWA checks. Arrange custom domains and durable database/media/chart storage plus backups before permanent use. Import the approved WordPress catalogue when requested; customer app release remains separate.",
   "completion_rule": "Mark a checklist task done only after implementation and appropriate verification. Record evidence and any remaining limitations rather than assuming that a working interface means an integration is live.",
-  "updated_on": "2026-11-20",
+  "updated_on": "2026-11-23",
   "shared_handoff": {
     "guide": "AI_HANDOFF.md",
     "work_log": "WORK_LOG.md",

@@ -8,15 +8,15 @@ This is the current implementation guide for continuing work in Claude, Codex or
 
 - Project folder: `/Users/benjaminanane/Documents/Stacks/Ny Atelier`.
 - Git/application root in the full workspace: `codebase/` (the root of a standalone GitHub clone). Original source media and the live shared documents remain in the parent project folder. The repository now includes a portable `docs/` snapshot. In the full local project, consult `../docs/` first and refresh the tracked copy before another push; in a standalone clone, maintain `docs/` directly. Selected application media are included under each app, but private uploads and runtime data are excluded.
-- Source repository: [ondec/NY-Atelier](https://github.com/ondec/NY-Atelier), branch `main`. Publishing the source does not deploy the applications.
+- Source repository: [ondec/NY-Atelier](https://github.com/ondec/NY-Atelier), branch `main`. Render is now connected: pushes automatically rebuild/deploy the staff preview. Use `[skip render]` in documentation-only commit messages to avoid an unnecessary deployment.
 - Three applications: customer Expo app, Next.js staff web app containing NY Studio and NY Office, and one shared Laravel API/PostgreSQL database.
 - **NY Studio is a responsive, installable web app. It is not the customer Expo app.** Studio must work across phones, tablets and desktop, not just mobile.
 - Staff authentication and the Studio POS are connected local implementations. Customer authentication, customer checkout and payment-provider processing remain unfinished. **Customer passwordless sign-in is paused (2026-11-21), and its file locks are released. The current priority is hosting NY Studio for staff testing. See the latest [work log](WORK_LOG.md) entry.**
 - Latest completed feature: the cash-based Finance overview, with received/spent/net totals, cash flow, income/spending and category charts, period filters and recent activity. Studio Sales history and order-source tracking are also implemented. See the work log for exact data coverage and remaining gaps.
-- Current priority: finish physical-device acceptance, bring in approved WordPress catalogue content, then host Studio and its API/database. Office can be released later using the same backend.
-- Domain access is available; Cloudflare manages DNS. The user selected **Render, free testing only**, created an account and connected GitHub on 23 November. Render preview deployment is being prepared; consult the latest work log before assuming it is live. Do not assume earlier temporary preview tunnels still work.
+- Current position: Studio and Office have a protected free Render preview at [ny-atelier-preview.onrender.com](https://ny-atelier-preview.onrender.com/showroom). Physical-device/team acceptance, approved WordPress catalogue import and permanent hosting remain follow-up work; do not execute that backlog without the current user request.
+- Domain access is available; Cloudflare manages DNS. The user selected **Render, free testing only**. No paid resources, DNS changes or custom application domains were configured. Do not assume earlier temporary preview tunnels still work.
 - The user reports WordPress admin access, but no admin session or catalogue import has been completed here. Verify which site and catalogue/plugin are involved before integration.
-- This checkout has many existing modified and untracked files. **Do not reset, clean, reseed or replace it to obtain a clean starting point.**
+- This project contains shared Codex/Claude implementation. Check the current Git status and preserve any uncommitted work. **Do not reset, clean, reseed or replace it to obtain a clean starting point.**
 
 ## 2. Shared working protocol
 
@@ -213,6 +213,18 @@ Three temporary staff accounts have been provisioned with user-supplied aliases.
 Provisioning/activation entry point: API `staff:invite` Artisan command; inspect `--help` and its implementation before use. Production staff onboarding, recovery and replacement of preview credentials still need completion/review.
 
 Customer auth is a separate unfinished task. Demo customer routes are not suitable as the production customer security boundary.
+
+### Free Render staff preview
+
+- `render.yaml` manages one **Free** Frankfurt Docker web service and a **Free** PostgreSQL 17 database. The Hobby workspace has no card on file; billing showed $0 on 23 November. Paid resources are not authorized.
+- Studio: `https://ny-atelier-preview.onrender.com/showroom`. Office: the same host at `/office/{signed-in-role}`. HTTPS and secure HttpOnly cookies work. The custom `thenyatelier.com` domains remain unconfigured; the existing WordPress site/DNS were left alone.
+- `deploy/render/Dockerfile` builds Next standalone from the monorepo, preserving shared mobile data imports. Shared consultation types are in the runtime-independent `apps/mobile/src/lib/consultation-types.ts`; do not import React Native runtime modules into the portal. Next listens publicly on Render's port; Apache/Laravel listens only on loopback 8080. The database rejects all external IPs. `/healthz` checks both app processes.
+- Startup migrates without seeders. `staff:bootstrap-preview` requires the explicit preview flag and platform-supplied emails/password, creates missing configured staff only and never resets existing passwords/roles/active status. The application key is a persistent platform-generated secret, prefixed for Laravel at startup. Local and hosted passwords are separate; keep credentials out of Git and these documents.
+- The user authorized copying existing customers/fittings and keeping new uploads enabled temporarily. The private snapshot is outside Git in `~/NY-Atelier-render-private/`. Render mounts `ny-customer-copy.1` and `.2` under `/etc/secrets/`; startup joins them into a mode-0600 temporary file and runs the preview-only restore command. Two parts are necessary because BuildKit limits each secret to 500 KiB even though Render permits 1 MB in total. No private data is built into the image or published in GitHub.
+- The copied records are **two customers, one fitting and one original attachment**. The importer runs only into an empty database, repairs ID sequences, uses a persistent import marker to avoid recreating deleted customers, and preserves existing hosted edits. Missing ORIGINAL media is restored only while its original attachment/fitting still exists. This is a one-time test snapshot, not general media storage or a backup system.
+- Free web services sleep after 15 idle minutes. **New uploads and published chart files remain ephemeral** and can disappear on restart/deploy/sleep; the user explicitly accepted this for now. The free database expires **23 December 2026**, has no automatic backups and must not be treated as permanent storage. The local originals remain intact.
+- Consultation/owner-overview proxy timeouts are 20 seconds to tolerate the free instance. Consultation polling does not overlap an already pending automatic request. This does not turn the free instance into an always-on production service.
+- Native Expo releases, public customer API authentication/checkout, durable new uploads/chart storage, staff recovery, real domain acceptance and salary scanning remain separate follow-up work. The Mac Swift scanner cannot run in this Linux container; manual payroll remains available.
 
 ## 8. Persistence, API boundaries and data safety
 
