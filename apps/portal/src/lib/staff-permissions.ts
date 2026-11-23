@@ -1,7 +1,10 @@
-export type StaffRole = 'owner' | 'manager' | 'receptionist';
-export type StaffPermission = 'office' | 'studio' | 'customers' | 'consultations' | 'orders.read' | 'orders.manage' | 'alterations.create' | 'catalogue.manage' | 'finances' | 'team';
+export type StaffRole = 'owner' | 'manager' | 'receptionist' | 'records';
+export const staffRoles: readonly StaffRole[] = ['owner','manager','receptionist','records'];
+export type StaffPermission = 'office' | 'studio' | 'sales' | 'customers' | 'consultations' | 'orders.read' | 'orders.manage' | 'alterations.create' | 'catalogue.manage' | 'finances' | 'team';
 export type StaffIdentity = { id:number;name:string;email:string;role:StaffRole;permissions:StaffPermission[];officeHref:string;studioHref?:string };
-export const roleLabels:Record<StaffRole,string>={owner:'Owner',manager:'Manager',receptionist:'Receptionist'};
+export const roleLabels:Record<StaffRole,string>={owner:'Owner',manager:'Manager',receptionist:'Receptionist',records:'Customer records'};
+/** The customer-records role works only in NY Studio fittings; every other role has NY Office. */
+export const roleHasOffice = (role:StaffRole) => role !== 'records';
 export const can = (staff:StaffIdentity|null|undefined,permission:StaffPermission) => Boolean(staff?.permissions.includes(permission));
 export const officeAccessDeniedMessage = "You don’t have permission to access NY Office. Contact your administrator if you need access.";
 export const officeHref = (role:StaffRole) => `/office/${role}`;

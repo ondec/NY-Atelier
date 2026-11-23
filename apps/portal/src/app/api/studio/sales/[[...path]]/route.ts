@@ -1,11 +1,11 @@
 import { CatalogueError, readStudioCatalogue, studioBackend } from "@/lib/studio-catalogue-store";
-import { studioAuthorized, studioCors, studioJson, studioSameOrigin } from "@/lib/studio-access";
+import { studioSalesError, studioCors, studioJson, studioSameOrigin } from "@/lib/studio-access";
 export const runtime = "nodejs";
 type Context = { params: Promise<{path?: string[]}> };
 export async function OPTIONS(request: Request) { return new Response(null, {status:204, headers:studioCors(request)}); }
 async function forward(request: Request, context: Context) {
   const headers = { ...studioCors(request), "Cache-Control": "no-store" };
-  if (!await studioAuthorized(request)) return Response.json({message:"Sign in with your staff account."},{status:401,headers});
+  const denied = await studioSalesError(request, headers); if (denied) return denied;
   if (request.method === "POST" && !studioSameOrigin(request)) return Response.json({message:"Open NY Studio to record a sale."},{status:403,headers});
   const route = (await context.params).path?.join("/") ?? "";
   if (request.method === "GET" ? route && !/^[a-f0-9-]{36}$/i.test(route) : route && route !== "quote") return Response.json({message:"Choose a Studio sale."},{status:404,headers});

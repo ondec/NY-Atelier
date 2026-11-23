@@ -38,7 +38,7 @@ export default function SalaryWorkspace({selectedId}:{selectedId?:string}){
   const [revision,setRevision]=useState(0);
   useEffect(()=>{
     let active=true;
-    Promise.all([salaryApi<{batches:SalaryBatch[]}>(),selectedId?salaryApi<SalaryBatch>(selectedId):Promise.resolve(undefined),getTeam()]).then(([data,detail,members])=>{if(active){setTeam(members);setBatches(data.batches);setBatch(detail);setLoaded(true);setError("");}}).catch(failure=>{if(active){setLoaded(true);setError(failure.message);}});
+    Promise.all([salaryApi<{batches:SalaryBatch[]}>(),selectedId?salaryApi<SalaryBatch>(selectedId):Promise.resolve(undefined),getTeam()]).then(([data,detail,team])=>{if(active){setTeam(team.members);setBatches(data.batches);setBatch(detail);setLoaded(true);setError("");}}).catch(failure=>{if(active){setLoaded(true);setError(failure.message);}});
     return()=>{active=false;};
   },[selectedId,revision]);
   useEffect(()=>{if(!notice)return;const timer=setTimeout(()=>setNotice(""),5000);return()=>clearTimeout(timer);},[notice]);

@@ -39,8 +39,23 @@ services:
         value: database
       - key: QUEUE_CONNECTION
         value: sync
+      # Microsoft 365 over HTTPS (Render Free blocks SMTP). The Entra app may send only as noreply@, enforced by
+      # an Exchange Application RBAC scope. Tenant/client IDs and the secret are entered in the Render dashboard.
+      # Until they are set, invitations report "failed" and show the owner a one-use link instead.
       - key: MAIL_MAILER
-        value: log
+        value: microsoft-graph
+      - key: MAIL_FROM_ADDRESS
+        value: noreply@thenyatelier.com
+      - key: MAIL_FROM_NAME
+        value: NY Atelier
+      - key: MICROSOFT_GRAPH_TENANT_ID
+        sync: false
+      - key: MICROSOFT_GRAPH_CLIENT_ID
+        sync: false
+      - key: MICROSOFT_GRAPH_CLIENT_SECRET
+        sync: false
+      - key: MICROSOFT_GRAPH_SENDER
+        value: noreply@thenyatelier.com
       - key: NY_PREVIEW_STAFF_PASSWORD
         generateValue: true
       - key: NY_PREVIEW_OWNER_EMAIL

@@ -3,7 +3,7 @@ import { tokenFromCookie } from './staff-cookie';
 import { sameOrigin } from './request-security';
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
-import { can, type StaffIdentity, type StaffPermission } from './staff-permissions';
+import { can, staffRoles, type StaffIdentity, type StaffPermission } from './staff-permissions';
 import { workspaceLinks } from './workspace-hosts';
 export async function staffToken(request?:Request) {return tokenFromCookie(request?request.headers.get('cookie'):(await headers()).get('cookie'));}
 export async function staffBackendHeaders(request?:Request):Promise<Record<string,string>> {
@@ -14,7 +14,7 @@ export async function readStaff(request?:Request):Promise<StaffIdentity|null> {
   try {
     const response=await fetch(`${process.env.API_BASE_URL??'http://127.0.0.1:8000'}/api/staff/auth/me`,{cache:'no-store',headers:await staffBackendHeaders(request),signal:AbortSignal.timeout(8000)});
     if(!response.ok)return null;const {staff}=await response.json();
-    if(!staff||!['owner','manager','receptionist'].includes(staff.role)||!Array.isArray(staff.permissions))return null;
+    if(!staff||!staffRoles.includes(staff.role)||!Array.isArray(staff.permissions))return null;
     return {...staff,...workspaceLinks(request?.headers ?? await headers(),staff.role)};
   }catch{return null;}
 }

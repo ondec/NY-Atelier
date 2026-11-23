@@ -16,7 +16,7 @@ import "./showroom.css";
 import StudioCheckout, { readPendingCheckout } from "./checkout";
 import StudioReceipt from "../studio-receipt";
 import StudioSalesRegister from "../studio-sales-register";
-import type { StaffIdentity } from "@/lib/staff-permissions";
+import { can, type StaffIdentity } from "@/lib/staff-permissions";
 import type { Receipt } from "@/lib/studio-sales";
 import GarmentGallery from "./garment-gallery";
 import WelcomeCarousel from "./welcome-carousel";
@@ -31,9 +31,15 @@ import { selectedSizeSummary } from "../../../../mobile/src/data/size-charts";
 
 const money = (amount: number) => new Intl.NumberFormat("en-GH", { style: "currency", currency: "GHS", maximumFractionDigits: 0 }).format(amount);
 const sizes = ["S", "M", "L", "XL", "2XL", "3XL"];
+function salesFreeLocation(location: StudioLocation): StudioLocation {
+  return location.module === "collection" ? {...location, module: "measurements", saleDesk: false, productId: undefined, editor: location.editor === "customer" ? "customer" : undefined} : location;
+}
 const date = (value: string) => new Date(value.slice(0, 10) + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
-export default function Showroom({ staff, initialLocation = readStudioLocation('') }: { staff: StaffIdentity; initialLocation?: StudioLocation }) {
+export default function Showroom({ staff, initialLocation: requestedLocation = readStudioLocation('') }: { staff: StaffIdentity; initialLocation?: StudioLocation }) {
+  // Staff without the sales permission (customer records only) never open Ready-to-Wear, even from a typed URL or Back.
+  const canSell = can(staff, "sales");
+  const initialLocation = canSell ? requestedLocation : salesFreeLocation(requestedLocation);
   const [module, setModule] = useState<"welcome" | "collection" | "measurements">(initialLocation.module);
   const [inventory, setInventory] = useState(emptyInventory);
   const [catalogueError, setCatalogueError] = useState("");
@@ -74,7 +80,11 @@ export default function Showroom({ staff, initialLocation = readStudioLocation('
   useEffect(() => {
     function readFittingLocation() {
       if (fittingBusy.current) {window.history.forward(); return;}
-      const location = readStudioLocation(window.location.search);
+      const location = canSell ? readStudioLocation(window.location.search) : salesFreeLocation(readStudioLocation(window.location.search));
+      if (!canSell && new URLSearchParams(window.location.search).get('view') === 'collection') {
+        const url = new URL(window.location.href); url.searchParams.set('view', 'fittings'); url.searchParams.delete('product'); url.searchParams.delete('screen');
+        window.history.replaceState(null, '', url);
+      }
       setModule(location.module); setEditor(location.editor); setSaleDesk(location.saleDesk);
       setViewingProduct(Boolean(location.productId));
       if (location.productId) setProductId(location.productId);
@@ -86,7 +96,7 @@ export default function Showroom({ staff, initialLocation = readStudioLocation('
     readFittingLocation();
     window.addEventListener('popstate', readFittingLocation);
     return () => window.removeEventListener('popstate', readFittingLocation);
-  }, []);
+  }, [canSell]);
 
   useEffect(() => {
     if (fittingPage === 'profile' && profile?.customer.id === customerId) {
@@ -200,6 +210,7 @@ export default function Showroom({ staff, initialLocation = readStudioLocation('
 
   useEffect(() => {
     let active = true;
+    if (!canSell) return;
     queueMicrotask(() => {
       if (!active) return;
       const saved = readPendingCheckout(staff.id);
@@ -208,7 +219,7 @@ export default function Showroom({ staff, initialLocation = readStudioLocation('
       setDraftReady(staff.id);
     });
     return () => { active = false; };
-  }, [staff.id, initialLocation.customerId]);
+  }, [staff.id, initialLocation.customerId, canSell]);
 
   useEffect(() => {
     if (draftReady !== staff.id) return;
@@ -219,6 +230,7 @@ export default function Showroom({ staff, initialLocation = readStudioLocation('
   }, [sale, customerId, staff.id, draftReady]);
 
   useEffect(() => {
+    if (!canSell) return;
     const controller = new AbortController();
     async function refresh() {
       try {
@@ -231,7 +243,7 @@ export default function Showroom({ staff, initialLocation = readStudioLocation('
     void refresh(); const interval = setInterval(() => { if (document.visibilityState === "visible") void refresh(); }, 8000);
     window.addEventListener("focus", refresh);
     return () => { controller.abort(); clearInterval(interval); window.removeEventListener("focus", refresh); };
-  }, []);
+  }, [canSell]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -326,11 +338,11 @@ export default function Showroom({ staff, initialLocation = readStudioLocation('
           <span><small>01 / THE PERSONAL FIT</small><strong>Fittings</strong><span>Customer measurements & fitting history</span></span>
           <ArrowRight size={20} />
         </button>
-        <button onClick={() => { changeStudioModule("collection"); setViewingProduct(false); }}>
+        {canSell && <button onClick={() => { changeStudioModule("collection"); setViewingProduct(false); }}>
           <span className="showroom-welcome-icon"><Shirt size={23} /></span>
           <span><small>02 / THE COLLECTION</small><strong>Ready-to-Wear</strong><span>Explore garments, colours & available sizes</span></span>
           <ArrowRight size={20} />
-        </button>
+        </button>}
 
       </nav>
     </div>
@@ -344,13 +356,13 @@ export default function Showroom({ staff, initialLocation = readStudioLocation('
         <div className="showroom-module-navigation">
           <button className="showroom-home-button showroom-header-brand" aria-label="Return to NY Studio" onClick={() => changeStudioModule("welcome")}><ArrowLeft size={16} /><Image src="/ny-mark.svg" alt="" width={34} height={34} /><span><strong>NY ATELIER</strong><small>NY Studio</small></span></button>
           <div className={`studio-module-dock${saleCount ? ' has-sale' : ''}`}>
-            <nav aria-label="NY Studio modules"><button aria-pressed={module === "measurements"} onClick={showFittingCustomers}>Fittings</button><button aria-pressed={module === "collection"} onClick={() => { changeStudioModule("collection"); setViewingProduct(false); }}>Ready-to-Wear</button></nav>
+            <nav aria-label="NY Studio modules"><button aria-pressed={module === "measurements"} onClick={showFittingCustomers}>Fittings</button>{canSell && <button aria-pressed={module === "collection"} onClick={() => { changeStudioModule("collection"); setViewingProduct(false); }}>Ready-to-Wear</button>}</nav>
             {saleCount > 0 && <button type="button" className="studio-sale-trigger" aria-label={`Open Sales Desk, ${saleCount} ${saleCount === 1 ? 'item' : 'items'}`} aria-haspopup="dialog" onClick={openSaleDesk}><ShoppingBag size={23}/><span className="studio-sale-badge" aria-hidden="true">{saleCount > 99 ? '99+' : saleCount}</span></button>}
           </div>
         </div>
-        <div className="showroom-header-actions"><StudioTools staff={staff} onSalesHistory={()=>setSalesHistory(true)}/></div>
+        <div className="showroom-header-actions"><StudioTools staff={staff} onSalesHistory={canSell ? ()=>setSalesHistory(true) : undefined}/></div>
       </header>
-      {module === "collection" ? <>
+      {module === "collection" && canSell ? <>
         <div className="showroom-intro"><div>{viewingProduct && <button type="button" className="showroom-home-button" onClick={backToGarments}><ArrowLeft size={18} />Back to garments</button>}<h1>Ready-to-Wear</h1></div></div>
         {saleNotice && <p className="showroom-sale-notice" role="status">{saleNotice}</p>}
         <div className="showroom-pos-layout"><div className="showroom-pos-catalogue" key={viewingProduct ? productId : 'catalogue'}>
@@ -433,15 +445,15 @@ export default function Showroom({ staff, initialLocation = readStudioLocation('
         </div>
       </>}
     </div>
-    {saleDesk && <InventoryDrawer fullScreen label="Sales Desk" onClose={closeSaleDesk}><section className="inventory-form-panel studio-sale-screen"><header className="inventory-form-title"><button type="button" className="fitting-screen-back" aria-label="Back from Sales Desk" onClick={closeSaleDesk}><ArrowLeft size={20}/></button><h2>Sales Desk</h2></header><SaleBasket inventory={inventory} lines={sale} customer={profileReady ? profile.customer.name : undefined} customerId={profileReady ? profile.customer.id : undefined} onCheckout={() => setCheckout(true)} onCustomer={() => setPickingCustomer(true)} onQuantity={updateSale} onAlterationCreated={reference => setSaleNotice(`Alteration order ${reference} created.`)}/></section></InventoryDrawer>}
-    {checkout && <StudioCheckout staffId={staff.id} lines={sale} customerId={customerId ?? 0} customer={profileReady ? profile.customer.name : undefined} onClose={() => setCheckout(false)} onComplete={value => {
+    {canSell && saleDesk && <InventoryDrawer fullScreen label="Sales Desk" onClose={closeSaleDesk}><section className="inventory-form-panel studio-sale-screen"><header className="inventory-form-title"><button type="button" className="fitting-screen-back" aria-label="Back from Sales Desk" onClick={closeSaleDesk}><ArrowLeft size={20}/></button><h2>Sales Desk</h2></header><SaleBasket inventory={inventory} lines={sale} customer={profileReady ? profile.customer.name : undefined} customerId={profileReady ? profile.customer.id : undefined} onCheckout={() => setCheckout(true)} onCustomer={() => setPickingCustomer(true)} onQuantity={updateSale} onAlterationCreated={reference => setSaleNotice(`Alteration order ${reference} created.`)}/></section></InventoryDrawer>}
+    {canSell && checkout && <StudioCheckout staffId={staff.id} lines={sale} customerId={customerId ?? 0} customer={profileReady ? profile.customer.name : undefined} onClose={() => setCheckout(false)} onComplete={value => {
       setReceipt(value); setCheckout(false); setSale([]); setSize(""); setSaleDesk(false);
       if (new URLSearchParams(window.location.search).get('screen') === 'sale') {const url = new URL(window.location.href); url.searchParams.delete('screen'); window.history.replaceState(null, '', url);}
       void fetch("/api/studio/catalogue", { cache: "no-store" }).then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(data => { setInventory(data.inventory); setCatalogueError(""); }).catch(() => setCatalogueError("Sale saved. Stock will refresh when the connection returns."));
     }} />}
     {receipt && <InventoryDrawer label="Sale receipt" onClose={() => setReceipt(undefined)}><button className="studio-receipt-close" aria-label="Close receipt" onClick={() => setReceipt(undefined)}><X size={20}/></button><StudioReceipt receipt={receipt} onNewSale={() => { setReceipt(undefined); setViewingProduct(false); }} /></InventoryDrawer>}
-    {salesHistory && <InventoryDrawer label="Sales history" onClose={() => setSalesHistory(false)}><section className="inventory-form-panel"><div className="inventory-form-title"><h2>Sales history</h2><button aria-label="Close sales history" onClick={() => setSalesHistory(false)}><X size={20}/></button></div><StudioSalesRegister onOpen={value => { setSalesHistory(false); setReceipt(value); }} /></section></InventoryDrawer>}
-    {pickingCustomer && <InventoryDrawer label="Select customer for sale" onClose={() => setPickingCustomer(false)}>
+    {canSell && salesHistory && <InventoryDrawer label="Sales history" onClose={() => setSalesHistory(false)}><section className="inventory-form-panel"><div className="inventory-form-title"><h2>Sales history</h2><button aria-label="Close sales history" onClick={() => setSalesHistory(false)}><X size={20}/></button></div><StudioSalesRegister onOpen={value => { setSalesHistory(false); setReceipt(value); }} /></section></InventoryDrawer>}
+    {canSell && pickingCustomer && <InventoryDrawer label="Select customer for sale" onClose={() => setPickingCustomer(false)}>
       <section className="inventory-form-panel"><div className="inventory-form-title"><h2>Select customer</h2><button aria-label="Close customer selection" onClick={() => setPickingCustomer(false)}><X size={20} /></button></div>
         <label className="showroom-search"><Search size={18} /><input aria-label="Search sale customers" placeholder="Name, phone or email" value={customerQuery} onChange={(event) => setCustomerQuery(event.target.value)} /></label>
         <button className="showroom-secondary" onClick={() => leaveStudioDialog(window, () => openFittingEditor("customer"))} disabled={!directory}><Plus size={17}/>New customer</button>

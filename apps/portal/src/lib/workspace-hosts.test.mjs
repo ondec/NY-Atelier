@@ -54,3 +54,8 @@ test('the shared catalogue syncs from local previews and the configured Office h
   assert.equal(catalogueSyncAllowed(new Headers({host:'127.0.0.1:3100','x-forwarded-host':'office.thenyatelier.com'}),env),true);
   assert.equal(catalogueSyncAllowed(new Headers({host:'127.0.0.1:3100','x-forwarded-host':'evil.example'}),env),false);
 });
+test('the customer-records role lands in Studio fittings and never receives an Office link',()=>{
+  assert.deepEqual(workspaceLinks(headers('localhost:3000'),'records',{}),{officeHref:'/showroom?view=fittings',studioHref:'/showroom?view=fittings'});
+  assert.deepEqual(workspaceLinks(headers('office.thenyatelier.com'),'records',env),{officeHref:'https://studio.thenyatelier.com/showroom?view=fittings',studioHref:'https://studio.thenyatelier.com/showroom?view=fittings'});
+  assert.equal(workspaceNavigationHref('https://studio.thenyatelier.com/showroom?view=fittings',true),'/showroom?view=fittings');
+});

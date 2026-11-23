@@ -1,8 +1,36 @@
-export type TeamMember = { id: number; name: string; job_title: string; salary_eligible: boolean; has_account: boolean };
+import type { StaffRole } from "./staff-permissions";
 
-export async function getTeam(): Promise<TeamMember[]> {
-  const response = await fetch("/api/staff-team", { cache: "no-store" });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.message ?? "Could not load the team directory.");
-  return data.members;
+export type TeamStatus = "active" | "invited" | "expired" | "none";
+export type TeamMember = {
+  id: number; name: string; job_title: string; salary_eligible: boolean; has_account: boolean;
+  email: string | null; role: StaffRole | null; role_label: string | null; status: TeamStatus;
+  invitation_expires_at: string | null; can_reinvite: boolean;
+};
+export type InvitableRole = { id: StaffRole; label: string };
+export type TeamDirectory = { members: TeamMember[]; emailDelivery: boolean; invitableRoles: InvitableRole[] };
+export type InvitationResult = { member: TeamMember; delivery: "sent" | "not_configured" | "failed"; setupUrl: string | null; expiresAt: string };
+
+/** What each assignable role can reach, in plain words for the owner choosing it. */
+export const roleSummaries: Partial<Record<StaffRole, string>> = {
+  records: "Customer records only: names, contact details, measurements and fitting history in NY Studio. No sales, finances, orders or NY Office.",
+  receptionist: "NY Office and NY Studio: customers, fittings, appointments, Ready-to-Wear sales and alterations. No finances or production management.",
+  manager: "NY Office and NY Studio, including orders, production, catalogue and finances. No team management.",
+};
+
+async function teamJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, { cache: "no-store", ...init });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const firstError = data.errors ? Object.values(data.errors as Record<string, string[]>)[0]?.[0] : undefined;
+    throw new Error(firstError ?? data.message ?? "The team directory is unavailable. Please try again.");
+  }
+  return data as T;
 }
+
+export const getTeam = () => teamJson<TeamDirectory>("/api/staff-team");
+
+export const inviteTeamMember = (invitation: { name: string; email: string; role: StaffRole }) =>
+  teamJson<InvitationResult>("/api/staff-team/invitations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(invitation) });
+
+export const reinviteTeamMember = (memberId: number) =>
+  teamJson<InvitationResult>(`/api/staff-team/${memberId}/invitation`, { method: "POST" });

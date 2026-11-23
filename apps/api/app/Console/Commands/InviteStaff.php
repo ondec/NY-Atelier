@@ -21,7 +21,7 @@ class InviteStaff extends Command
         $role = $this->argument('role');
         $portal = rtrim($this->option('portal'), '/');
         if (Validator::make(['email' => $email, 'portal' => $portal], ['email' => 'required|email|max:255', 'portal' => 'required|url:http,https'])->fails() || ! isset(StaffAccess::PERMISSIONS[$role])) {
-            $this->error('Provide a valid email, portal URL and role: owner, manager or receptionist.');
+            $this->error('Provide a valid email, portal URL and role: owner, manager, receptionist or records.');
 
             return self::FAILURE;
         }
@@ -37,14 +37,14 @@ class InviteStaff extends Command
             if ($user && ($user->staff_active || $user->staff_role !== $role)) {
                 return false;
             }
-            $user ??= new User(['email' => $email, 'name' => $this->option('name') ?: 'NY '.ucfirst($role), 'password' => Str::random(64)]);
+            $user ??= new User(['email' => $email, 'name' => $this->option('name') ?: 'NY '.StaffAccess::ROLE_LABELS[$role], 'password' => Str::random(64)]);
             $user->staff_role = $role;
             $user->staff_active = $password !== null;
             if ($password !== null) {
                 $user->password = $password;
             }
             $user->save();
-            DB::table('staff_members')->updateOrInsert(['user_id' => $user->id], ['name' => $user->name, 'job_title' => ucfirst($role), 'salary_eligible' => false, 'sort_order' => 100 + array_search($role, array_keys(StaffAccess::PERMISSIONS), true), 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('staff_members')->updateOrInsert(['user_id' => $user->id], ['name' => $user->name, 'job_title' => StaffAccess::ROLE_LABELS[$role], 'salary_eligible' => false, 'sort_order' => 100 + array_search($role, array_keys(StaffAccess::PERMISSIONS), true), 'created_at' => now(), 'updated_at' => now()]);
             if ($password === null) {
                 DB::table('staff_activation_tokens')->updateOrInsert(['user_id' => $user->id], ['hash' => hash('sha256', $token), 'expires_at' => now()->addDay()]);
             } else {

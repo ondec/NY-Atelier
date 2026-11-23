@@ -12,7 +12,7 @@ This is the current implementation guide for continuing work in Claude, Codex or
 - Three applications: customer Expo app, Next.js staff web app containing NY Studio and NY Office, and one shared Laravel API/PostgreSQL database.
 - **NY Studio is a responsive, installable web app. It is not the customer Expo app.** Studio must work across phones, tablets and desktop, not just mobile.
 - Staff authentication and the Studio POS are connected local implementations. Customer authentication, customer checkout and payment-provider processing remain unfinished. **Customer passwordless sign-in is paused (2026-11-21), and its file locks are released. The current priority is hosting NY Studio for staff testing. See the latest [work log](WORK_LOG.md) entry.**
-- Current requested feature (23 November): owner-managed Team invitations via **Microsoft 365**, proposed sender **no-reply@thenyatelier.com**, and a restricted customer-records role for Studio data entry. Mailbox existence/admin access are being confirmed; plan Microsoft Graph HTTPS sending scoped to that mailbox because Render Free blocks common SMTP ports. Implementation has not started at this checkpoint. Read the newest work log before continuing. Latest completed feature remains the cash-based Finance overview, with Studio Sales history and order-source tracking also implemented.
+- Current requested feature (23 November): owner-managed Team invitations via **Microsoft 365**, proposed sender **noreply@thenyatelier.com**, and a restricted customer-records role for Studio data entry. Mailbox existence/admin access are being confirmed; plan Microsoft Graph HTTPS sending scoped to that mailbox because Render Free blocks common SMTP ports. Implementation has not started at this checkpoint. Read the newest work log before continuing. Latest completed feature remains the cash-based Finance overview, with Studio Sales history and order-source tracking also implemented.
 - Current position: Studio and Office have a protected free Render preview at [ny-atelier-preview.onrender.com](https://ny-atelier-preview.onrender.com/showroom). Physical-device/team acceptance, approved WordPress catalogue import and permanent hosting remain follow-up work; do not execute that backlog without the current user request.
 - Domain access is available; Cloudflare manages DNS. The user selected **Render, free testing only**. No paid resources, DNS changes or custom application domains were configured. Do not assume earlier temporary preview tunnels still work.
 - The user reports WordPress admin access, but no admin session or catalogue import has been completed here. Verify which site and catalogue/plugin are involved before integration.
@@ -194,15 +194,20 @@ The approved direction combines clean editorial fashion shopping with restrained
 
 Staff sign-in is Laravel Sanctum backed. The Next.js server keeps the opaque token in an HttpOnly cookie; no auth token is stored in JavaScript storage. Current session/cookie lifetime is **eight hours**. Same-origin checks protect staff mutations and API gates enforce actions.
 
-| Capability | Owner | Manager | Receptionist |
-| --- | --- | --- | --- |
-| Office and Studio | Yes | Yes | Yes |
-| Customers/fittings, consultations, order read | Yes | Yes | Yes |
-| Create alterations | Yes | Yes | Yes |
-| Production/order management | Yes | Yes | No |
-| Catalogue management | Yes | Yes | No |
-| Finances | Yes | Yes, with role limits | No |
-| Team / owner-only reporting | Yes | No | No |
+| Capability | Owner | Manager | Receptionist | Customer records |
+| --- | --- | --- | --- | --- |
+| NY Office | Yes | Yes | Yes | No (redirected to Studio fittings) |
+| NY Studio fittings: customers, contacts, measurements, fitting history | Yes | Yes | Yes | Yes |
+| Studio Ready-to-Wear catalogue and sales (`sales`) | Yes | Yes | Yes | No |
+| Consultations, order read, create alterations | Yes | Yes | Yes | No |
+| Production/order management | Yes | Yes | No | No |
+| Catalogue management | Yes | Yes | No | No |
+| Finances | Yes | Yes, with role limits | No | No |
+| Team / invitations / owner-only reporting | Yes | No | No | No |
+
+API role id for customer records is `records` (`['studio','customers']`). Its home is `/showroom?view=fittings`; `officeHref` points there too, so sign-in/activation land correctly. `/api/demo/staff/customers*` is the only staff API group outside `can:staff.office`; Studio catalogue/sales routes require `can:staff.sales`; `/api/staff/auth/me` requires `can:staff.studio`. In Studio the role never fetches the catalogue, sees no Ready-to-Wear/Sales Desk/Sales history, and typed `view=collection` URLs are rewritten to fittings.
+
+**Team invitations (owner only):** NY Office → Team → Invite staff (name, email, role: manager, receptionist or customer records; owners are never created from the web). `App\StaffInvitations` reuses `staff_activation_tokens` (one hashed, one-use token per account, 72 hours, `NY_STAFF_INVITATION_HOURS`) and the existing `/staff/activate` page. Inviting a still-pending email may correct its name/role; active accounts and owner accounts are refused (409) and never changed. Resend replaces the previous link. Setup links use `NY_STAFF_PORTAL_URL`, else Render's `RENDER_EXTERNAL_URL`, else `http://127.0.0.1:3000`. Email goes out only when `MAIL_MAILER` is a delivering mailer; with `log`/`array` nothing is mailed or logged and the owner gets the link on screen to share privately (also shown if sending fails). The `microsoft-graph` mailer (`App\Mail\MicrosoftGraphTransport`) sends MIME over HTTPS with client-credentials using `MICROSOFT_GRAPH_TENANT_ID/CLIENT_ID/CLIENT_SECRET/SENDER`. Microsoft side is configured (23 Nov): Entra app "NY Atelier Staff Mail", Exchange scope "NY noreply only" with Application Mail.Send, verified InScope True. `render.yaml` selects this mailer; tenant/client IDs and secret must be entered in the Render dashboard.
 
 Source of truth: API `app/StaffAccess.php` and gates in `AppServiceProvider.php`; portal visibility in `src/lib/staff-permissions.ts`. Changing a URL or Office role segment must not change the authenticated role. Planned designer/tailor accounts and finer manager-only approvals are not implemented simply because the historical product plan lists them.
 

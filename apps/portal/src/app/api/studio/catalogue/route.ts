@@ -1,9 +1,9 @@
-import { canManageCatalogue, studioAuthorized, studioCors, studioJson, studioSameOrigin } from "@/lib/studio-access";
+import { canManageCatalogue, studioSalesError, studioCors, studioJson, studioSameOrigin } from "@/lib/studio-access";
 import { CatalogueError, readStudioCatalogue, writeStudioCatalogue } from "@/lib/studio-catalogue-store";
 export const runtime = "nodejs";
 export async function OPTIONS(request: Request) { return new Response(null, { status: 204, headers: studioCors(request) }); }
 export async function GET(request: Request) {
-  if (!await studioAuthorized(request)) return Response.json({ message: "Sign in with your staff account." }, { status: 401, headers: studioCors(request) });
+  const denied = await studioSalesError(request, studioCors(request)); if (denied) return denied;
   try { return Response.json(await readStudioCatalogue(), { headers: { ...studioCors(request), "Cache-Control": "no-store" } }); }
   catch (error) { return Response.json({ message: error instanceof CatalogueError ? error.message : "The shared catalogue is unavailable. Try again." }, { status: error instanceof CatalogueError ? error.status : 503, headers: studioCors(request) }); }
 }

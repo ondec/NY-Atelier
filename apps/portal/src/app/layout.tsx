@@ -26,7 +26,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const topPreview = process.env.NY_WORKSPACE_LAYOUT === "top" && staff?.role === "owner";
   return (
     <html lang="en">
-      <body><WebAppProvider><StaffProvider staff={staff}><div className={`workspace-frame${topPreview ? " workspace-frame-top" : ""}${!staff ? " workspace-signed-out" : ""}`}>{staff && !topPreview && <WorkspaceRail officeHref={staff.officeHref} studioHref={staff.studioHref} />}<div className="workspace-surface">{can(staff,"catalogue.manage") && <StudioCatalogueSync enabled={catalogueSync} />}{children}</div></div></StaffProvider></WebAppProvider></body>
+      <body><WebAppProvider><StaffProvider staff={staff}><div className={`workspace-frame${topPreview ? " workspace-frame-top" : ""}${!staff ? " workspace-signed-out" : ""}`}>{staff && !topPreview && <WorkspaceRail officeHref={staff.officeHref} studioHref={staff.studioHref} office={can(staff,"office")} />}<div className="workspace-surface">{can(staff,"catalogue.manage") && <StudioCatalogueSync enabled={catalogueSync} />}{children}</div></div></StaffProvider></WebAppProvider></body>
     </html>
   );
 }

@@ -34,3 +34,9 @@ test('Office access requires its own permission for every role, including Studio
   assert.equal(can(null,'office'),false);
   assert.equal(can({...receptionist,permissions:['office']},'studio'),false);
 });
+test('the customer-records role reaches customers only, with no Office, sales or orders',()=>{
+  const records={id:9,name:'Records',email:'records@example.test',role:'records',permissions:['studio','customers'],officeHref:'/showroom?view=fittings'};
+  assert.equal(can(records,'customers'),true);assert.equal(can(records,'studio'),true);
+  for(const permission of ['office','sales','orders.read','alterations.create','consultations','finances','team','catalogue.manage'])assert.equal(can(records,permission),false);
+  for(const section of ['overview','orders','ready-to-wear','finances','team','appointments'])assert.equal(sectionAllowed(records,section),false);
+});

@@ -56,7 +56,7 @@ Route::prefix('staff/auth')->group(function () {
     Route::post('/login', [StaffAuthController::class, 'login'])->middleware('throttle:30,1');
     Route::post('/activation', [StaffAuthController::class, 'activation'])->middleware('throttle:30,1');
     Route::post('/activate', [StaffAuthController::class, 'activate'])->middleware('throttle:10,1');
-    Route::get('/me', [StaffAuthController::class, 'me'])->middleware(['auth:sanctum', 'can:staff.office']);
+    Route::get('/me', [StaffAuthController::class, 'me'])->middleware(['auth:sanctum', 'can:staff.studio']);
     Route::post('/logout', [StaffAuthController::class, 'logout'])->middleware('auth:sanctum');
 });
 Route::get('/demo/size-chart-collections', function () {
@@ -72,6 +72,19 @@ Route::prefix('demo/consultations')->group(function () {
         Route::patch('/{id}/customer', [DemoConsultationController::class, 'customer'])->whereUuid('id');
     });
 });
+// Customer records are the only staff area open to the restricted customer-records role; everything else
+// below still requires NY Office access, and Studio sales additionally require the sales permission.
+Route::prefix('demo/staff/customers')->middleware(['auth:sanctum', 'can:staff.customers'])->group(function () {
+    Route::get('/', [DemoCustomerController::class, 'index']);
+    Route::get('/{customer}', [DemoCustomerController::class, 'show'])->whereNumber('customer');
+    Route::get('/{customer}/measurements/{measurement}/attachments/{attachment}', [DemoCustomerController::class, 'attachment'])
+        ->whereNumber('customer')->whereNumber('measurement')->whereUuid('attachment');
+    Route::middleware('throttle:30,1')->group(function () {
+        Route::post('/', [DemoCustomerController::class, 'store']);
+        Route::patch('/{customer}', [DemoCustomerController::class, 'update'])->whereNumber('customer');
+        Route::post('/{customer}/measurements', [DemoCustomerController::class, 'measure'])->whereNumber('customer');
+    });
+});
 Route::prefix('demo/staff')->middleware(['auth:sanctum', 'can:staff.office'])->group(function () use ($listOrders) {
     Route::get('/overview', OwnerOverviewController::class)->middleware('can:staff.owner-overview');
     Route::get('/finances/overview', FinanceOverviewController::class)->middleware('can:staff.finances');
@@ -81,25 +94,18 @@ Route::prefix('demo/staff')->middleware(['auth:sanctum', 'can:staff.office'])->g
     Route::patch('/orders/{reference}/workflow', [DemoOrderWorkflowController::class, 'update'])->middleware(['can:staff.orders.manage', 'throttle:60,1']);
     Route::post('/orders', [DemoStaffOrderController::class, 'store'])->middleware('throttle:30,1');
     Route::get('/consultations', [DemoConsultationController::class, 'index'])->middleware('can:staff.consultations');
-    Route::prefix('customers')->middleware('can:staff.customers')->group(function () {
-        Route::get('/', [DemoCustomerController::class, 'index']);
-        Route::get('/{customer}', [DemoCustomerController::class, 'show'])->whereNumber('customer');
-        Route::get('/{customer}/measurements/{measurement}/attachments/{attachment}', [DemoCustomerController::class, 'attachment'])
-            ->whereNumber('customer')->whereNumber('measurement')->whereUuid('attachment');
-        Route::middleware('throttle:30,1')->group(function () {
-            Route::post('/', [DemoCustomerController::class, 'store']);
-            Route::patch('/{customer}', [DemoCustomerController::class, 'update'])->whereNumber('customer');
-            Route::post('/{customer}/measurements', [DemoCustomerController::class, 'measure'])->whereNumber('customer');
-        });
-    });
     Route::prefix('salaries')->middleware('can:staff.finances')->group(function () {
         Route::get('/', [DemoSalaryController::class, 'index']);
         Route::get('/{id}', [DemoSalaryController::class, 'show'])->whereUuid('id');
         Route::post('/', [DemoSalaryController::class, 'store'])->middleware('throttle:30,1');
         Route::patch('/{id}', [DemoSalaryController::class, 'update'])->whereUuid('id')->middleware('throttle:60,1');
     });
-    Route::get('/team', [DemoTeamController::class, 'index'])->middleware('can:staff.team');
-    Route::prefix('studio')->middleware('can:staff.studio')->group(function () {
+    Route::prefix('team')->middleware('can:staff.team')->group(function () {
+        Route::get('/', [DemoTeamController::class, 'index']);
+        Route::post('/invitations', [DemoTeamController::class, 'invite'])->middleware('throttle:20,1');
+        Route::post('/{member}/invitation', [DemoTeamController::class, 'resend'])->whereNumber('member')->middleware('throttle:20,1');
+    });
+    Route::prefix('studio')->middleware(['can:staff.studio', 'can:staff.sales'])->group(function () {
         Route::post('/orders', [DemoStaffOrderController::class, 'store'])->name('demo.staff.studio.order-create')->middleware('throttle:30,1');
         Route::get('/catalogue', [DemoStudioSaleController::class, 'catalogue']);
         Route::post('/catalogue/initialize', [DemoStudioSaleController::class, 'initialize'])->middleware('can:staff.catalogue.manage');
