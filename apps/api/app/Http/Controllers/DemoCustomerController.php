@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\CustomerSignIn;
 use App\Models\Customer;
 use App\StaffAccess;
 use Illuminate\Database\Eloquent\Builder;
@@ -10,11 +11,13 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DemoCustomerController extends Controller
 {
@@ -121,6 +124,30 @@ class DemoCustomerController extends Controller
         return $this->save($request, $customer);
     }
 
+    /**
+     * A repeated email always blocks (one email per customer); a repeated phone number blocks until staff confirm it is a different person.
+     *
+     * @param  array{email?: ?string, phone?: ?string}  $data
+     * @return array{message: string, duplicate: array{id: int, name: string, phone: ?string, email: ?string}, field: string, can_save_anyway: bool}|null
+     */
+    private function duplicateOf(Customer $customer, array $data, bool $allowRepeatedPhone): ?array
+    {
+        $others = fn () => Customer::query()->whereKeyNot($customer->getKey())->oldest('id');
+        $email = $data['email'] ?? null;
+        if ($email !== null && $email !== $customer->email && ($match = $others()->whereRaw('LOWER(email) = ?', [$email])->first(['id', 'name', 'phone', 'email']))) {
+            return ['message' => "{$match->name} already has this email address. Each email can belong to one customer.",
+                'duplicate' => $match->only(['id', 'name', 'phone', 'email']), 'field' => 'email', 'can_save_anyway' => false];
+        }
+        $phone = CustomerSignIn::normalizePhone($data['phone'] ?? null);
+        if ($phone !== null && $phone !== $customer->phone_e164 && ! $allowRepeatedPhone
+            && ($match = $others()->where('phone_e164', $phone)->first(['id', 'name', 'phone', 'email']))) {
+            return ['message' => "{$match->name} already has this phone number. Open their record, or save anyway if this is a different person.",
+                'duplicate' => $match->only(['id', 'name', 'phone', 'email']), 'field' => 'phone', 'can_save_anyway' => true];
+        }
+
+        return null;
+    }
+
     private function save(Request $request, Customer $customer): JsonResponse
     {
         $this->staffOnly($request);
@@ -130,13 +157,17 @@ class DemoCustomerController extends Controller
         }
         $data = $request->validate([
             'name' => ['required', 'string', 'max:150'],
-            'email' => ['nullable', 'required_without:phone', 'email:rfc', 'max:254', Rule::unique('customers')->ignore($customer)],
+            'email' => ['nullable', 'required_without:phone', 'email:rfc', 'max:254'],
             'phone' => ['nullable', 'required_without:email', 'string', 'max:40', 'regex:/^[+\d() .-]+$/', 'regex:/\d/'],
             'account_reference' => ['nullable', 'string', 'max:100', Rule::unique('customers')->ignore($customer)],
         ]);
         $demoName = config('demo.customer_name');
         if (($customer->name === $demoName) !== ($data['name'] === $demoName)) {
             throw ValidationException::withMessages(['name' => 'The demo customer name is reserved.']);
+        }
+
+        if ($duplicate = $this->duplicateOf($customer, $data, $request->boolean('allow_duplicate'))) {
+            return response()->json($duplicate, 409);
         }
 
         $exists = $customer->exists;
@@ -242,18 +273,47 @@ class DemoCustomerController extends Controller
         return response()->json(['id' => $id], 201);
     }
 
-    public function attachment(Request $request, Customer $customer, int $measurement, string $attachment): BinaryFileResponse
+    public function attachment(Request $request, Customer $customer, int $measurement, string $attachment): Response
     {
         $this->staffOnly($request);
         $file = DB::table('fitting_attachments')->join('customer_measurements', 'customer_measurements.id', '=', 'fitting_attachments.measurement_id')
             ->where('fitting_attachments.id', $attachment)->where('measurement_id', $measurement)
             ->where('customer_measurements.customer_id', $customer->id)->first(['fitting_attachments.path', 'mime_type']);
-        abort_unless($file && Storage::disk('fittings')->exists($file->path), 404);
+        $disk = Storage::disk('fittings');
+        abort_unless($file && $disk->exists($file->path), 404);
+        $headers = ['Content-Type' => $file->mime_type, 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff', 'Content-Disposition' => 'inline'];
 
-        return response()->file(Storage::disk('fittings')->path($file->path), [
-            'Content-Type' => $file->mime_type, 'Cache-Control' => 'private, no-store',
-            'X-Content-Type-Options' => 'nosniff', 'Content-Disposition' => 'inline',
-        ]);
+        if (config('filesystems.disks.fittings.driver') !== 's3') {
+            return response()->file($disk->path($file->path), $headers);
+        }
+
+        return $this->streamFromBucket($request, $disk->temporaryUrl($file->path, now()->addMinutes(5)), $headers);
+    }
+
+    /**
+     * Relays a file from the private R2 bucket through the API, passing on byte-range requests so videos can seek
+     * (iPhone and iPad Safari require this). Staff never receive a bucket link.
+     *
+     * @param  array<string, string>  $headers
+     */
+    private function streamFromBucket(Request $request, string $signedUrl, array $headers): StreamedResponse
+    {
+        $range = $request->header('Range');
+        $upstream = Http::withHeaders($range ? ['Range' => $range] : [])->withOptions(['stream' => true])->timeout(60)->get($signedUrl);
+        abort_unless(in_array($upstream->status(), [200, 206, 416], true), $upstream->status() === 404 ? 404 : 502);
+        foreach (['Content-Length', 'Content-Range'] as $name) {
+            if ($upstream->header($name) !== '') {
+                $headers[$name] = $upstream->header($name);
+            }
+        }
+        $body = $upstream->toPsrResponse()->getBody();
+
+        return response()->stream(function () use ($body): void {
+            while (! $body->eof()) {
+                echo $body->read(65536);
+                flush();
+            }
+        }, $upstream->status(), $headers + ['Accept-Ranges' => 'bytes']);
     }
 
     private function staffOnly(Request $request): void

@@ -32,9 +32,14 @@ export async function customerApi<T>(query = "", init?: RequestInit): Promise<T>
     ...init, cache: "no-store", headers: init?.body instanceof FormData ? undefined : { "Content-Type": "application/json" },
   });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.message || "Could not load customer records.");
+  if (!response.ok) throw new CustomerApiError(payload.message || "Could not load customer records.", response.status, payload);
   return payload;
 }
+
+export class CustomerApiError extends Error {
+  constructor(message: string, readonly status: number, readonly payload: { duplicate?: DuplicateCustomer; field?: "email" | "phone"; can_save_anyway?: boolean }) { super(message); }
+}
+type DuplicateCustomer = { id: number; name: string; phone: string | null; email?: string | null };
 
 export type CustomerPage = Directory & { total: number; page: number; has_more: boolean };
 type SearchState = { term: string; rows: Customer[]; total: number; page: number; hasMore: boolean };
@@ -190,6 +195,9 @@ export function CustomerEditor({ mode, profile, fields, templateId, template, un
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [preparingMedia, setPreparingMedia] = useState(false);
+  const [duplicate, setDuplicate] = useState<{ customer: DuplicateCustomer; field: "email" | "phone"; canSaveAnyway: boolean; addMeasurements: boolean }>();
+  const formRef = useRef<HTMLFormElement>(null);
   const requestId = useRef<string | null>(null);
   const customer = profile?.customer;
   const previous = templateId ? profile?.measurements.find((item) => item.garment_type === templateId) : profile?.measurements[0];
@@ -206,12 +214,16 @@ export function CustomerEditor({ mode, profile, fields, templateId, template, un
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || (fitting && !customer)) return;
     const submitter = (event.nativeEvent as SubmitEvent).submitter;
-    const addMeasurements = !fitting && !customer && onSaveAndMeasure && submitter instanceof HTMLButtonElement && submitter.value === 'measurements';
-    const data = new FormData(event.currentTarget);
+    await submit(event.currentTarget, Boolean(!fitting && !customer && onSaveAndMeasure && submitter instanceof HTMLButtonElement && submitter.value === 'measurements'), false);
+  }
+
+  async function submit(form: HTMLFormElement, addMeasurements: boolean, allowDuplicate: boolean) {
+    if (busy || (fitting && !customer)) return;
+    const data = new FormData(form);
     setBusy(true);
     setError("");
+    setDuplicate(undefined);
     try {
       if (fitting && customer) {
         requestId.current ??= createRequestId();
@@ -230,13 +242,14 @@ export function CustomerEditor({ mode, profile, fields, templateId, template, un
       } else {
         const result = await customerApi<{ id: number }>(customer ? `?id=${customer.id}` : "", {
           method: customer ? "PATCH" : "POST",
-          body: JSON.stringify({ name: data.get("name"), email: data.get("email"), phone: data.get("phone"), account_reference: data.get("account_reference") }),
+          body: JSON.stringify({ name: data.get("name"), email: data.get("email"), phone: data.get("phone"), account_reference: data.get("account_reference"), allow_duplicate: allowDuplicate }),
         });
-        if (addMeasurements) onSaveAndMeasure(result.id);
+        if (addMeasurements && onSaveAndMeasure) onSaveAndMeasure(result.id);
         else onSaved(result.id);
       }
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Could not save this record.");
+      if (failure instanceof CustomerApiError && failure.status === 409 && failure.payload.duplicate) setDuplicate({ customer: failure.payload.duplicate, field: failure.payload.field ?? "phone", canSaveAnyway: failure.payload.can_save_anyway !== false, addMeasurements });
+      else setError(failure instanceof Error ? failure.message : "Could not save this record.");
     } finally {
       setBusy(false);
     }
@@ -245,13 +258,13 @@ export function CustomerEditor({ mode, profile, fields, templateId, template, un
   return <InventoryDrawer label={label} fullScreen={fullScreen} dismissible={!busy} onClose={() => { if (!busy) onClose(); }}>
     <section className="panel inventory-form-panel">
       <div className="inventory-form-title">{fullScreen && <button className="fitting-screen-back" type="button" aria-label="Back" disabled={busy} onClick={onClose}><ArrowLeft size={20}/></button>}<h2>{label}</h2><button className="fitting-screen-close" type="button" aria-label="Close form" disabled={busy} onClick={onClose}><X size={18} /></button></div>
-      <form onSubmit={save}>
+      <form ref={formRef} onSubmit={save} onChange={() => setDuplicate(undefined)}>
         {fitting ? <>
           <p className="consultation-muted">Enter measurements in {unit === 'in' ? 'inches' : 'centimetres'}. Leave anything you have not measured blank. Use + to add fields or remove any you do not need.</p>
           <div className="inventory-form-grid">
             <label className="inventory-wide-field">Fitting date<input type="date" name="measured_on" defaultValue={today} max={today} required /></label>
           </div>
-          <FittingFields fields={fields} template={template} previous={previous} unit={unit} busy={busy} onAttachmentsChange={setAttachments}/>
+          <FittingFields fields={fields} template={template} previous={previous} unit={unit} busy={busy} onAttachmentsChange={setAttachments} onPreparingChange={setPreparingMedia}/>
           <div className="inventory-form-grid">
             <label className="inventory-wide-field">Fitting notes (optional)<textarea name="notes" rows={3} maxLength={1000} /></label>
           </div>
@@ -265,8 +278,17 @@ export function CustomerEditor({ mode, profile, fields, templateId, template, un
           </div>
         </>}
         {error && <p className="collection-error" role="alert">{error}</p>}
+        {duplicate && <div className="customer-duplicate" role="alert">
+          {duplicate.field === "email"
+            ? <p><strong>{duplicate.customer.name}</strong> already uses the email {duplicate.customer.email ?? "you entered"}. Each email can belong to one customer, so open their record or use a different email.</p>
+            : <p><strong>{duplicate.customer.name}</strong> already has the phone number {duplicate.customer.phone ?? "you entered"}. Is this the same person?</p>}
+          <div className="customer-duplicate-actions">
+            <button type="button" className="inventory-quiet-button" disabled={busy} onClick={() => onSaved(duplicate.customer.id)}>Open {duplicate.customer.name}</button>
+            {duplicate.canSaveAnyway && <button type="button" className="inventory-quiet-button" disabled={busy} onClick={() => { if (formRef.current) void submit(formRef.current, duplicate.addMeasurements, true); }}>No, save as a new customer</button>}
+          </div>
+        </div>}
         <div className={`inventory-form-footer${!fitting && !customer && onSaveAndMeasure ? ' customer-save-actions' : ''}`}>
-          <button className={!fitting && !customer && onSaveAndMeasure ? 'customer-save-only' : undefined} type="submit" disabled={busy}>{busy ? "Saving…" : fitting ? "Save fitting" : "Save customer"}</button>
+          <button className={!fitting && !customer && onSaveAndMeasure ? 'customer-save-only' : undefined} type="submit" disabled={busy || preparingMedia}>{busy ? "Saving…" : preparingMedia ? "Preparing photos…" : fitting ? "Save fitting" : "Save customer"}</button>
           {!fitting && !customer && onSaveAndMeasure && <button type="submit" value="measurements" disabled={busy}>{busy ? "Saving…" : "Save & add measurement"}</button>}
         </div>
       </form>

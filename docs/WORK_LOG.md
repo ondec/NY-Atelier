@@ -2,6 +2,26 @@
 
 Use this file for dated handoffs between Claude, Codex and maintainers. Read the latest entry first, then [AI_HANDOFF.md](AI_HANDOFF.md) for architecture and design. Dates use Africa/Accra. Write facts and results, not hidden reasoning or a chat transcript. Do not include credentials or private fitting values.
 
+## 2026-11-23 — Claude — Email duplicates, photo compression and Cloudflare R2 storage (local, NOT pushed)
+
+**Duplicates:** the customer form now checks email as well as phone. `DemoCustomerController::duplicateOf()` returns 409 `{message, duplicate, field, can_save_anyway}`. A repeated email (case-insensitive) always blocks and only offers **Open <name>**; a repeated phone offers Open or **No, save as a new customer** (`allow_duplicate`). The email `Rule::unique` was replaced by this check; the database unique index stays as a backstop.
+
+**Photo compression (browser, before upload):** `src/lib/image-compression.ts` re-encodes JPEG/PNG/WebP (and HEIC where the browser can decode it, i.e. Safari) to JPEG quality 0.85, longest side ≤3000 px, applying camera orientation and dropping metadata such as GPS. GIFs, videos and undecodable files are sent unchanged; the compressed copy is kept only if scaled down or ≥10% smaller. `FittingFields` shows "Optimising photos for upload…" and `CustomerEditor` disables saving ("Preparing photos…") until ready. Size limits are checked after compression. Local check: a 7.37 MB 4032×3024 JPEG was stored as 1.40 MB 3000×2250 and displayed at full size.
+
+**R2 storage:** new dependency `league/flysystem-aws-s3-v3` ^3 (user approved R2). `config/filesystems.php` `fittings` disk becomes a private S3-compatible R2 disk when `FITTINGS_STORAGE=r2` (`R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, optional `R2_ROOT`, default `fittings`); otherwise it stays local. Attachments are still served only through the authenticated API: local files via `response()->file` (byte ranges), R2 files relayed from a 5-minute signed URL with the `Range` header passed through (videos seek on iPhone/iPad); staff never see a bucket link. `render.yaml` lists the five settings as `sync: false`. **Until the user creates the bucket and enters the settings in Render, the preview still stores files on the wiped server disk.** Files uploaded before the switch are not migrated.
+
+**Checks:** API 165 passed / 1275 assertions (email duplicate test; new `FittingStorageTest`: config switch, R2 relay with Range and no bucket link, missing file 404). Portal TypeScript, scoped ESLint, 84 logic tests (new `image-compression.test.mjs`), `NY_STAFF_PREVIEW=1` build. Browser (local): email duplicate prompt, photo compression, attachment 200 and 206 Range. The R2 path itself is untested against real Cloudflare. `composer audit` lists 8 advisories in already-installed laravel/framework and symfony packages (none from the new package).
+
+## 2026-11-23 — Claude — Ready for staff manual data entry: duplicate-phone warning (local, NOT pushed; extended to email in the entry above)
+
+**User plan:** NY personnel will test-drive the live preview by typing customer records (name, phone, measurements) by hand, hourly. No bulk import for now.
+
+**Change:** creating a customer (or changing a phone) whose number already belongs to another customer returns 409 with `duplicate {id,name,phone}` unless `allow_duplicate` is true. `CustomerEditor` shows "<name> already has the phone number … Is this the same person?" with **Open <name>** (goes to that record) and **No, save as a new customer** (resubmits, keeping the Save & add measurement choice). Editing a record without changing its number is never blocked. `CustomerApiError` carries status and payload from `customerApi`.
+
+**Checks:** API 161 passed (new duplicate test in `CustomerSearchTest`); portal TypeScript, scoped ESLint, 80 logic tests, `NY_STAFF_PREVIEW=1` build. Browser (local Studio): duplicate warning shown for 024 000 0001; Open went to the existing profile; nothing created.
+
+**Readiness risks reported to the user (not fixed):** (1) fitting photos/videos are stored on the web server's local disk (`fittings` disk, `storage/app/fittings`), which Render Free wipes on every restart, wake-from-sleep and deploy; the database rows survive but files disappear. (2) The free Postgres is deleted 23 December 2026 and has no backups; entered records survive only if the database is upgraded to a paid plan before then. Staff accounts: invite each tester in Team with the **Customer records** role.
+
 ## 2026-11-23 — Codex — Fitting inspiration viewer (pushed `1311e47`)
 
 **Problem/fix:** saved fitting images and filenames opened the raw protected file in another tab, with no app navigation. They now open an in-app dialog with a circular **Back to fitting** button, filename, current/total count, Previous/Next buttons and a swipe/drag carousel (existing Embla dependency). The viewer starts at the tapped file; navigation stops at each end. Single-file fittings keep Back and the count without redundant arrows. Videos retain inline controls and can also open in the viewer from their filename; hidden/closed videos pause. The image stays contained so none of it is cropped. Phone viewer fills the screen with safe-area padding; wider screens use a centred dialog.

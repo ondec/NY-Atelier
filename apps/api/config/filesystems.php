@@ -30,7 +30,20 @@ return [
 
     'disks' => [
 
-        'fittings' => [
+        // Fitting photos and videos. Set FITTINGS_STORAGE=r2 (with the R2_* keys) to keep them in a private
+        // Cloudflare R2 bucket; otherwise they stay on this server's disk, which Render Free wipes on restart.
+        'fittings' => env('FITTINGS_STORAGE', 'local') === 'r2' ? [
+            'driver' => 's3',
+            'key' => env('R2_ACCESS_KEY_ID'),
+            'secret' => env('R2_SECRET_ACCESS_KEY'),
+            'region' => 'auto',
+            'bucket' => env('R2_BUCKET'),
+            'endpoint' => env('R2_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'root' => env('R2_ROOT', 'fittings'),
+            'visibility' => 'private',
+            'throw' => true,
+        ] : [
             'driver' => 'local',
             'root' => storage_path('app/fittings'),
             'visibility' => 'private',

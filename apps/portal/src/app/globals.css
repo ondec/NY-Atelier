@@ -773,3 +773,6 @@ button.order-board-card{width:100%;text-align:left;font:inherit;color:inherit;cu
 .client-picker-option { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border: 1px solid var(--line, #E7E1D6); border-radius: 10px; background: transparent; cursor: pointer; font: inherit; color: inherit; }
 .client-picker-option[aria-pressed="true"] { border-color: var(--petrol, #123C45); }
 .client-picker-option small { color: var(--muted, #687773); }
+.customer-duplicate { display: grid; gap: 10px; margin: 12px 0; padding: 12px 14px; border: 1px solid var(--brass); border-radius: 12px; background: color-mix(in srgb, var(--brass) 10%, transparent); }
+.customer-duplicate p { margin: 0; }
+.customer-duplicate-actions { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import {useEffect, useRef, useState, type ChangeEvent} from 'react';
+import {compressPhoto} from '@/lib/image-compression';
 import {Plus, Upload, X} from '@/components/icons';
 import {fittingMediaUrl, fittingUploadLimits, measurementUnit, measurementValue, type FittingAttachment, type MeasurementUnit} from '@/lib/fitting-measurements';
 import type {Fitting, MeasurementTemplate} from './customers-workspace';
@@ -26,14 +27,17 @@ export function FittingMedia({customerId, fittingId, attachments}: {customerId: 
   </section>;
 }
 
-export default function FittingFields({fields, template, previous, unit, busy, onAttachmentsChange}: {
+export default function FittingFields({fields, template, previous, unit, busy, onAttachmentsChange, onPreparingChange}: {
   fields: Record<string, string>; template?: MeasurementTemplate; previous?: Fitting;
   unit: MeasurementUnit; busy: boolean; onAttachmentsChange: (files: File[]) => void;
+  /** True while chosen photos are being compressed, so the form can hold saving until they are ready. */
+  onPreparingChange?: (preparing: boolean) => void;
 }) {
   const [groups, setGroups] = useState(() => (template?.groups ?? [{title: 'Measurements', fields: Object.keys(fields)}]).map(group => ({...group, fields: [...group.fields]})));
   const [custom, setCustom] = useState<{id: number; group: number}[]>([]);
   const [media, setMedia] = useState<PendingMedia[]>([]);
   const [mediaError, setMediaError] = useState('');
+  const [preparing, setPreparing] = useState(false);
   const nextId = useRef(0);
   const focusCustomLabel = useRef<number | null>(null);
   const urls = useRef(new Set<string>());
@@ -49,15 +53,18 @@ export default function FittingFields({fields, template, previous, unit, busy, o
     focusCustomLabel.current = id;
     setCustom(current => [...current, {id, group}]);
   }
-  function addFiles(event: ChangeEvent<HTMLInputElement>) {
-    const incoming = Array.from(event.target.files ?? []);
+  async function addFiles(event: ChangeEvent<HTMLInputElement>) {
+    const chosen = Array.from(event.target.files ?? []);
     event.target.value = '';
-    if (!incoming.length) return;
-    const all = [...media.map(item => item.file), ...incoming];
+    if (!chosen.length) return;
     const accepted = /^(image\/(jpeg|png|webp|gif|heic|heif)|video\/(mp4|quicktime|webm))$/;
     const extension = /\.(jpe?g|png|webp|gif|heic|heif|mp4|mov|webm)$/i;
-    if (all.length > fittingUploadLimits.files) {setMediaError('Choose up to 6 photos and videos.'); return;}
-    if (incoming.some(file => file.type ? !accepted.test(file.type) : !extension.test(file.name))) {setMediaError('Choose JPG, PNG, WebP, GIF, HEIC, MP4, MOV or WebM files.'); return;}
+    if (media.length + chosen.length > fittingUploadLimits.files) {setMediaError('Choose up to 6 photos and videos.'); return;}
+    if (chosen.some(file => file.type ? !accepted.test(file.type) : !extension.test(file.name))) {setMediaError('Choose JPG, PNG, WebP, GIF, HEIC, MP4, MOV or WebM files.'); return;}
+    setPreparing(true); onPreparingChange?.(true); setMediaError('');
+    let incoming: File[];
+    try { incoming = await Promise.all(chosen.map(compressPhoto)); } finally { setPreparing(false); onPreparingChange?.(false); }
+    const all = [...media.map(item => item.file), ...incoming];
     if (all.some(file => file.size > fittingUploadLimits.fileBytes) || all.reduce((sum, file) => sum + file.size, 0) > fittingUploadLimits.totalBytes) {
       setMediaError('Keep each file under 20 MB and all attachments under 60 MB.'); return;
     }
@@ -97,9 +104,10 @@ export default function FittingFields({fields, template, previous, unit, busy, o
       {!group.fields.length && !custom.some(row => row.group === groupIndex) && <p className="consultation-muted">Use + to add a measurement.</p>}
     </fieldset>)}
     <section className="fitting-inspiration" aria-label="Upload fitting inspiration">
-      <div className="fitting-inspiration-heading"><div><h3>Inspiration</h3><p className="consultation-muted">Photos and videos for this fitting.</p></div><button type="button" className="inventory-quiet-button" disabled={busy || media.length >= 6} onClick={() => uploadInput.current?.click()}><Upload size={17}/>Add photos or videos</button></div>
+      <div className="fitting-inspiration-heading"><div><h3>Inspiration</h3><p className="consultation-muted">Photos and videos for this fitting.</p></div><button type="button" className="inventory-quiet-button" disabled={busy || preparing || media.length >= 6} onClick={() => uploadInput.current?.click()}><Upload size={17}/>Add photos or videos</button></div>
       <input className="sr-only" ref={uploadInput} type="file" aria-label="Choose inspiration photos and videos" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,video/mp4,video/quicktime,video/webm,.mov,.heic,.heif" multiple disabled={busy} onChange={addFiles}/>
       <p className="fitting-upload-limit">Up to 6 files · 20 MB each · 60 MB total</p>
+      {preparing && <p className="consultation-muted" role="status">Optimising photos for upload…</p>}
       {mediaError && <p className="collection-error" role="alert">{mediaError}</p>}
       {!!media.length && <div className="fitting-media-grid">{media.map(item => <figure key={item.id}>
         {item.file.type.startsWith('video/') || /\.(mp4|mov|webm)$/i.test(item.file.name) ? <video src={item.url} controls playsInline preload="metadata" aria-label={item.file.name}/> : <Image unoptimized src={item.url} alt={item.file.name} width={320} height={240}/>}

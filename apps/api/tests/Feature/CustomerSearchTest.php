@@ -93,6 +93,38 @@ class CustomerSearchTest extends TestCase
         $this->assertSame(1, Customer::query()->count());
     }
 
+    public function test_a_phone_number_already_on_file_is_flagged_before_a_second_customer_is_created(): void
+    {
+        $ama = Customer::query()->create(['name' => 'Ama Mensah', 'phone' => '+233 24 123 4567']);
+        $this->signInStaff('records');
+
+        $this->postJson(self::LIST, ['name' => 'Ama M.', 'phone' => '024 123 4567'])->assertConflict()
+            ->assertJsonPath('duplicate.id', $ama->id)->assertJsonPath('duplicate.name', 'Ama Mensah');
+        $this->assertSame(1, Customer::query()->count());
+
+        $this->postJson(self::LIST, ['name' => 'Ama Junior', 'phone' => '024 123 4567', 'allow_duplicate' => true])->assertCreated();
+        $this->assertSame(2, Customer::query()->count());
+
+        // Editing a record without changing its number, or giving a new number, is never blocked.
+        $this->patchJson(self::LIST.'/'.$ama->id, ['name' => 'Ama Owusu Mensah', 'phone' => '+233 24 123 4567'])->assertOk();
+        $this->postJson(self::LIST, ['name' => 'Kofi', 'phone' => '020 000 1111'])->assertCreated();
+    }
+
+    public function test_a_repeated_email_always_points_to_the_existing_customer(): void
+    {
+        $kofi = Customer::query()->create(['name' => 'Kofi Boateng', 'email' => 'kofi@example.test']);
+        $this->signInStaff('records');
+
+        foreach ([false, true] as $allowDuplicate) {
+            $this->postJson(self::LIST, ['name' => 'K. Boateng', 'email' => ' KOFI@Example.test ', 'allow_duplicate' => $allowDuplicate])->assertConflict()
+                ->assertJsonPath('field', 'email')->assertJsonPath('can_save_anyway', false)->assertJsonPath('duplicate.id', $kofi->id);
+        }
+        $other = Customer::query()->create(['name' => 'Efua', 'phone' => '020 111 2222']);
+        $this->patchJson(self::LIST.'/'.$other->id, ['name' => 'Efua', 'email' => 'kofi@example.test', 'phone' => '020 111 2222'])->assertConflict();
+        $this->patchJson(self::LIST.'/'.$kofi->id, ['name' => 'Kofi B.', 'email' => 'kofi@example.test'])->assertOk();
+        $this->assertSame(2, Customer::query()->count());
+    }
+
     public function test_staff_without_customer_access_cannot_search(): void
     {
         $this->getJson(self::LIST.'?q=ama')->assertUnauthorized();

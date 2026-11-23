@@ -56,6 +56,18 @@ services:
         sync: false
       - key: MICROSOFT_GRAPH_SENDER
         value: noreply@thenyatelier.com
+      # Fitting photos/videos in a private Cloudflare R2 bucket (Render Free wipes this server's disk on restart).
+      # All five are entered in the Render dashboard. Leave FITTINGS_STORAGE unset to keep files on the server disk.
+      - key: FITTINGS_STORAGE
+        sync: false
+      - key: R2_ENDPOINT
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
       - key: NY_PREVIEW_STAFF_PASSWORD
         generateValue: true
       - key: NY_PREVIEW_OWNER_EMAIL
