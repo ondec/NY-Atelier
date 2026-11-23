@@ -2,13 +2,13 @@
 
 Use this file for dated handoffs between Claude, Codex and maintainers. Read the latest entry first, then [AI_HANDOFF.md](AI_HANDOFF.md) for architecture and design. Dates use Africa/Accra. Write facts and results, not hidden reasoning or a chat transcript. Do not include credentials or private fitting values.
 
-## 2026-11-23 — Claude — Portal links no longer prefetch (local, NOT pushed)
+## 2026-11-23 — Claude — Portal links no longer prefetch (pushed `07f8b5f`)
 
 **Why:** on the Render preview an Office load fired ~15 Next.js prefetch (`_rsc`) requests alongside the page's real data calls; on the Free plan's small CPU share these slowed the visible data to ~3.6 s per call.
 
 **Change:** every `next/link` `<Link>` in `apps/portal/src` (44 tags, 15 files) now has `prefetch={false}` (Next 16: no prefetch on viewport or hover). Sections load when clicked. Keep this on new links while the preview runs on the Free plan.
 
-**Checks:** TypeScript, scoped ESLint, 75 portal logic tests and the `NY_STAFF_PREVIEW=1` production build passed. Production build served locally on port 3010 (dev mode never prefetches): Office overview made 0 `_rsc` prefetches (live had ~15), its data calls ran 80–150 ms, and clicking Team opened normally. Not yet measured on Render.
+**Checks:** TypeScript, scoped ESLint, 75 portal logic tests and the `NY_STAFF_PREVIEW=1` production build passed. Production build served locally on port 3010 (dev mode never prefetches): Office overview made 0 `_rsc` prefetches (live had ~15), its data calls ran 80–150 ms, and clicking Team opened normally. Live after deploy: 0 `_rsc` prefetches (was ~15); Office overview data finished in ~3.7–4 s after navigation (was ~6 s), page HTML 0.8–1.1 s, data calls 1.2–3.3 s each. What remains is the Free plan's CPU share; a paid instance (or fewer API calls per page) is the next lever. Cold starts after 15 idle minutes are unchanged.
 
 ## 2026-11-23 — Claude — Render preview: slow page loads (pushed `7d42ce1`)
 
