@@ -2,7 +2,9 @@
 
 Use this file for dated handoffs between Claude, Codex and maintainers. Read the latest entry first, then [AI_HANDOFF.md](AI_HANDOFF.md) for architecture and design. Dates use Africa/Accra. Write facts and results, not hidden reasoning or a chat transcript. Do not include credentials or private fitting values.
 
-## 2026-11-23 — Claude — Review of Codex's WordPress RTW import (local, not pushed)
+## 2026-11-23 — Claude — Review of Codex's WordPress RTW import (code pushed `0d30900`, live; catalogue data still local)
+
+**Deploy:** with the user's approval, Codex's import tool and Not counted stock handling were pushed as `0d30900`; Render reports it live (22:11), `studio.` sign-in 200. The hosted catalogue was not changed: the 111 imported styles exist only in the local database until a separate, reviewed hosted transfer is built and approved.
 
 **Verified against data:** local catalogue revision 2 has 111 products (all with `wordpressId`), 861 variants: 751 new `stockVerified=false` and the 110 pre-existing variants with their 366 units unchanged; the private pre-apply backup (`../imports/wordpress/2026-11-23/`, mode 0700/0600, outside Git) shows revision 1 with 9 products, 110 variants, 366 units, 0 movements. 14 styles typed Other; no zero prices. Sample WordPress image returns 200 image/jpeg without referrer. Note: Laravel collection `where('stockVerified', false)` is a loose comparison and also counts variants without the key; use a strict filter when re-checking.
 
