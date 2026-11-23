@@ -2,11 +2,11 @@
 
 Use this file for dated handoffs between Claude, Codex and maintainers. Read the latest entry first, then [AI_HANDOFF.md](AI_HANDOFF.md) for architecture and design. Dates use Africa/Accra. Write facts and results, not hidden reasoning or a chat transcript. Do not include credentials or private fitting values.
 
-## 2026-11-23 — Claude — Render preview: slow page loads (local, NOT pushed)
+## 2026-11-23 — Claude — Render preview: slow page loads (pushed `7d42ce1`)
 
 **Cause (measured on the live preview):** single API calls take ~0.3 s, but six parallel calls took 10.5 s and `/api/consultations` took 7 s on an Office page load. Apache on loopback ran only 2 prefork workers with KeepAlive on, and the portal's Node fetch reuses connections, so each worker sat idle for KeepAliveTimeout (5 s) after answering while other calls queued.
 
-**Fix:** `deploy/render/apache.conf` sets `KeepAlive Off`; `deploy/render/Dockerfile` raises prefork to 4 workers (Start/MinSpare 2, MaxSpare 4). Not testable locally (no Docker on this Mac); verify after deploy by timing parallel `/api/staff-salaries` calls. Separate from this: the Free plan still sleeps after 15 idle minutes, so the first visit after a quiet spell takes about a minute (paid plan or an external uptime ping avoids it).
+**Fix:** `deploy/render/apache.conf` sets `KeepAlive Off`; `deploy/render/Dockerfile` raises prefork to 4 workers (Start/MinSpare 2, MaxSpare 4). Not testable locally (no Docker on this Mac); After deploy (live): six parallel `/api/staff-salaries` calls 10.5 s → 2.3 s; ten → 4.5 s. An Office overview load still took ~6 s until all data arrived (page 2.1 s, three API calls ~3.6 s each) because ~15 Next.js link prefetches (`_rsc` requests) fire on load and compete for the Free plan's small CPU share. Likely next step: turn off automatic prefetch on the Office/Studio section links. Separate from this: the Free plan still sleeps after 15 idle minutes, so the first visit after a quiet spell takes about a minute (paid plan or an external uptime ping avoids it).
 
 ## 2026-11-23 — Claude — Team: change role, deactivate/reactivate (pushed)
 
