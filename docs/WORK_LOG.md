@@ -2,6 +2,31 @@
 
 Use this file for dated handoffs between Claude, Codex and maintainers. Read the latest entry first, then [AI_HANDOFF.md](AI_HANDOFF.md) for architecture and design. Dates use Africa/Accra. Write facts and results, not hidden reasoning or a chat transcript. Do not include credentials or private fitting values.
 
+## 2026-11-23 — Codex — Owner Team invitations and customer-records access
+
+**Status:** requested and investigated; implementation has NOT started at this checkpoint. User specifically asked to keep this log current because credits are running low. Preserve this entry when continuing in Claude or Codex.
+
+**User requirements/decisions:**
+
+- Add staff from NY Office → Team by entering their name/email and assigning a role. About two people will enter handwritten customer records through the hosted Studio.
+- The new people must have **customer records only**: names, phone numbers, email, measurements and fitting history. They must NOT receive sales/POS, finances, Team management or general Office access. Use a dedicated permission preset/role instead of giving them the existing receptionist role, which is broader.
+- Send invitation emails; invitees choose their own passwords using a one-use setup link. User chose **an existing email service**, not a new Resend account. **Waiting for the existing provider name and sender address**; a question has been sent. Do not ask for passwords/keys in chat; configure any credentials through the provider/Render securely.
+- An owner-only customer export was proposed in commentary because the team will enter valuable records into the temporary database; it has not been built. Keep this distinct from a completed backup solution.
+
+**Investigation / starting points:**
+
+- `apps/portal/src/app/team-workspace.tsx` and `src/lib/team.ts` currently provide a read-only directory, with only a `GET /api/staff-team` proxy. Laravel `DemoTeamController::index` returns name/job title/salary eligibility/account-linked status; no invitation UI/API exists.
+- Existing CLI `apps/api/app/Console/Commands/InviteStaff.php` already creates inactive staff and stores a SHA-256-hashed, one-use, 24-hour `staff_activation_tokens` record. `StaffAuthController::{activation,activate}` and portal `staff/activate/activate.tsx` already implement choosing a password and signing in. Reuse/refactor this behavior rather than creating a second invitation mechanism. Never overwrite/reset active accounts when inviting someone or regenerating an invite.
+- Current roles are owner/manager/receptionist. Adding a customer-records role requires updating both the API permission map and portal role types/labels/allowlists, login/activation landing destinations and history helpers. `staff_active` and token ability checks must remain enforced.
+- Important API boundary: `routes/api.php` currently puts ALL `/api/demo/staff/*` routes behind `can:staff.office`, including customer APIs. A Studio-only role needs customer access without that broad Office permission. Preserve individual route gates and ensure POS/catalogue/sales stay denied to the new role.
+- Important UI boundary: Studio currently fetches catalogue/sale state and displays Ready-to-Wear controls for every Studio user. Gate those for the restricted role; give that role a direct customer/fittings landing page and prevent a crafted URL/Back from opening sales. Studio Settings already supports an Office permission-denial message.
+- Activation currently always redirects to `data.staff.officeHref`; the new Studio-only role must land in its allowed Studio area instead. `readStaff` has a hardcoded three-role allowlist; extend it deliberately.
+- Current hosted mail is `MAIL_MAILER=log`, which does NOT deliver messages. Render Free blocks common SMTP ports (25/465/587); check whether the existing provider offers an appropriate HTTPS sending API before promising email delivery. No external invitation emails have been sent and no new real staff accounts have been created.
+
+**Repository/service state:** main was clean at task start (`0720e7c` documentation commit; last app deployment `6e616cc`). Existing Render preview, customers and credentials remain unchanged. No migration, feature code, dependency or provider configuration has been changed during this investigation. Last verified application checks remain those in the deployment entry below; no new test results are claimed here. Local development services and hosted preview were left running.
+
+**Next:** obtain the existing email provider/sender; build and test owner-only invitation creation/regeneration, email delivery and the restricted role end to end. Validate expired/reused tokens, active-account conflicts, unauthorized role/access changes and direct sales/Office/finance denials. Publish through the existing GitHub → Render flow only after checks, verify the hosted result, and replace this checkpoint status with actual outcomes. Read the current user messages before assuming all details have been settled.
+
 ## 2026-11-23 — Codex — Render free preview setup
 
 **Status:** free staff preview deployed and customer copy verified. User selected free testing, signed into Render/GitHub and clicked Deploy Blueprint. GitHub `main` now automatically deploys the staff web app. No paid plan is authorized. The last application deployment is `6e616cc`; documentation-only updates use `[skip render]`.
