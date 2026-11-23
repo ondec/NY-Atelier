@@ -4,6 +4,8 @@ namespace App\Mail;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use RuntimeException;
 use Symfony\Component\Mailer\SentMessage;
 use Symfony\Component\Mailer\Transport\AbstractTransport;
 use Symfony\Component\Mime\MessageConverter;
@@ -23,21 +25,33 @@ class MicrosoftGraphTransport extends AbstractTransport
     protected function doSend(SentMessage $message): void
     {
         $mime = MessageConverter::toEmail($message->getOriginalMessage())->toString();
-        Http::withToken($this->accessToken())->timeout(15)
+        $response = Http::withToken($this->accessToken())->timeout(15)
             ->withBody(base64_encode($mime), 'text/plain')
-            ->post('https://graph.microsoft.com/v1.0/users/'.rawurlencode($this->sender).'/sendMail')
-            ->throw();
+            ->post('https://graph.microsoft.com/v1.0/users/'.rawurlencode($this->sender).'/sendMail');
+        if ($response->failed()) {
+            throw new RuntimeException('Microsoft Graph sendMail failed ('.$response->status().'): '
+                .$response->json('error.code', '').' '.Str::limit((string) $response->json('error.message', ''), 300));
+        }
     }
 
     private function accessToken(): string
     {
         $key = 'microsoft-graph-token:'.hash('sha256', $this->tenantId.'|'.$this->clientId);
 
-        return Cache::remember($key, now()->addMinutes(50), fn (): string => Http::asForm()->timeout(15)
-            ->post('https://login.microsoftonline.com/'.rawurlencode($this->tenantId).'/oauth2/v2.0/token', [
-                'grant_type' => 'client_credentials', 'client_id' => $this->clientId, 'client_secret' => $this->clientSecret,
-                'scope' => 'https://graph.microsoft.com/.default',
-            ])->throw()->json('access_token'));
+        return Cache::remember($key, now()->addMinutes(50), function (): string {
+            $response = Http::asForm()->timeout(15)
+                ->post('https://login.microsoftonline.com/'.rawurlencode($this->tenantId).'/oauth2/v2.0/token', [
+                    'grant_type' => 'client_credentials', 'client_id' => $this->clientId, 'client_secret' => $this->clientSecret,
+                    'scope' => 'https://graph.microsoft.com/.default',
+                ]);
+            if ($response->failed() || ! is_string($response->json('access_token'))) {
+                // Microsoft's error code/description never contains the secret; it names the cause (e.g. AADSTS7000215).
+                throw new RuntimeException('Microsoft sign-in for mail failed ('.$response->status().'): '
+                    .$response->json('error', '').' '.Str::limit((string) $response->json('error_description', ''), 300));
+            }
+
+            return $response->json('access_token');
+        });
     }
 
     public function __toString(): string

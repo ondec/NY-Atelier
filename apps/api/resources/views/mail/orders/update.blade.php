@@ -1,17 +1,19 @@
 <x-mail::message>
-# Your NY Atelier order
+<x-mail::kicker>Order {{ $reference }}</x-mail::kicker>
 
-**Order {{ $reference }}**
+# An update on your order
 
 {{ $update }}
 
 @if ($instructions)
-## Handover information
+<x-mail::panel>
+**Handover information**
 
 {{ $instructions }}
+</x-mail::panel>
 @endif
 
-Open your NY Atelier app to view the order, its progress and the full timeline.
+<x-mail::note>Open the NY Atelier app to see your order, its progress and the full timeline.</x-mail::note>
 
-NY Atelier
+<x-mail::signature />
 </x-mail::message>

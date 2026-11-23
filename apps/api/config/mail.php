@@ -123,4 +123,31 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | NY Atelier email design
+    |--------------------------------------------------------------------------
+    |
+    | Every Markdown email uses the "ny" theme and these brand details through
+    | resources/views/vendor/mail. Images must be PNG/JPG on a public URL; the
+    | staff web app serves the logo from /email/ny-mark.png.
+    |
+    */
+
+    'markdown' => [
+        'theme' => env('MAIL_MARKDOWN_THEME', 'ny'),
+        'paths' => [
+            resource_path('views/vendor/mail'),
+        ],
+    ],
+
+    'brand' => [
+        'name' => 'NY Atelier',
+        'tagline' => 'Made with intention',
+        'website' => env('MAIL_BRAND_WEBSITE', 'https://thenyatelier.com'),
+        'logo_url' => env('MAIL_BRAND_LOGO_URL', rtrim((string) env('NY_STAFF_PORTAL_URL', env('RENDER_EXTERNAL_URL', 'http://127.0.0.1:3000')), '/').'/email/ny-mark.png'),
+        // Optional footer lines, e.g. the studio address and phone number. Separate lines with "|".
+        'footer_lines' => array_values(array_filter(array_map('trim', explode('|', (string) env('MAIL_BRAND_FOOTER', ''))))),
+    ],
+
 ];

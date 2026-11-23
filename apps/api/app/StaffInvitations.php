@@ -107,7 +107,7 @@ class StaffInvitations
                 Mail::to($user->email, $user->name)->send(new StaffInvitationMail($user->name, StaffAccess::ROLE_LABELS[$user->staff_role], $url, $expiresAt));
                 $delivery = 'sent';
             } catch (Throwable $failure) {
-                Log::warning('Staff invitation email could not be sent.', ['user_id' => $user->id, 'error' => $failure::class]);
+                Log::warning('Staff invitation email could not be sent.', ['user_id' => $user->id, 'error' => $failure::class, 'reason' => Str::limit($failure->getMessage(), 400)]);
                 $delivery = 'failed';
             }
         }

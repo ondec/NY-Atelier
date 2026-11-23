@@ -1,6 +1,8 @@
 .git
 **/node_modules
 **/vendor
+!apps/api/resources/views/vendor
+!apps/api/resources/views/vendor/**
 **/.env
 **/.env.*
 **/.next*

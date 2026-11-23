@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -182,5 +183,19 @@ class StaffInvitationTest extends TestCase
         Http::assertSent(fn ($request): bool => $request->url() === 'https://graph.microsoft.com/v1.0/users/no-reply%40example.test/sendMail'
             && $request->hasHeader('Authorization', 'Bearer graph-test-token')
             && str_contains(base64_decode($request->body()), 'akua@example.test'));
+    }
+
+    public function test_microsoft_errors_are_logged_with_their_reason_and_the_owner_still_gets_the_link(): void
+    {
+        Http::fake(['login.microsoftonline.com/*' => Http::response(['error' => 'invalid_client', 'error_description' => 'AADSTS7000215: Invalid client secret provided.'], 401)]);
+        Log::spy();
+        config(['mail.default' => 'microsoft-graph', 'mail.mailers.microsoft-graph' => [
+            'transport' => 'microsoft-graph', 'tenant_id' => 'tenant', 'client_id' => 'client', 'client_secret' => 'wrong-secret', 'sender' => 'no-reply@example.test',
+        ]]);
+        $this->signInStaff();
+        $this->postJson(self::INVITE, ['name' => 'Kwame', 'email' => 'kwame@example.test', 'role' => 'records'])
+            ->assertCreated()->assertJsonPath('delivery', 'failed');
+        Log::shouldHaveReceived('warning')->withArgs(fn (string $message, array $context): bool => str_contains($context['reason'], 'AADSTS7000215')
+            && ! str_contains($context['reason'], 'wrong-secret'));
     }
 }
