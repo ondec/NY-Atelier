@@ -35,7 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends tini gosu \
     && rm -rf /var/lib/apt/lists/* \
     && a2enmod rewrite \
     && printf 'Listen 127.0.0.1:8080\n' > /etc/apache2/ports.conf \
-    && printf 'StartServers 1\nMinSpareServers 1\nMaxSpareServers 2\nMaxRequestWorkers 2\nMaxConnectionsPerChild 1000\n' > /etc/apache2/mods-available/mpm_prefork.conf
+    && printf 'StartServers 2\nMinSpareServers 2\nMaxSpareServers 4\nMaxRequestWorkers 4\nMaxConnectionsPerChild 1000\n' > /etc/apache2/mods-available/mpm_prefork.conf
 COPY --from=portal-build /usr/local/bin/node /usr/local/bin/node
 COPY --from=portal-build /build/apps/portal/.next/standalone/ /srv/portal/
 COPY --from=portal-build /build/apps/portal/.next/static/ /srv/portal/apps/portal/.next/static/

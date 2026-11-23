@@ -2,6 +2,12 @@
 
 Use this file for dated handoffs between Claude, Codex and maintainers. Read the latest entry first, then [AI_HANDOFF.md](AI_HANDOFF.md) for architecture and design. Dates use Africa/Accra. Write facts and results, not hidden reasoning or a chat transcript. Do not include credentials or private fitting values.
 
+## 2026-11-23 — Claude — Render preview: slow page loads (local, NOT pushed)
+
+**Cause (measured on the live preview):** single API calls take ~0.3 s, but six parallel calls took 10.5 s and `/api/consultations` took 7 s on an Office page load. Apache on loopback ran only 2 prefork workers with KeepAlive on, and the portal's Node fetch reuses connections, so each worker sat idle for KeepAliveTimeout (5 s) after answering while other calls queued.
+
+**Fix:** `deploy/render/apache.conf` sets `KeepAlive Off`; `deploy/render/Dockerfile` raises prefork to 4 workers (Start/MinSpare 2, MaxSpare 4). Not testable locally (no Docker on this Mac); verify after deploy by timing parallel `/api/staff-salaries` calls. Separate from this: the Free plan still sleeps after 15 idle minutes, so the first visit after a quiet spell takes about a minute (paid plan or an external uptime ping avoids it).
+
 ## 2026-11-23 — Claude — Team: change role, deactivate/reactivate (pushed)
 
 **Status:** pushed to main as `b314cbd` with the user's approval and deployed to the Render preview (the migration runs on deploy). Owner-only. The local test account used for the browser check was deleted afterwards. Email design (`75d8dcc`) is live on Render; the real invitation email in the new design was not yet confirmed by the user.
