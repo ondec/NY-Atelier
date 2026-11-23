@@ -29,6 +29,18 @@ services:
         value: "1"
       - key: NY_DEMO_API_ENABLED
         value: "false"
+      # Staff subdomains (Cloudflare CNAMEs to ny-atelier-preview.onrender.com, DNS only). The three NY_* workspace
+      # values must be set together; sign-in on them uses a shared __Secure- cookie for thenyatelier.com.
+      # ny-atelier-preview.onrender.com keeps working with its own host-only sign-in.
+      - key: NY_STUDIO_ORIGIN
+        value: https://studio.thenyatelier.com
+      - key: NY_OFFICE_ORIGIN
+        value: https://office.thenyatelier.com
+      - key: NY_STAFF_COOKIE_DOMAIN
+        value: thenyatelier.com
+      # Invitation, password-reset links and the email logo use the Studio address.
+      - key: NY_STAFF_PORTAL_URL
+        value: https://studio.thenyatelier.com
       - key: LOG_CHANNEL
         value: stderr
       - key: LOG_LEVEL

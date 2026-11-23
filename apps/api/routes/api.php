@@ -12,6 +12,7 @@ use App\Http\Controllers\DemoTeamController;
 use App\Http\Controllers\FinanceOverviewController;
 use App\Http\Controllers\OwnerOverviewController;
 use App\Http\Controllers\StaffAuthController;
+use App\Http\Controllers\StaffPasswordResetController;
 use App\Models\Customer;
 use App\Models\Order;
 use App\OrderWorkflow;
@@ -53,6 +54,8 @@ Route::prefix('customer/auth')->group(function () {
     });
 });
 Route::prefix('staff/auth')->group(function () {
+    Route::post('/forgot-password', [StaffPasswordResetController::class, 'forgot'])->middleware('throttle:10,1,staff-password-forgot');
+    Route::post('/reset-password', [StaffPasswordResetController::class, 'reset'])->middleware('throttle:10,1,staff-password-reset');
     Route::post('/login', [StaffAuthController::class, 'login'])->middleware('throttle:30,1');
     Route::post('/activation', [StaffAuthController::class, 'activation'])->middleware('throttle:30,1');
     Route::post('/activate', [StaffAuthController::class, 'activate'])->middleware('throttle:10,1');

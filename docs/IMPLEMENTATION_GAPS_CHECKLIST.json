@@ -18,7 +18,7 @@
       "id": "staff-access",
       "area": "Staff login and role restrictions",
       "current_status": "implemented_with_production_follow_up",
-      "working_now": "Laravel Sanctum staff authentication, eight-hour sessions, server-side owner/manager/receptionist permissions, role-correct Office/Studio switching and direct-page permission messages. Production onboarding/recovery and deployed-domain acceptance remain follow-up work.",
+      "working_now": "Laravel Sanctum staff authentication, eight-hour sessions, owner/manager/receptionist/customer-records permissions, role-correct Office/Studio switching and Team invitations. Self-service email password recovery is implemented and verified locally (23 November), not deployed or real-mailbox tested yet. Deployed-domain acceptance and production credential replacement remain follow-up work.",
       "remaining": [
         {
           "done": false,
@@ -26,7 +26,7 @@
         },
         {
           "done": false,
-          "task": "Complete staff account activation, recovery and credential replacement for live staff; replace temporary test credentials before launch."
+          "task": "Deploy and mailbox-test the locally implemented staff password recovery; complete live onboarding review and replace temporary test credentials before launch."
         },
         {
           "done": false,

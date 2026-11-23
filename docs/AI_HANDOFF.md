@@ -197,6 +197,8 @@ The approved direction combines clean editorial fashion shopping with restrained
 
 Staff sign-in is Laravel Sanctum backed. The Next.js server keeps the opaque token in an HttpOnly cookie; no auth token is stored in JavaScript storage. Current session/cookie lifetime is **eight hours**. Same-origin checks protect staff mutations and API gates enforce actions.
 
+**Staff self-service password recovery (23 November, local-only/uncommitted):** Forgot password? on staff login leads to an email reset request and new-password page. API `StaffPasswordReset` uses Laravel's `staff` password broker and existing reset-token table: one-use, hashed, 60-minute links, 60-second resend throttle and separate request/reset rate limits. Only active recognized staff qualify; generic anonymous responses never disclose accounts or links. Branded mail goes through the configured delivering mailer (Graph on Render); log/array never expose links. Tokens are held in an email fragment and cleared from the browser address bar after reading. A successful reset preserves access, revokes all staff sessions and requires sign-in; deactivation invalidates outstanding recovery links. No new migrations or provider settings. New portal routes are `/staff/forgot-password` and `/staff/reset-password`. Tests passed locally; deploy plus an authorized real-mailbox test remain outstanding. Read the newest work log for exact checks.
+
 | Capability | Owner | Manager | Receptionist | Customer records |
 | --- | --- | --- | --- | --- |
 | NY Office | Yes | Yes | Yes | No (redirected to Studio fittings) |
@@ -218,7 +220,7 @@ The API has local Laravel skills in `.agents/skills/` and `.claude/skills/`, and
 
 Three temporary staff accounts have been provisioned with user-supplied aliases. Credentials intentionally are not reproduced here. Ask the user/use their secure credential source when needed. Do not reset credentials, print session cookies, or create another owner to bypass a login problem.
 
-Provisioning/activation entry point: API `staff:invite` Artisan command; inspect `--help` and its implementation before use. Production staff onboarding, recovery and replacement of preview credentials still need completion/review.
+Provisioning/activation entry point: API `staff:invite` Artisan command; inspect `--help` and its implementation before use. Team invitations are implemented; self-service password recovery is implemented locally but awaits deployment/mailbox acceptance. Replacement of preview credentials and production onboarding review remain outstanding.
 
 Customer auth is a separate unfinished task. Demo customer routes are not suitable as the production customer security boundary.
 

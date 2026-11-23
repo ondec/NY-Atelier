@@ -4,6 +4,7 @@ namespace App;
 
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Password;
 
 /**
  * Owner-only changes to existing staff accounts from NY Office → Team.
@@ -39,6 +40,7 @@ class StaffTeam
             $user->staff_deactivated_at = now();
             $user->save();
             $user->tokens()->delete();
+            Password::broker('staff')->deleteToken($user);
             DB::table('staff_activation_tokens')->where('user_id', $user->id)->delete();
 
             return $user;
