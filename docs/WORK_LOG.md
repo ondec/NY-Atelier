@@ -2,7 +2,7 @@
 
 Use this file for dated handoffs between Claude, Codex and maintainers. Read the latest entry first, then [AI_HANDOFF.md](AI_HANDOFF.md) for architecture and design. Dates use Africa/Accra. Write facts and results, not hidden reasoning or a chat transcript. Do not include credentials or private fitting values.
 
-## 2026-11-23 — Codex — Fitting inspiration viewer (local only)
+## 2026-11-23 — Codex — Fitting inspiration viewer (pushed `1311e47`)
 
 **Problem/fix:** saved fitting images and filenames opened the raw protected file in another tab, with no app navigation. They now open an in-app dialog with a circular **Back to fitting** button, filename, current/total count, Previous/Next buttons and a swipe/drag carousel (existing Embla dependency). The viewer starts at the tapped file; navigation stops at each end. Single-file fittings keep Back and the count without redundant arrows. Videos retain inline controls and can also open in the viewer from their filename; hidden/closed videos pause. The image stays contained so none of it is cropped. Phone viewer fills the screen with safe-area padding; wider screens use a centred dialog.
 
@@ -10,17 +10,17 @@ Use this file for dated handoffs between Claude, Codex and maintainers. Read the
 
 **Files/checks:** portal `src/app/fitting-fields.tsx`, new `fitting-media-viewer.tsx` and `fitting-media-viewer.css`. TypeScript, scoped ESLint, nine fitting-measurement/dialog-history tests and `git diff --check` passed. Local browser verified two sample photos: tapped starting file, Previous/Next + disabled end controls, keyboard arrows, browser Back, explicit Back, caption opening, Escape and focus restoration. At 390×844, horizontal pointer drag changed the slide and header/footer stayed visible. The original single-image fitting also opened/closed correctly. Actual physical-device touch/swipe still needs acceptance. A temporary customer/fitting with two public sample images was created through the UI and then removed with its two files; original records and Claude's load-test records were preserved. Screenshot `/tmp/ny-studio-inspiration-viewer.jpg` shows only sample media. No production build/hosted test run for this change.
 
-**Status:** local, uncommitted, NOT pushed/deployed. No dependency, backend or migration changes. Other in-progress customer-search work preserved. Local services left running.
+**Status:** pushed by Claude with the user's approval in `1311e47` (together with the customer-search work) and live on Render. No dependency, backend or migration changes. Other in-progress customer-search work preserved. Local services left running.
 
-## 2026-11-23 — Codex — Studio round back buttons (local only)
+## 2026-11-23 — Codex — Studio round back buttons (pushed `1311e47`)
 
 **Change:** the rectangle in the customer-form screenshot was the shared 3px focus outline around an unrounded button. Studio's full-screen customer/fitting/Sales Desk back button now has a fixed 44×44px circular target, 1px neutral border and 2px petrol focus ring with a 2px offset. Focus visibility and existing Back behavior are retained. Only `apps/portal/src/app/showroom/showroom.css` changed for this follow-up.
 
 **Checks/status:** local browser verified the round button, exact computed size/border/ring and Tab/Shift+Tab focus. No data was submitted. CSS-only change; no additional tests/build run. Uncommitted, NOT pushed/deployed. Other in-progress customer search changes observed in the checkout were preserved. Local services left running.
 
-## 2026-11-23 — Codex — Studio: Save & add measurement (local only)
+## 2026-11-23 — Codex — Studio: Save & add measurement (pushed `1311e47`)
 
-**Status:** built locally at the user's request; uncommitted, NOT pushed or deployed. Render remains unchanged. Preserve this working tree when continuing in Claude.
+**Status:** built at the user's request; later pushed by Claude in `1311e47` with the user's approval and live on Render.
 
 **Behavior:** Studio → New customer keeps **Save customer** and adds **Save & add measurement**. The shortcut uses the existing customer save/validation, then opens that saved customer's fitting form in inches with the current/default garment template (Kaftan by default). The fitting form waits for the new profile to load. It does not save a fitting automatically. The completed customer form is replaced in browser history by the saved profile, then the fitting form is pushed; Back returns to the saved profile without reopening a completed creation form. The shared Office editor and existing customer editing remain unchanged. Both buttons disable during saving; phone actions stack within the existing 10px gutters.
 
@@ -28,7 +28,7 @@ Use this file for dated handoffs between Claude, Codex and maintainers. Read the
 
 **Checks:** TypeScript and scoped ESLint passed; 17 targeted Studio location/dialog/access tests passed, including history transitions from Fittings and Ready-to-Wear. Local browser verified required-name and missing-contact validation, successful customer save → matching customer fitting form, browser Back → saved profile, and 390×844 layout with both actions visible. Exactly one temporary local customer was created, verified without linked fittings/orders and removed; existing customer records were untouched. No fitting was saved. Phone screenshot: `/tmp/ny-studio-save-add-measurement.jpg` (temporary local artifact). `git diff --check` passed. No production build or hosted check was run for this local-only change. Local services were left running.
 
-## 2026-11-23 — Claude — Customer directory ready for ~10,000 records (local, NOT pushed)
+## 2026-11-23 — Claude — Customer directory ready for ~10,000 records (pushed `1311e47`)
 
 **User goal:** load about 10,000 **real** customer records. This entry only makes the app handle that size; importing the real records is not built yet. The free Render Postgres is deleted on **23 December 2026** with no backups, so real records should not live only there; the import route still needs deciding with the user (source format unknown, and the existing snapshot restore is capped at 1 MB).
 
@@ -38,7 +38,9 @@ Use this file for dated handoffs between Claude, Codex and maintainers. Read the
 
 **Portal:** `src/lib/customer-search.ts` (query building, shared by both proxies and `customerEndpoint`); `useCustomerSearch` hook in `customers-workspace.tsx` (250 ms typing pause, page appends, de-duplicates). Customers page shows the database total, "Showing X of Y" and Show more. Studio fittings and sale customer pickers show 30 at a time with "Show more (N left)". The new-order form's client dropdown is now `ClientPicker` (search-as-you-type, 8 results, Change/Keep). Both customer proxies forward only `q`, `page`, `per_page`.
 
-**Checks:** API 160 passed / 1238 assertions (new `CustomerSearchTest`, 6 tests); Pint; portal TypeScript, scoped ESLint, 80 logic tests (new `customer-search.test.mjs`), `NY_STAFF_PREVIEW=1` build. With 10,002 local customers: list pages ~9 KB and 35–60 ms, searches 35–150 ms, customers table + indexes ~20 MB. Browser (owner, local): Customers page total 10,002, Show more 50→100, phone search finds one; order form search, pick, Change, and "Fitting used" appears for a client with a fitting (form closed without creating an order); Studio fittings 30→60 and phone search. Not measured on Render.
+**Checks:** API 160 passed / 1238 assertions (new `CustomerSearchTest`, 6 tests); Pint; portal TypeScript, scoped ESLint, 80 logic tests (new `customer-search.test.mjs`), `NY_STAFF_PREVIEW=1` build. With 10,002 local customers: list pages ~9 KB and 35–60 ms, searches 35–150 ms, customers table + indexes ~20 MB. Browser (owner, local): Customers page total 10,002, Show more 50→100, phone search finds one; order form search, pick, Change, and "Fitting used" appears for a client with a fitting (form closed without creating an order); Studio fittings 30→60 and phone search. After deploy: migration `add_customer_search_indexes` ran on Render in 137 ms with no pg_trgm warning (trigram indexes created). Live API returns `total`/`has_more`; order options keys are now `customer_count, demo_customer_id, offerings, consultations`. The preview database holds only 2 customers, so live timings at 10,000 records are still unmeasured. A Render log line at 15:08 showed Apache reaching MaxRequestWorkers (4) once; requests queue rather than fail.
+
+**Next:** importing the user's real customer records (source/format not yet known). Keep real records off the free database alone: it is deleted 23 December 2026 with no backups.
 
 ## 2026-11-23 — Claude — Portal links no longer prefetch (pushed `07f8b5f`)
 
@@ -70,7 +72,7 @@ Use this file for dated handoffs between Claude, Codex and maintainers. Read the
 
 **Email design (approved by the user and pushed):** `.gitignore` and `.dockerignore` ignore every `vendor` folder, so both now re-include `apps/api/resources/views/vendor/` — keep those exceptions or Render will lose the templates. Laravel mail templates published to `apps/api/resources/views/vendor/mail/`; theme `html/themes/ny.css` (selected by `mail.markdown.theme`, default `ny`; Laravel's default.css removed) uses the portal tokens (petrol, alabaster, cognac, brass, slate, muted, line), Alfa Slab One / Josefin Sans via Google Fonts with Georgia/Helvetica fallbacks. Header shows the NY mark PNG (`apps/portal/public/email/ny-mark.png`, rendered from `ny-mark.svg`), name and tagline; footer shows brand, website and optional `MAIL_BRAND_FOOTER` lines (`|`-separated). Brand settings: `config('mail.brand')` (`MAIL_BRAND_WEBSITE`, `MAIL_BRAND_LOGO_URL`, logo defaults to the staff portal URL). Reusable components (html + text versions): `x-mail::kicker`, `code`, `details` (`:rows` label→value), `note`, `signature`, plus restyled `button` (petrol pill) and `panel` (brass rule). Rewritten: staff invitation, customer sign-in code, sign-in alert, order update. `resources/views/mail/examples/password-reset.blade.php` is an example only (no reset feature exists). Local-only previews (APP_ENV=local): `http://127.0.0.1:8000/dev/mail` (add `?text=1` for plain text). Checks: API 146 passed / 1130 assertions; previews viewed at desktop and 375px.
 
-## 2026-11-23 — Claude — Team invitations and customer-records role (built, not deployed)
+## 2026-11-23 — Claude — Team invitations and customer-records role (later pushed as `bab3677`)
 
 **Status:** implemented and verified locally; NOT pushed to GitHub, so the Render preview is unchanged. Email delivery is not switched on: Microsoft 365 mailbox/admin access and the Graph app registration are still unconfirmed, so invitations currently show the owner a one-use link to share privately.
 
