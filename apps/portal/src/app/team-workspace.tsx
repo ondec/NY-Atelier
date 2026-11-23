@@ -1,11 +1,12 @@
 "use client";
 
 import { type FormEvent, useEffect, useState } from "react";
-import { Check, ClipboardCheck, Plus, RefreshCw, Search, Send, X } from "@/components/icons";
-import { getTeam, inviteTeamMember, reinviteTeamMember, roleSummaries, type InvitableRole, type InvitationResult, type TeamMember } from "@/lib/team";
+import { Check, ClipboardCheck, LockKeyhole, Plus, RefreshCw, Search, Send, UserRoundCog, X } from "@/components/icons";
+import { InventoryDrawer } from "./catalogue-editor";
+import { changeTeamRole, getTeam, inviteTeamMember, reinviteTeamMember, roleSummaries, setTeamAccess, type InvitableRole, type InvitationResult, type TeamMember } from "@/lib/team";
 import type { StaffRole } from "@/lib/staff-permissions";
 
-const statusLabels: Record<TeamMember["status"], string> = { active: "Active", invited: "Invitation sent", expired: "Invitation expired", none: "Not set up" };
+const statusLabels: Record<TeamMember["status"], string> = { active: "Active", invited: "Invitation sent", expired: "Invitation expired", deactivated: "Deactivated", none: "Not set up" };
 const expiry = (value: string) => new Date(value).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 function InvitationNotice({ result, onClose }: { result: InvitationResult; onClose: () => void }) {
@@ -27,6 +28,68 @@ function InvitationNotice({ result, onClose }: { result: InvitationResult; onClo
   </section>;
 }
 
+function ManageMember({ member, roles, onClose, onChanged, onReinvite }: { member: TeamMember; roles: InvitableRole[]; onClose: () => void; onChanged: (member: TeamMember, notice: string) => void; onReinvite: (member: TeamMember) => Promise<void> }) {
+  const [role, setRole] = useState<StaffRole>(member.role ?? "records");
+  const [busy, setBusy] = useState<"role" | "access" | "invite">();
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState("");
+  const deactivated = member.status === "deactivated";
+  const firstName = member.name.split(/\s+/)[0];
+
+  async function run(kind: "role" | "access" | "invite", action: () => Promise<void>) {
+    if (busy) return;
+    setBusy(kind); setError("");
+    try { await action(); } catch (failure) { setError(failure instanceof Error ? failure.message : "That change could not be saved."); }
+    finally { setBusy(undefined); }
+  }
+
+  const saveRole = () => run("role", async () => {
+    const { member: updated } = await changeTeamRole(member.id, role);
+    onChanged(updated, `${member.name} now has ${updated.role_label} access.`);
+  });
+  const toggleAccess = () => run("access", async () => {
+    const { member: updated } = await setTeamAccess(member.id, deactivated ? "reactivate" : "deactivate");
+    setConfirming(false);
+    onChanged(updated, deactivated
+      ? updated.status === "active" ? `${member.name} can sign in again.` : `${member.name}’s account is reactivated. Send a new invitation so they can finish setting it up.`
+      : `${member.name} is deactivated and has been signed out.`);
+  });
+
+  return <InventoryDrawer label={`Manage ${member.name}`} onClose={onClose}>
+    <section className="panel inventory-form-panel team-manage-panel">
+      <div className="inventory-form-title"><div><div className="eyebrow">MANAGE ACCESS</div><h2>{member.name}</h2>{member.email && <p className="team-manage-email">{member.email}</p>}<span className={`team-account-note is-${member.status}`}>{statusLabels[member.status]}</span></div><button type="button" aria-label="Close" disabled={Boolean(busy)} onClick={onClose}><X size={18} /></button></div>
+
+      <fieldset className="team-manage-section" disabled={Boolean(busy)}>
+        <legend>Role</legend>
+        <div className="team-role-options">{roles.map(item => <label key={item.id} className={`team-role-option${role === item.id ? " is-selected" : ""}`}>
+          <input type="radio" name="team-role" value={item.id} checked={role === item.id} onChange={() => setRole(item.id)} />
+          <span><strong>{item.label}</strong>{roleSummaries[item.id] && <small>{roleSummaries[item.id]}</small>}</span>
+        </label>)}</div>
+        <div className="team-manage-actions"><span>{deactivated ? "The new role applies if the account is reactivated." : "Takes effect immediately, including on devices they’re signed in on."}</span><button type="button" className="team-manage-primary" disabled={role === member.role || Boolean(busy)} onClick={saveRole}>{busy === "role" ? "Saving…" : "Save role"}</button></div>
+      </fieldset>
+
+      {member.can_reinvite && <section className="team-manage-section">
+        <h3>Invitation</h3>
+        <p>{member.status === "invited" ? `${firstName} hasn’t set up their account yet.` : `${firstName}’s setup link has expired.`} A new invitation replaces any earlier link.</p>
+        <button type="button" className="inventory-quiet-button team-manage-inline" disabled={Boolean(busy)} onClick={() => run("invite", () => onReinvite(member))}><Send size={15} />{busy === "invite" ? "Sending…" : member.status === "expired" ? "Send new invitation" : "Resend invitation"}</button>
+      </section>}
+
+      <section className="team-manage-section">
+        <h3>Account</h3>
+        {deactivated
+          ? <><p>{firstName} can’t sign in. Reactivating restores their access with their existing password. If they never finished setting up, send them a new invitation afterwards.</p>
+            <button type="button" className="team-manage-primary" disabled={Boolean(busy)} onClick={toggleAccess}><LockKeyhole size={15} />{busy === "access" ? "Reactivating…" : "Reactivate account"}</button></>
+          : confirming
+            ? <div className="team-manage-confirm" role="alertdialog" aria-label={`Deactivate ${member.name}`}><p><strong>Deactivate {member.name}?</strong> They’ll be signed out straight away and won’t be able to sign in until you reactivate them. Their records and history are kept.</p>
+              <div><button type="button" className="inventory-quiet-button team-manage-inline" disabled={Boolean(busy)} onClick={() => setConfirming(false)}>Cancel</button><button type="button" className="team-manage-danger" disabled={Boolean(busy)} onClick={toggleAccess}>{busy === "access" ? "Deactivating…" : "Deactivate"}</button></div></div>
+            : <><p>Deactivating signs {firstName} out everywhere and stops them signing in. You can reactivate them later.</p>
+              <button type="button" className="team-manage-danger-quiet" disabled={Boolean(busy)} onClick={() => setConfirming(true)}>Deactivate account</button></>}
+      </section>
+      {error && <p className="collection-error" role="alert">{error}</p>}
+    </section>
+  </InventoryDrawer>;
+}
+
 export default function TeamWorkspace() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [roles, setRoles] = useState<InvitableRole[]>([]);
@@ -37,9 +100,11 @@ export default function TeamWorkspace() {
   const [revision, setRevision] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [role, setRole] = useState<StaffRole>("records");
-  const [busy, setBusy] = useState<number | "new">();
+  const [busy, setBusy] = useState<"new">();
   const [formError, setFormError] = useState("");
   const [result, setResult] = useState<InvitationResult>();
+  const [managing, setManaging] = useState<TeamMember>();
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -48,8 +113,13 @@ export default function TeamWorkspace() {
     return () => { active = false; };
   }, [revision]);
 
+  function replaced(updated: TeamMember) {
+    setMembers(current => current.map(member => member.id === updated.id ? updated : member));
+    setManaging(current => current?.id === updated.id ? updated : current);
+  }
+
   function applied(invitation: InvitationResult) {
-    setResult(invitation);
+    setResult(invitation); setNotice("");
     setMembers(current => current.some(member => member.id === invitation.member.id) ? current.map(member => member.id === invitation.member.id ? invitation.member : member) : [...current, invitation.member]);
   }
 
@@ -65,11 +135,9 @@ export default function TeamWorkspace() {
   }
 
   async function reinvite(member: TeamMember) {
-    if (busy) return;
-    setBusy(member.id); setError(""); setResult(undefined);
-    try { applied(await reinviteTeamMember(member.id)); }
-    catch (failure) { setError(failure instanceof Error ? failure.message : "Could not create a new invitation."); }
-    finally { setBusy(undefined); }
+    setResult(undefined);
+    const invitation = await reinviteTeamMember(member.id);
+    applied(invitation); setManaging(undefined);
   }
 
   const visible = members.filter(member => `${member.name} ${member.job_title} ${member.email ?? ""}`.toLowerCase().includes(search.toLowerCase()));
@@ -86,6 +154,7 @@ export default function TeamWorkspace() {
       </form>
     </section>}
     {result && <InvitationNotice result={result} onClose={() => setResult(undefined)} />}
+    {notice && <p className="team-change-notice" role="status"><Check size={16} />{notice}<button type="button" aria-label="Dismiss message" onClick={() => setNotice("")}><X size={15} /></button></p>}
     <div className="inventory-toolbar"><label className="inventory-search"><Search size={17} /><input aria-label="Search team" placeholder="Search by name, role or email" value={search} onChange={event => setSearch(event.target.value)} /></label><span>{loaded && !error ? `${members.length} team members` : ""}</span><button className="inventory-quiet-button" aria-label="Refresh team" onClick={() => setRevision(value => value + 1)}><RefreshCw size={16} /></button></div>
     {error && <p className="collection-error" role="alert">{error}</p>}
     <section className="panel team-register"><div className="panel-heading"><div><div className="eyebrow">THE NY TEAM</div><h2>Team members <span className="heading-count">{visible.length}</span></h2></div></div>
@@ -93,8 +162,9 @@ export default function TeamWorkspace() {
         <td><strong>{member.name}</strong>{member.email && <small className="team-member-email">{member.email}</small>}</td>
         <td>{member.role_label ?? member.job_title}</td>
         <td><span className={`team-account-note is-${member.status}`}>{statusLabels[member.status]}</span>{member.status === "invited" && member.invitation_expires_at && <small className="team-member-email">Expires {expiry(member.invitation_expires_at)}</small>}</td>
-        <td>{member.can_reinvite && <button type="button" className="inventory-quiet-button team-reinvite" disabled={busy !== undefined} onClick={() => reinvite(member)}><Send size={14} />{busy === member.id ? "Sending…" : member.status === "expired" ? "Send new invitation" : "Resend invitation"}</button>}</td>
+        <td>{member.manageable ? <button type="button" className="inventory-quiet-button team-reinvite" onClick={() => { setManaging(member); setNotice(""); }}><UserRoundCog size={15} />Manage</button> : member.is_self ? <span className="team-account-note">You</span> : null}</td>
       </tr>)}</tbody></table></div> : !error && <div className="empty-state">{members.length ? "No team members match this search." : "No team members recorded yet."}</div>}
     </section>
+    {managing && <ManageMember key={managing.id} member={managing} roles={roles} onClose={() => setManaging(undefined)} onReinvite={reinvite} onChanged={(updated, message) => { replaced(updated); setNotice(message); setResult(undefined); setManaging(undefined); }} />}
   </>;
 }

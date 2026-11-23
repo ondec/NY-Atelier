@@ -29,6 +29,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'staff_active' => 'boolean',
+            'staff_deactivated_at' => 'datetime',
         ];
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\StaffAccess;
 use App\StaffInvitations;
+use App\StaffTeam;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,7 @@ class DemoTeamController extends Controller
     {
         StaffAccess::requireStaffToken($request);
 
-        return response()->json(['members' => $this->members(), 'emailDelivery' => StaffInvitations::delivers(),
+        return response()->json(['members' => $this->members($request), 'emailDelivery' => StaffInvitations::delivers(),
             'invitableRoles' => collect(StaffAccess::INVITABLE_ROLES)->map(fn (string $role): array => ['id' => $role, 'label' => StaffAccess::ROLE_LABELS[$role]])]);
     }
 
@@ -28,41 +29,74 @@ class DemoTeamController extends Controller
             'role' => ['required', Rule::in(StaffAccess::INVITABLE_ROLES)],
         ]);
 
-        return $this->invited($invitations->invite($data['name'], $data['email'], $data['role']), 201);
+        return $this->invited($request, $invitations->invite($data['name'], $data['email'], $data['role']), 201);
     }
 
     public function resend(Request $request, StaffInvitations $invitations, int $member): JsonResponse
     {
         StaffAccess::requireStaffToken($request);
 
-        return $this->invited($invitations->resend($member));
+        return $this->invited($request, $invitations->resend($member));
     }
 
-    private function invited(array $result, int $status = 200): JsonResponse
+    public function role(Request $request, StaffTeam $team, int $member): JsonResponse
+    {
+        $owner = StaffAccess::requireStaffToken($request);
+        $data = $request->validate(['role' => ['required', Rule::in(StaffAccess::INVITABLE_ROLES)]]);
+
+        return $this->changed($request, $team->changeRole($owner, $member, $data['role'])->id);
+    }
+
+    public function deactivate(Request $request, StaffTeam $team, int $member): JsonResponse
+    {
+        return $this->changed($request, $team->deactivate(StaffAccess::requireStaffToken($request), $member)->id);
+    }
+
+    public function reactivate(Request $request, StaffTeam $team, int $member): JsonResponse
+    {
+        return $this->changed($request, $team->reactivate(StaffAccess::requireStaffToken($request), $member)->id);
+    }
+
+    private function changed(Request $request, int $userId): JsonResponse
+    {
+        return response()->json(['member' => collect($this->members($request))->firstWhere('user_id', $userId)])->header('Cache-Control', 'no-store');
+    }
+
+    private function invited(Request $request, array $result, int $status = 200): JsonResponse
     {
         return response()->json([
-            'member' => collect($this->members())->firstWhere('user_id', $result['user']->id),
+            'member' => collect($this->members($request))->firstWhere('user_id', $result['user']->id),
             'delivery' => $result['delivery'], 'setupUrl' => $result['setupUrl'], 'expiresAt' => $result['expiresAt']->toIso8601String(),
         ], $status)->header('Cache-Control', 'no-store');
     }
 
-    private function members(): array
+    private function members(Request $request): array
     {
+        $ownerId = $request->user()->id;
+
         return DB::table('staff_members')
             ->leftJoin('users', 'users.id', '=', 'staff_members.user_id')
             ->leftJoin('staff_activation_tokens', 'staff_activation_tokens.user_id', '=', 'staff_members.user_id')
             ->orderBy('staff_members.sort_order')->orderBy('staff_members.id')
             ->get(['staff_members.id', 'staff_members.name', 'staff_members.job_title', 'staff_members.salary_eligible', 'staff_members.user_id',
-                'users.email', 'users.staff_role', 'users.staff_active', 'staff_activation_tokens.expires_at'])
+                'users.email', 'users.staff_role', 'users.staff_active', 'users.staff_deactivated_at', 'staff_activation_tokens.expires_at'])
             ->map(fn (object $member): array => [
                 'id' => $member->id, 'name' => $member->name, 'job_title' => $member->job_title,
                 'salary_eligible' => (bool) $member->salary_eligible, 'has_account' => $member->user_id !== null,
                 'user_id' => $member->user_id, 'email' => $member->email, 'role' => $member->staff_role,
                 'role_label' => StaffAccess::ROLE_LABELS[$member->staff_role] ?? null,
-                'status' => $member->user_id === null ? 'none' : ($member->staff_active ? 'active'
-                    : ($member->expires_at && now()->lt($member->expires_at) ? 'invited' : 'expired')),
+                'status' => match (true) {
+                    $member->user_id === null => 'none',
+                    $member->staff_deactivated_at !== null => 'deactivated',
+                    (bool) $member->staff_active => 'active',
+                    $member->expires_at && now()->lt($member->expires_at) => 'invited',
+                    default => 'expired',
+                },
                 'invitation_expires_at' => $member->expires_at && ! $member->staff_active ? now()->parse($member->expires_at)->toIso8601String() : null,
-                'can_reinvite' => $member->user_id !== null && ! $member->staff_active && in_array($member->staff_role, StaffAccess::INVITABLE_ROLES, true),
+                'is_self' => $member->user_id !== null && (int) $member->user_id === (int) $ownerId,
+                'manageable' => $member->user_id !== null && (int) $member->user_id !== (int) $ownerId && in_array($member->staff_role, StaffAccess::INVITABLE_ROLES, true),
+                'can_reinvite' => $member->user_id !== null && ! $member->staff_active && $member->staff_deactivated_at === null
+                    && in_array($member->staff_role, StaffAccess::INVITABLE_ROLES, true),
             ])->all();
     }
 }

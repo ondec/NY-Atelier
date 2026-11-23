@@ -104,6 +104,9 @@ Route::prefix('demo/staff')->middleware(['auth:sanctum', 'can:staff.office'])->g
         Route::get('/', [DemoTeamController::class, 'index']);
         Route::post('/invitations', [DemoTeamController::class, 'invite'])->middleware('throttle:20,1');
         Route::post('/{member}/invitation', [DemoTeamController::class, 'resend'])->whereNumber('member')->middleware('throttle:20,1');
+        Route::patch('/{member}/role', [DemoTeamController::class, 'role'])->whereNumber('member')->middleware('throttle:30,1');
+        Route::post('/{member}/deactivate', [DemoTeamController::class, 'deactivate'])->whereNumber('member')->middleware('throttle:30,1');
+        Route::post('/{member}/reactivate', [DemoTeamController::class, 'reactivate'])->whereNumber('member')->middleware('throttle:30,1');
     });
     Route::prefix('studio')->middleware(['can:staff.studio', 'can:staff.sales'])->group(function () {
         Route::post('/orders', [DemoStaffOrderController::class, 'store'])->name('demo.staff.studio.order-create')->middleware('throttle:30,1');

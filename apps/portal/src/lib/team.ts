@@ -1,10 +1,10 @@
 import type { StaffRole } from "./staff-permissions";
 
-export type TeamStatus = "active" | "invited" | "expired" | "none";
+export type TeamStatus = "active" | "invited" | "expired" | "deactivated" | "none";
 export type TeamMember = {
   id: number; name: string; job_title: string; salary_eligible: boolean; has_account: boolean;
   email: string | null; role: StaffRole | null; role_label: string | null; status: TeamStatus;
-  invitation_expires_at: string | null; can_reinvite: boolean;
+  invitation_expires_at: string | null; can_reinvite: boolean; is_self: boolean; manageable: boolean;
 };
 export type InvitableRole = { id: StaffRole; label: string };
 export type TeamDirectory = { members: TeamMember[]; emailDelivery: boolean; invitableRoles: InvitableRole[] };
@@ -34,3 +34,9 @@ export const inviteTeamMember = (invitation: { name: string; email: string; role
 
 export const reinviteTeamMember = (memberId: number) =>
   teamJson<InvitationResult>(`/api/staff-team/${memberId}/invitation`, { method: "POST" });
+
+export const changeTeamRole = (memberId: number, role: StaffRole) =>
+  teamJson<{ member: TeamMember }>(`/api/staff-team/${memberId}/role`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role }) });
+
+export const setTeamAccess = (memberId: number, action: "deactivate" | "reactivate") =>
+  teamJson<{ member: TeamMember }>(`/api/staff-team/${memberId}/${action}`, { method: "POST" });

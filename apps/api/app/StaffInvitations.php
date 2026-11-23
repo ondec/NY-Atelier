@@ -33,6 +33,9 @@ class StaffInvitations
 
         $user = DB::transaction(function () use ($name, $email, $role, $token, $expiresAt): User {
             $user = User::query()->whereRaw('LOWER(email) = ?', [$email])->lockForUpdate()->first();
+            if ($user && $user->staff_deactivated_at !== null) {
+                throw new HttpException(409, 'This person’s account is deactivated. Reactivate it from Team instead.');
+            }
             if ($user && $user->staff_active) {
                 throw new HttpException(409, 'Someone with this email already has an active staff account. Their access was not changed.');
             }
@@ -63,6 +66,7 @@ class StaffInvitations
             $user = $userId ? User::query()->lockForUpdate()->find($userId) : null;
             abort_unless($user, 404, 'This team member has no staff account to invite.');
             abort_if($user->staff_active, 409, 'This account is already active. Their access was not changed.');
+            abort_if($user->staff_deactivated_at !== null, 409, 'Reactivate this account before sending a new invitation.');
             abort_unless(in_array($user->staff_role, StaffAccess::INVITABLE_ROLES, true), 409, 'This account cannot be invited from NY Office.');
             $this->storeToken($user, $token, $expiresAt);
 

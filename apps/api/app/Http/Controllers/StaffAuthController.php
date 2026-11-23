@@ -48,7 +48,7 @@ class StaffAuthController extends Controller
         $row = DB::table('staff_activation_tokens')->where('hash', hash('sha256', $data['token']))->where('expires_at', '>', now())->first();
         abort_unless($row, 422, 'This account setup link is invalid or expired. Ask for a new one.');
         $user = User::query()->findOrFail($row->user_id);
-        abort_unless(isset(StaffAccess::PERMISSIONS[$user->staff_role]) && ! $user->staff_active, 422, 'This setup link is no longer available.');
+        abort_unless(isset(StaffAccess::PERMISSIONS[$user->staff_role]) && ! $user->staff_active && $user->staff_deactivated_at === null, 422, 'This setup link is no longer available.');
 
         return response()->json(['name' => $user->name, 'email' => $user->email, 'role' => $user->staff_role]);
     }
@@ -60,7 +60,7 @@ class StaffAuthController extends Controller
             $row = DB::table('staff_activation_tokens')->where('hash', hash('sha256', $data['token']))->lockForUpdate()->first();
             abort_unless($row && $row->expires_at > now()->toDateTimeString(), 422, 'This account setup link is invalid or expired. Ask for a new one.');
             $user = User::query()->lockForUpdate()->findOrFail($row->user_id);
-            abort_unless(isset(StaffAccess::PERMISSIONS[$user->staff_role]) && ! $user->staff_active, 422, 'This setup link is no longer available.');
+            abort_unless(isset(StaffAccess::PERMISSIONS[$user->staff_role]) && ! $user->staff_active && $user->staff_deactivated_at === null, 422, 'This setup link is no longer available.');
             $user->password = $data['password'];
             $user->staff_active = true;
             $user->email_verified_at = now();
