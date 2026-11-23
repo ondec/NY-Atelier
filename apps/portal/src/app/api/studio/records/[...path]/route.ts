@@ -1,6 +1,7 @@
 import { staffBackendHeaders } from "@/lib/staff-session";
 import { studioAuthorized, studioCors, studioJson, studioSameOrigin } from "@/lib/studio-access";
 import {fittingRequestBody} from '@/lib/fitting-request';
+import { customerListQuery } from '@/lib/customer-search';
 export const runtime = "nodejs";
 type Context = { params: Promise<{ path: string[] }> };
 export async function OPTIONS(request: Request) { return new Response(null, { status: 204, headers: studioCors(request) }); }
@@ -15,7 +16,7 @@ async function forward(request: Request, context: Context) {
   if (!allowed || !["GET", "POST", "PATCH"].includes(method)) return Response.json({ message: "Unavailable in NY Studio." }, { status: 404, headers });
   try {
     const base = process.env.API_BASE_URL ?? "http://127.0.0.1:8000";
-    const target = `${base}/api/demo/staff/${route === 'orders' && method === 'POST' ? 'studio/orders' : route}`;
+    const target = `${base}/api/demo/staff/${route === 'orders' && method === 'POST' ? 'studio/orders' : route}${route === 'customers' && method === 'GET' ? customerListQuery(new URL(request.url).searchParams) : ''}`;
     const multipart = method === 'POST' && /^customers\/\d+\/measurements$/.test(route) && request.headers.get('content-type')?.startsWith('multipart/form-data;');
     const upload = multipart ? await fittingRequestBody(request) : undefined;
     let body;

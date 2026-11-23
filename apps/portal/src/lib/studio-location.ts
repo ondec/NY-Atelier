@@ -14,3 +14,17 @@ export function readStudioLocation(search: string) {
   return {module: workspaceModule, customerId, editor, templateId, saleDesk, productId} as const;
 }
 export type StudioLocation = ReturnType<typeof readStudioLocation>;
+
+export function openSavedCustomerFitting(host: Pick<Window, 'location' | 'history'>, customerId: number, templateId: string) {
+  const url = new URL(host.location.href);
+  url.searchParams.set('view', 'fittings');
+  url.searchParams.set('customer', String(customerId));
+  url.searchParams.delete('screen');
+  url.searchParams.delete('product');
+  url.searchParams.delete('garment');
+  // Replace the completed customer form so Back never offers to create it again.
+  host.history.replaceState({studioFittingProfile: true}, '', url);
+  url.searchParams.set('screen', 'fitting');
+  url.searchParams.set('garment', templateId);
+  host.history.pushState({studioForm: true}, '', url);
+}

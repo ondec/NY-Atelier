@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\StaffAccess;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class DemoCustomerController extends Controller
 {
+    private const PAGE = 50;
+
+    private const MAX_PAGE = 100;
+
     private const MEASUREMENTS = [
         'height' => 'Height', 'weight' => 'Weight', 'neck' => 'Neck', 'shoulder' => 'Shoulder width',
         'chest' => 'Chest / bust', 'waist' => 'Waist', 'hips' => 'Hips', 'sleeve' => 'Sleeve length',
@@ -32,12 +37,55 @@ class DemoCustomerController extends Controller
     public function index(Request $request): JsonResponse
     {
         $this->staffOnly($request);
+        $data = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'page' => ['nullable', 'integer', 'min:1', 'max:10000'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_PAGE],
+        ]);
+        $perPage = (int) ($data['per_page'] ?? self::PAGE);
+        $page = (int) ($data['page'] ?? 1);
+        $query = self::search(Customer::query(), (string) ($data['q'] ?? ''));
+        $total = (clone $query)->count();
 
         return response()->json([
-            'customers' => Customer::query()->orderBy('name')->get(['id', 'name', 'email', 'phone', 'account_reference']),
+            'customers' => $query->orderBy('name')->orderBy('id')->forPage($page, $perPage)->get(['id', 'name', 'email', 'phone', 'account_reference']),
+            'total' => $total,
+            'page' => $page,
+            'per_page' => $perPage,
+            'has_more' => $page * $perPage < $total,
             'fields' => self::MEASUREMENTS,
             'templates' => config('fittings.templates'),
         ]);
+    }
+
+    /**
+     * Match every word of the search against name, email, phone or account reference, case-insensitively.
+     * Phone matching ignores spaces, dashes and brackets so "024 123" finds "+233 24 123 4567".
+     *
+     * @param  Builder<Customer>  $query
+     * @return Builder<Customer>
+     */
+    public static function search(Builder $query, string $search): Builder
+    {
+        $search = trim($search);
+        $digits = ltrim((string) preg_replace('/\D+/', '', $search), '0');
+        if (preg_match('/^[\d\s+().-]+$/', $search) && strlen($digits) >= 3) {
+            // A search made only of phone characters is one number: "024 123" means +23324123…, not "024" or "123" anywhere.
+            $like = '%'.addcslashes(Str::lower($search), '\\%_').'%';
+
+            return $query->where(fn (Builder $match) => $match->where('phone_e164', 'like', '%'.$digits.'%')
+                ->orWhereRaw('LOWER(account_reference) LIKE ?', [$like]));
+        }
+
+        foreach (preg_split('/\s+/', Str::lower($search), -1, PREG_SPLIT_NO_EMPTY) ?: [] as $word) {
+            $like = '%'.addcslashes($word, '\\%_').'%';
+            $query->where(fn (Builder $match) => $match->whereRaw('LOWER(name) LIKE ?', [$like])
+                ->orWhereRaw('LOWER(email) LIKE ?', [$like])
+                ->orWhereRaw('LOWER(account_reference) LIKE ?', [$like])
+                ->orWhereRaw('LOWER(phone) LIKE ?', [$like]));
+        }
+
+        return $query;
     }
 
     public function show(Request $request, Customer $customer): JsonResponse

@@ -1,6 +1,7 @@
 "use client";
 
 import { customerEndpoint } from "@/lib/studio-endpoints";
+import { customerPageSize, customerSearchQuery } from "@/lib/customer-search";
 
 import StatusBadge from "./status-badge";
 
@@ -35,6 +36,42 @@ export async function customerApi<T>(query = "", init?: RequestInit): Promise<T>
   return payload;
 }
 
+export type CustomerPage = Directory & { total: number; page: number; has_more: boolean };
+type SearchState = { term: string; rows: Customer[]; total: number; page: number; hasMore: boolean };
+
+/** Searches customers in the database a page at a time; typing waits briefly so each keystroke is not a request. */
+export function useCustomerSearch(query: string, { perPage = customerPageSize, enabled = true, revision = 0 } = {}) {
+  const term = query.trim();
+  const [state, setState] = useState<SearchState>();
+  const [error, setError] = useState("");
+  const [loadingMore, setLoadingMore] = useState(false);
+  useEffect(() => {
+    if (!enabled) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      customerApi<CustomerPage>(customerSearchQuery(term, 1, perPage), { signal: controller.signal }).then((page) => {
+        setState({ term, rows: page.customers, total: page.total, page: 1, hasMore: page.has_more });
+        setError("");
+      }).catch((failure) => { if (!controller.signal.aborted) setError(failure.message); });
+    }, term ? 250 : 0);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [term, perPage, enabled, revision]);
+  const current = state?.term === term ? state : undefined;
+  async function loadMore() {
+    if (!current?.hasMore || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const next = await customerApi<CustomerPage>(customerSearchQuery(term, current.page + 1, perPage));
+      setState((previous) => previous && previous.term === term
+        ? { ...previous, rows: [...previous.rows, ...next.customers.filter((row) => !previous.rows.some((seen) => seen.id === row.id))], page: next.page, total: next.total, hasMore: next.has_more }
+        : previous);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Could not load more customers.");
+    } finally { setLoadingMore(false); }
+  }
+  return { customers: current?.rows ?? [], total: current?.total ?? 0, hasMore: current?.hasMore ?? false, searching: enabled && !current && !error, loadingMore, error, loadMore };
+}
+
 export default function CustomersWorkspace({ customerId, fittingId }: { customerId?: number; fittingId?: number }) {
   const router = useRouter();
   const [directory, setDirectory] = useState<Directory>();
@@ -46,7 +83,8 @@ export default function CustomersWorkspace({ customerId, fittingId }: { customer
 
   useEffect(() => {
     const controller = new AbortController();
-    customerApi<Directory>("", { signal: controller.signal }).then(setDirectory).catch((failure) => {
+    // The directory call supplies measurement fields and templates; the list itself comes from useCustomerSearch.
+    customerApi<Directory>(customerSearchQuery("", 1, 1), { signal: controller.signal }).then(setDirectory).catch((failure) => {
       if (!controller.signal.aborted) setError(failure.message);
     });
     if (customerId) {
@@ -59,10 +97,9 @@ export default function CustomersWorkspace({ customerId, fittingId }: { customer
 
   const customer = profile?.customer;
   const current = profile?.measurements[0];
-  const needle = query.trim().toLowerCase();
-  const results = directory?.customers.filter((row) =>
-    [row.name, row.email, row.phone, row.account_reference].some((value) => value?.toLowerCase().includes(needle))
-  ) ?? [];
+  const needle = query.trim();
+  const search = useCustomerSearch(query, { enabled: !customerId, revision });
+  const results = search.customers;
 
   return <>
     <div className="eyebrow">CUSTOMER WORKSPACE</div>
@@ -75,7 +112,7 @@ export default function CustomersWorkspace({ customerId, fittingId }: { customer
     {error && <p className="inventory-message" role="alert">{error}</p>}
     {!error && (!directory || (customerId && !profile)) && <p role="status">Loading customer records…</p>}
     {directory && !customerId && <section className="panel inventory-list-panel">
-      <div className="panel-heading"><h2>Customer directory <span className="heading-count">{results.length}</span></h2>
+      <div className="panel-heading"><h2>Customer directory <span className="heading-count">{search.searching ? "…" : search.total.toLocaleString()}</span></h2>
         <label className="inventory-search"><Search size={17} aria-hidden="true" /><span className="sr-only">Search customers</span><input type="search" placeholder="Name, email, phone or account ID" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
       </div>
       {results.length ? <div className="table-wrap"><table className="order-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Account reference</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>
@@ -89,7 +126,12 @@ export default function CustomersWorkspace({ customerId, fittingId }: { customer
             <td className="customer-row-action"><Link prefetch={false} className="inventory-quiet-button" href={profileHref} aria-label={`View customer: ${row.name}`}>View customer</Link></td>
           </tr>;
         })}
-      </tbody></table></div> : <p className="empty-state">{needle ? "No customers match this search." : "No customers yet."}</p>}
+      </tbody></table></div> : search.searching ? <p className="empty-state" role="status">Searching customers…</p> : <p className="empty-state">{needle ? "No customers match this search." : "No customers yet."}</p>}
+      {search.error && <p className="inventory-message" role="alert">{search.error}</p>}
+      {results.length > 0 && <div className="customer-list-footer">
+        <p role="status">Showing {results.length.toLocaleString()} of {search.total.toLocaleString()}</p>
+        {search.hasMore && <button className="inventory-quiet-button" type="button" disabled={search.loadingMore} onClick={search.loadMore}>{search.loadingMore ? "Loading…" : "Show more"}</button>}
+      </div>}
     </section>}
     {profile && directory && <>
       <section className="panel inventory-form-panel">
@@ -136,12 +178,13 @@ export function MeasurementSet({ fitting, fields, templateName, template, custom
   </>;
 }
 
-export function CustomerEditor({ mode, profile, fields, templateId, template, unit = 'cm', fullScreen = false, onClose, onSaved, onBusyChange }: {
+export function CustomerEditor({ mode, profile, fields, templateId, template, unit = 'cm', fullScreen = false, onClose, onSaved, onSaveAndMeasure, onBusyChange }: {
   mode: "customer" | "fitting"; profile?: Profile; fields: Record<string, string>;
   templateId?: string; template?: MeasurementTemplate;
   unit?: MeasurementUnit;
   fullScreen?: boolean;
   onClose: () => void; onSaved: (id: number) => void;
+  onSaveAndMeasure?: (id: number) => void;
   onBusyChange?: (busy: boolean) => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -164,6 +207,8 @@ export function CustomerEditor({ mode, profile, fields, templateId, template, un
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || (fitting && !customer)) return;
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    const addMeasurements = !fitting && !customer && onSaveAndMeasure && submitter instanceof HTMLButtonElement && submitter.value === 'measurements';
     const data = new FormData(event.currentTarget);
     setBusy(true);
     setError("");
@@ -187,7 +232,8 @@ export function CustomerEditor({ mode, profile, fields, templateId, template, un
           method: customer ? "PATCH" : "POST",
           body: JSON.stringify({ name: data.get("name"), email: data.get("email"), phone: data.get("phone"), account_reference: data.get("account_reference") }),
         });
-        onSaved(result.id);
+        if (addMeasurements) onSaveAndMeasure(result.id);
+        else onSaved(result.id);
       }
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Could not save this record.");
@@ -219,7 +265,10 @@ export function CustomerEditor({ mode, profile, fields, templateId, template, un
           </div>
         </>}
         {error && <p className="collection-error" role="alert">{error}</p>}
-        <div className="inventory-form-footer"><button type="submit" disabled={busy}>{busy ? "Saving…" : fitting ? "Save fitting" : "Save customer"}</button></div>
+        <div className={`inventory-form-footer${!fitting && !customer && onSaveAndMeasure ? ' customer-save-actions' : ''}`}>
+          <button className={!fitting && !customer && onSaveAndMeasure ? 'customer-save-only' : undefined} type="submit" disabled={busy}>{busy ? "Saving…" : fitting ? "Save fitting" : "Save customer"}</button>
+          {!fitting && !customer && onSaveAndMeasure && <button type="submit" value="measurements" disabled={busy}>{busy ? "Saving…" : "Save & add measurement"}</button>}
+        </div>
       </form>
     </section>
   </InventoryDrawer>;

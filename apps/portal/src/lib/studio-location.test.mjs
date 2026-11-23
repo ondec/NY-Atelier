@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readStudioLocation} from './studio-location.ts';
+import {openSavedCustomerFitting, readStudioLocation} from './studio-location.ts';
 
 test('history locations restore the customer, fitting screen and garment after reload', () => {
   assert.deepEqual(readStudioLocation('?view=fittings&customer=3&screen=fitting&garment=suit'), {
@@ -43,3 +43,37 @@ test('invalid customer and screen locations cannot open an orphan fitting form',
   }
   assert.equal(readStudioLocation('?view=collection&customer=3&screen=fitting').editor, undefined);
 });
+
+for (const origin of ['fittings', 'collection']) {
+  test(`saving a customer from ${origin} opens their fitting and Back never returns to the completed customer form`, () => {
+    const entries = [
+      {href: `https://studio.example/showroom?view=${origin}`, state: {}},
+      {href: `https://studio.example/showroom?view=${origin}&screen=new-customer&product=old-garment`, state: {studioForm: true}},
+    ];
+    let index = 1;
+    const host = {
+      location: {get href() {return entries[index].href;}},
+      history: {
+        replaceState(state, unused, href) {entries[index] = {state, href: String(href)};},
+        pushState(state, unused, href) {entries.splice(index + 1); entries.push({state, href: String(href)}); index++;},
+      },
+    };
+
+    openSavedCustomerFitting(host, 7, 'suit');
+
+    assert.deepEqual(readStudioLocation(new URL(host.location.href).search), {
+      module: 'measurements', customerId: 7, editor: 'fitting', templateId: 'suit', saleDesk: false, productId: undefined,
+    });
+    assert.equal(entries[index].state.studioForm, true);
+    index--;
+    const profile = readStudioLocation(new URL(host.location.href).search);
+    assert.equal(profile.customerId, 7);
+    assert.equal(profile.editor, undefined);
+    assert.equal(entries[index].state.studioFittingProfile, true);
+    index--;
+    assert.equal(host.location.href, `https://studio.example/showroom?view=${origin}`);
+    index += 2;
+    assert.equal(readStudioLocation(new URL(host.location.href).search).editor, 'fitting');
+    assert.equal(entries.length, 3);
+  });
+}

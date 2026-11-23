@@ -1,5 +1,6 @@
 import { staffRequestError, staffBackendHeaders } from "@/lib/staff-session";
 import {fittingRequestBody} from '@/lib/fitting-request';
+import { customerListQuery } from '@/lib/customer-search';
 
 const base = process.env.API_BASE_URL ?? "http://127.0.0.1:8000";
 
@@ -16,7 +17,7 @@ async function forward(request: Request, method: "GET" | "POST" | "PATCH") {
     return Response.json({ message: "Expected JSON." }, { status: 415 });
   }
   try {
-    const response = await fetch(`${base}/api/demo/staff/customers${id ? `/${id}` : ""}${measure ? "/measurements" : ""}`, {
+    const response = await fetch(`${base}/api/demo/staff/customers${id ? `/${id}` : ""}${measure ? "/measurements" : ""}${method === "GET" && !id ? customerListQuery(query) : ""}`, {
       method,
       cache: "no-store",
       headers: {...await staffBackendHeaders(request), ...(multipart ? {'Content-Type': request.headers.get('content-type')!} : {})},

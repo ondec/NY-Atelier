@@ -4,18 +4,18 @@ import { orderEndpoint } from "@/lib/studio-endpoints";
 
 import { createRequestId } from "@/lib/request-id";
 
-import { Plus, Scissors, X } from "@/components/icons";
+import { Plus, Scissors, Search, X } from "@/components/icons";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { InventoryDrawer } from "./catalogue-editor";
+import { customerApi, useCustomerSearch, type Profile } from "./customers-workspace";
 import { orderDate, orderHref } from "./order-table";
 
 type Category = "Custom" | "Alterations";
 type Options = {
-  customers: { id: number; name: string }[];
+  customer_count: number;
   demo_customer_id: number | null;
-  measurements: { id: number; customer_id: number; measured_on: string }[];
   offerings: Record<string, string>;
   consultations: { id: string; purpose: string; confirmedDate: string; confirmedTime: string }[];
 };
@@ -38,17 +38,21 @@ function StaffOrderForm({ category, consultationId, preferredCustomerId, onCreat
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [garments, setGarments] = useState(() => initialGarments?.length ? initialGarments.slice(0, 20).map((_, index) => index) : [0]);
-  const [customerId, setCustomerId] = useState<string>();
+  const [picked, setPicked] = useState<{ id: number; name: string }>();
+  const [profile, setProfile] = useState<Profile>();
   const [consultation, setConsultation] = useState(consultationId ?? "");
   const requestId = useRef<string | null>(null);
   const nextGarmentId = useRef(initialGarments?.length ?? 1);
   const router = useRouter();
   const custom = category === "Custom";
-  const initialCustomerId = preferredCustomerId ?? (consultationId ? options?.demo_customer_id : options?.customers.length === 1 ? options.customers[0].id : null);
-  const selectedCustomerId = customerId ?? String(initialCustomerId ?? "");
+  const initialCustomerId = preferredCustomerId ?? (consultationId ? options?.demo_customer_id : null);
+  const selectedId = picked?.id ?? initialCustomerId ?? null;
+  const selectedCustomerId = String(selectedId ?? "");
+  const selectedProfile = profile?.customer.id === selectedId ? profile : undefined;
+  const selectedName = picked?.name ?? selectedProfile?.customer.name;
   const canLinkConsultation = Boolean(options?.demo_customer_id && Number(selectedCustomerId) === options.demo_customer_id);
   const selected = canLinkConsultation ? options?.consultations.find((item) => item.id === consultation) : undefined;
-  const measurements = options?.measurements.filter((item) => item.customer_id === Number(selectedCustomerId)) ?? [];
+  const measurements = selectedProfile?.measurements ?? [];
   const initialPurpose = options?.consultations.find((item) => item.id === consultationId)?.purpose;
   const offering = initialPurpose === "Custom clothing" ? "bespoke" : initialPurpose === "Special event outfit" ? "special-events"
     : Object.entries(options?.offerings ?? {}).find(([, title]) => title === initialPurpose)?.[0];
@@ -64,6 +68,14 @@ function StaffOrderForm({ category, consultationId, preferredCustomerId, onCreat
     });
     return () => controller.abort();
   }, []);
+
+  // The chosen client's fittings are fetched on their own so the form never downloads every record.
+  useEffect(() => {
+    if (!selectedId) return;
+    const controller = new AbortController();
+    customerApi<Profile>(`?id=${selectedId}`, { signal: controller.signal }).then(setProfile).catch(() => undefined);
+    return () => controller.abort();
+  }, [selectedId]);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -113,12 +125,7 @@ function StaffOrderForm({ category, consultationId, preferredCustomerId, onCreat
           {garmentContext && <p className="showroom-alteration-context">{garmentContext}</p>}
           <p className="consultation-muted">The linked client will see this order under Active orders in the customer app.</p>
           <div className="inventory-form-grid">
-            <label>Client<select name="customer" required value={selectedCustomerId} onChange={(event) => {
-              setCustomerId(event.target.value);
-              setConsultation("");
-            }}>
-              <option value="" disabled>Select a client</option>{options.customers.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
-            </select></label>
+            <ClientPicker selectedId={selectedId} selectedName={selectedName} onPick={(client) => { setPicked(client); setConsultation(""); }} />
             {custom && <label>Service offering<select name="offering" required defaultValue={offering ?? ""}>
               <option value="" disabled>Select an offering</option>{Object.entries(options.offerings).map(([id, title]) => <option key={id} value={id}>{title}</option>)}
             </select></label>}
@@ -146,9 +153,38 @@ function StaffOrderForm({ category, consultationId, preferredCustomerId, onCreat
             {garments.length < 20 && <button className="inventory-quiet-button" type="button" onClick={() => { const id = nextGarmentId.current++; setGarments([...garments, id]); }}>Add another garment</button>}
           </fieldset>
           {error && <p role="alert" className="collection-error">{error}</p>}
-          <div className="inventory-form-footer"><button type="submit" disabled={busy || !options.customers.length}>{busy ? "Creating…" : label}</button></div>
+          <div className="inventory-form-footer"><button type="submit" disabled={busy || !selectedId}>{busy ? "Creating…" : label}</button></div>
         </form>
       )}
     </section>
   </InventoryDrawer>;
+}
+
+/** Search-as-you-type client choice; submits the chosen id as the "customer" form field. */
+function ClientPicker({ selectedId, selectedName, onPick }: { selectedId: number | null; selectedName?: string; onPick: (client: { id: number; name: string }) => void }) {
+  const [query, setQuery] = useState("");
+  const [changing, setChanging] = useState(false);
+  const searching = changing || !selectedId;
+  const search = useCustomerSearch(query, { perPage: 8, enabled: searching });
+  return <div className="inventory-wide-field client-picker">
+    <input type="hidden" name="customer" value={selectedId ?? ""} />
+    <span className="client-picker-label">Client</span>
+    {!searching ? <div className="client-picker-chosen">
+      <strong>{selectedName ?? "Loading client…"}</strong>
+      <button className="inventory-quiet-button" type="button" onClick={() => setChanging(true)}>Change</button>
+    </div> : <>
+      <label className="inventory-search"><Search size={17} aria-hidden="true" /><span className="sr-only">Search clients</span>
+        <input type="search" autoFocus={changing} placeholder="Search by name, phone or email" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+      <div className="client-picker-results">
+        {search.customers.map((client) => <button key={client.id} type="button" className="client-picker-option" aria-pressed={client.id === selectedId}
+          onClick={() => { onPick({ id: client.id, name: client.name }); setChanging(false); setQuery(""); }}>
+          <strong>{client.name}</strong><small>{client.phone ?? client.email ?? client.account_reference ?? ""}</small></button>)}
+        {search.searching && <p role="status">Searching clients…</p>}
+        {search.error && <p role="alert">{search.error}</p>}
+        {!search.searching && !search.error && !search.customers.length && <p>{query.trim() ? "No clients match this search." : "No clients yet."}</p>}
+        {search.total > search.customers.length && <p className="consultation-muted">{(search.total - search.customers.length).toLocaleString()} more. Type more of the name or number to narrow the list.</p>}
+      </div>
+      {changing && selectedId && <button className="inventory-quiet-button" type="button" onClick={() => { setChanging(false); setQuery(""); }}>Keep {selectedName ?? "current client"}</button>}
+    </>}
+  </div>;
 }

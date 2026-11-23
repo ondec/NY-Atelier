@@ -2,6 +2,44 @@
 
 Use this file for dated handoffs between Claude, Codex and maintainers. Read the latest entry first, then [AI_HANDOFF.md](AI_HANDOFF.md) for architecture and design. Dates use Africa/Accra. Write facts and results, not hidden reasoning or a chat transcript. Do not include credentials or private fitting values.
 
+## 2026-11-23 — Codex — Fitting inspiration viewer (local only)
+
+**Problem/fix:** saved fitting images and filenames opened the raw protected file in another tab, with no app navigation. They now open an in-app dialog with a circular **Back to fitting** button, filename, current/total count, Previous/Next buttons and a swipe/drag carousel (existing Embla dependency). The viewer starts at the tapped file; navigation stops at each end. Single-file fittings keep Back and the count without redundant arrows. Videos retain inline controls and can also open in the viewer from their filename; hidden/closed videos pause. The image stays contained so none of it is cropped. Phone viewer fills the screen with safe-area padding; wider screens use a centred dialog.
+
+**Navigation/access:** Studio uses the existing dialog-history hook, so browser Back closes only the viewer and restores the fitting. Explicit Back and Escape also close it; focus returns to the opening thumbnail/filename. Existing protected media endpoints and access checks are unchanged. Shared FittingMedia also gives Office users the visible Back/Escape controls.
+
+**Files/checks:** portal `src/app/fitting-fields.tsx`, new `fitting-media-viewer.tsx` and `fitting-media-viewer.css`. TypeScript, scoped ESLint, nine fitting-measurement/dialog-history tests and `git diff --check` passed. Local browser verified two sample photos: tapped starting file, Previous/Next + disabled end controls, keyboard arrows, browser Back, explicit Back, caption opening, Escape and focus restoration. At 390×844, horizontal pointer drag changed the slide and header/footer stayed visible. The original single-image fitting also opened/closed correctly. Actual physical-device touch/swipe still needs acceptance. A temporary customer/fitting with two public sample images was created through the UI and then removed with its two files; original records and Claude's load-test records were preserved. Screenshot `/tmp/ny-studio-inspiration-viewer.jpg` shows only sample media. No production build/hosted test run for this change.
+
+**Status:** local, uncommitted, NOT pushed/deployed. No dependency, backend or migration changes. Other in-progress customer-search work preserved. Local services left running.
+
+## 2026-11-23 — Codex — Studio round back buttons (local only)
+
+**Change:** the rectangle in the customer-form screenshot was the shared 3px focus outline around an unrounded button. Studio's full-screen customer/fitting/Sales Desk back button now has a fixed 44×44px circular target, 1px neutral border and 2px petrol focus ring with a 2px offset. Focus visibility and existing Back behavior are retained. Only `apps/portal/src/app/showroom/showroom.css` changed for this follow-up.
+
+**Checks/status:** local browser verified the round button, exact computed size/border/ring and Tab/Shift+Tab focus. No data was submitted. CSS-only change; no additional tests/build run. Uncommitted, NOT pushed/deployed. Other in-progress customer search changes observed in the checkout were preserved. Local services left running.
+
+## 2026-11-23 — Codex — Studio: Save & add measurement (local only)
+
+**Status:** built locally at the user's request; uncommitted, NOT pushed or deployed. Render remains unchanged. Preserve this working tree when continuing in Claude.
+
+**Behavior:** Studio → New customer keeps **Save customer** and adds **Save & add measurement**. The shortcut uses the existing customer save/validation, then opens that saved customer's fitting form in inches with the current/default garment template (Kaftan by default). The fitting form waits for the new profile to load. It does not save a fitting automatically. The completed customer form is replaced in browser history by the saved profile, then the fitting form is pushed; Back returns to the saved profile without reopening a completed creation form. The shared Office editor and existing customer editing remain unchanged. Both buttons disable during saving; phone actions stack within the existing 10px gutters.
+
+**Files:** portal `src/app/customers-workspace.tsx`, `src/app/showroom/showroom.tsx`, `showroom.css`, `src/lib/studio-location.ts` and its test file. No backend, migration or dependency changes.
+
+**Checks:** TypeScript and scoped ESLint passed; 17 targeted Studio location/dialog/access tests passed, including history transitions from Fittings and Ready-to-Wear. Local browser verified required-name and missing-contact validation, successful customer save → matching customer fitting form, browser Back → saved profile, and 390×844 layout with both actions visible. Exactly one temporary local customer was created, verified without linked fittings/orders and removed; existing customer records were untouched. No fitting was saved. Phone screenshot: `/tmp/ny-studio-save-add-measurement.jpg` (temporary local artifact). `git diff --check` passed. No production build or hosted check was run for this local-only change. Local services were left running.
+
+## 2026-11-23 — Claude — Customer directory ready for ~10,000 records (local, NOT pushed)
+
+**User goal:** load about 10,000 **real** customer records. This entry only makes the app handle that size; importing the real records is not built yet. The free Render Postgres is deleted on **23 December 2026** with no backups, so real records should not live only there; the import route still needs deciding with the user (source format unknown, and the existing snapshot restore is capped at 1 MB).
+
+**API:** `GET /api/demo/staff/customers` now pages (`page`, `per_page` ≤100, default 50) and searches in the database (`q`, ≤100 chars): every word must match name, email, phone or account reference (case-insensitive); a search made only of phone characters is treated as one number against `phone_e164` ("024 000 0123", "0240000123" and "+233 24 000 0123" all match). The response adds `total`, `page`, `has_more` and still includes `fields`/`templates`. `DemoCustomerController::search()` holds the rules. `GET …/orders/options` no longer sends every customer and every fitting: it returns `customer_count`; the order form looks up the chosen client's fittings through the customer profile endpoint. Migration `2026_11_23_145240_add_customer_search_indexes`: `(name, id)` index everywhere; on Postgres it enables `pg_trgm` and adds trigram indexes on LOWER(name/email/phone/account_reference) and `phone_e164`. It runs outside a transaction and skips the trigram indexes (with a warning) if the extension cannot be enabled, so a refusal cannot block a deploy. New `CustomerFactory` (`HasFactory` on `Customer`).
+
+**Local-only load testing:** `php artisan customers:generate-test {count=10000}` adds made-up customers tagged `LOADTEST-######` (a third get a fitting); `--remove` deletes only those. Refuses outside local/testing. **The local database currently holds 10,000 of them** (remove with `php artisan customers:generate-test --remove`).
+
+**Portal:** `src/lib/customer-search.ts` (query building, shared by both proxies and `customerEndpoint`); `useCustomerSearch` hook in `customers-workspace.tsx` (250 ms typing pause, page appends, de-duplicates). Customers page shows the database total, "Showing X of Y" and Show more. Studio fittings and sale customer pickers show 30 at a time with "Show more (N left)". The new-order form's client dropdown is now `ClientPicker` (search-as-you-type, 8 results, Change/Keep). Both customer proxies forward only `q`, `page`, `per_page`.
+
+**Checks:** API 160 passed / 1238 assertions (new `CustomerSearchTest`, 6 tests); Pint; portal TypeScript, scoped ESLint, 80 logic tests (new `customer-search.test.mjs`), `NY_STAFF_PREVIEW=1` build. With 10,002 local customers: list pages ~9 KB and 35–60 ms, searches 35–150 ms, customers table + indexes ~20 MB. Browser (owner, local): Customers page total 10,002, Show more 50→100, phone search finds one; order form search, pick, Change, and "Fitting used" appears for a client with a fitting (form closed without creating an order); Studio fittings 30→60 and phone search. Not measured on Render.
+
 ## 2026-11-23 — Claude — Portal links no longer prefetch (pushed `07f8b5f`)
 
 **Why:** on the Render preview an Office load fired ~15 Next.js prefetch (`_rsc`) requests alongside the page's real data calls; on the Free plan's small CPU share these slowed the visible data to ~3.6 s per call.

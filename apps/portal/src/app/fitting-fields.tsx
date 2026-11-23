@@ -5,21 +5,24 @@ import {useEffect, useRef, useState, type ChangeEvent} from 'react';
 import {Plus, Upload, X} from '@/components/icons';
 import {fittingMediaUrl, fittingUploadLimits, measurementUnit, measurementValue, type FittingAttachment, type MeasurementUnit} from '@/lib/fitting-measurements';
 import type {Fitting, MeasurementTemplate} from './customers-workspace';
+import FittingMediaViewer from './fitting-media-viewer';
 
 type PendingMedia = {id: string; file: File; url: string};
 
 export function FittingMedia({customerId, fittingId, attachments}: {customerId: number; fittingId: number; attachments: FittingAttachment[]}) {
+  const [viewing, setViewing] = useState<number>();
   if (!attachments.length) return null;
   return <section className="fitting-inspiration" aria-label="Fitting inspiration">
     <h3>Inspiration</h3>
-    <div className="fitting-media-grid">{attachments.map(file => {
+    <div className="fitting-media-grid">{attachments.map((file, index) => {
       const url = fittingMediaUrl(customerId, fittingId, file.id);
       return <figure key={file.id}>
         {file.mime_type.startsWith('video/') ? <video controls playsInline preload="metadata" src={url} aria-label={file.name}/> :
-          <a href={url} target="_blank" rel="noopener noreferrer"><Image unoptimized src={url} alt={file.name} width={320} height={240}/></a>}
-        <figcaption><a href={url} target="_blank" rel="noopener noreferrer">{file.name}</a></figcaption>
+          <button type="button" className="fitting-media-open" aria-label={`View inspiration: ${file.name}`} onClick={() => setViewing(index)}><Image unoptimized src={url} alt={file.name} width={320} height={240}/></button>}
+        <figcaption><button type="button" className="fitting-media-open" onClick={() => setViewing(index)}>{file.name}</button></figcaption>
       </figure>;
     })}</div>
+    {viewing !== undefined && <FittingMediaViewer key={`${customerId}-${fittingId}`} customerId={customerId} fittingId={fittingId} attachments={attachments} start={viewing} onClose={() => setViewing(undefined)}/>}
   </section>;
 }
 

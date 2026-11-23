@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { emptyInventory, isLowStock, productTypes, variantKey, variantLabel, type Variant } from "@/lib/inventory";
 import { demoStock } from "../../../../mobile/src/data/demo-stock";
 import { sampleCollections, type Collection } from "../collections-workspace";
-import { customerApi, CustomerEditor, type Directory, type Profile } from "../customers-workspace";
+import { customerApi, CustomerEditor, useCustomerSearch, type Directory, type Profile } from "../customers-workspace";
+import { customerSearchQuery } from "@/lib/customer-search";
 import CreateStaffOrder from "../create-staff-order";
 import { alterationContext } from "@/lib/alteration-context";
 import StatusBadge from "../status-badge";
@@ -21,7 +22,7 @@ import type { Receipt } from "@/lib/studio-sales";
 import GarmentGallery from "./garment-gallery";
 import WelcomeCarousel from "./welcome-carousel";
 import StudioTools from "./studio-tools";
-import {readStudioLocation, type StudioLocation} from "@/lib/studio-location";
+import {openSavedCustomerFitting, readStudioLocation, type StudioLocation} from "@/lib/studio-location";
 import {leaveStudioDialog} from "@/lib/studio-dialog-history";
 import {readSaleDraft, saleDraftKey} from "@/lib/studio-sale-draft";
 import { filterStudioCatalogue } from "@/lib/studio-catalogue";
@@ -208,6 +209,14 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
     setRevision(value => value + 1); setError('');
   }
 
+  function saveCustomerAndMeasure(id: number) {
+    fittingBusy.current = false;
+    openSavedCustomerFitting(window, id, templateId);
+    setModule('measurements'); setFittingPage('profile'); setSaleDesk(false); setViewingProduct(false);
+    setProfile(undefined); setCustomerId(id); setHistoryId(undefined);
+    setRevision(value => value + 1); setError(''); setEditor('fitting');
+  }
+
   useEffect(() => {
     let active = true;
     if (!canSell) return;
@@ -247,7 +256,7 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
 
   useEffect(() => {
     const controller = new AbortController();
-    customerApi<Directory>("", { signal: controller.signal }).then(setDirectory).catch((failure) => {
+    customerApi<Directory>(customerSearchQuery("", 1, 1), { signal: controller.signal }).then(setDirectory).catch((failure) => {
       if (!controller.signal.aborted) setError(failure.message);
     });
     if (customerId) customerApi<Profile>(`?id=${customerId}`, { signal: controller.signal }).then((value) => {
@@ -281,8 +290,9 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
   const selectedStock = stock.find((item) => item.size === size);
   const template = directory?.templates?.[templateId];
   const fitting = profile?.measurements.find((item) => item.id === historyId) ?? profile?.measurements[0];
-  const needle = customerQuery.toLowerCase().trim();
-  const customers = directory?.customers.filter((item) => [item.name, item.phone, item.email].some((value) => value?.toLowerCase().includes(needle))) ?? [];
+  const customerSearch = useCustomerSearch(customerQuery, { perPage: 30, revision });
+  const customers = customerSearch.customers;
+  const moreCustomers = customerSearch.hasMore && <button className="showroom-secondary showroom-more-customers" type="button" disabled={customerSearch.loadingMore} onClick={customerSearch.loadMore}>{customerSearch.loadingMore ? "Loading…" : `Show more (${(customerSearch.total - customers.length).toLocaleString()} left)`}</button>;
   const profileReady = profile && profile.customer.id === customerId;
 
   function chooseProduct(id: string) {
@@ -417,9 +427,11 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
           <section className="showroom-directory" aria-label="Customer directory"><h2>Who are we fitting?</h2><label className="showroom-search"><Search size={19} /><input ref={fittingSearchRef} type="search" aria-label="Find a customer" value={customerQuery} onChange={(event) => setCustomerQuery(event.target.value)} placeholder="Name, email or phone" /></label>
             <div className="showroom-customer-list">
             {error && !profileReady && <p className="collection-error" role="alert">{error} <button className="showroom-secondary" onClick={() => {setError(""); setRevision(revision + 1);}}>Retry</button></p>}
-            {!directory && !error && <p role="status">Loading customers…</p>}
-            {directory && !customers.length && <p>No customers match your search.</p>}
+            {(!directory || customerSearch.searching) && !error && <p role="status">{directory ? "Searching customers…" : "Loading customers…"}</p>}
+            {customerSearch.error && <p className="collection-error" role="alert">{customerSearch.error}</p>}
+            {directory && !customerSearch.searching && !customers.length && <p>No customers match your search.</p>}
             {customers.map((customer) => <button key={customer.id} className="showroom-person" aria-pressed={customer.id === customerId} onClick={() => openFittingCustomer(customer.id)}><span className="showroom-initial">{customer.name.slice(0, 1)}</span><span><strong>{customer.name}</strong><small>{customer.phone ?? customer.email ?? "Customer"}</small></span><ChevronRight size={17} /></button>)}
+            {moreCustomers}
             </div>
           </section>
           <section ref={fittingRecordRef} className="showroom-record" tabIndex={0} aria-label="Customer fitting profile">
@@ -459,9 +471,12 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
         <button className="showroom-secondary" onClick={() => leaveStudioDialog(window, () => openFittingEditor("customer"))} disabled={!directory}><Plus size={17}/>New customer</button>
         {error && <p role="alert">{error}</p>}{!directory && !error && <p role="status">Loading customers…</p>}
         {customers.map((customer) => <button key={customer.id} className="showroom-person" onClick={() => { setCustomerId(customer.id); setProfile(undefined); setPickingCustomer(false); }}><UserRound size={20} /><span><strong>{customer.name}</strong><small>{customer.phone ?? customer.email}</small></span><ChevronRight size={18} /></button>)}
-        {directory && !customers.length && <p>No customers match your search.</p>}
+        {moreCustomers}
+        {customerSearch.searching && <p role="status">Searching customers…</p>}
+        {customerSearch.error && <p role="alert">{customerSearch.error}</p>}
+        {directory && !customerSearch.searching && !customers.length && <p>No customers match your search.</p>}
       </section>
     </InventoryDrawer>}
-    {editor && directory && (editor === "customer" || profileReady) && <CustomerEditor fullScreen unit="in" mode={editor} profile={editor === "fitting" ? profile : undefined} fields={directory.fields} templateId={editor === "fitting" ? templateId : undefined} template={editor === "fitting" ? template : undefined} onBusyChange={busy => {fittingBusy.current = busy;}} onClose={closeFittingEditor} onSaved={finishFittingEditor} />}
+    {editor && directory && (editor === "customer" || profileReady) && <CustomerEditor fullScreen unit="in" mode={editor} profile={editor === "fitting" ? profile : undefined} fields={directory.fields} templateId={editor === "fitting" ? templateId : undefined} template={editor === "fitting" ? template : undefined} onBusyChange={busy => {fittingBusy.current = busy;}} onClose={closeFittingEditor} onSaved={finishFittingEditor} onSaveAndMeasure={saveCustomerAndMeasure} />}
   </main>;
 }

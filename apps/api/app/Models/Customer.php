@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\CustomerSignIn;
+use Database\Factories\CustomerFactory;
 use Illuminate\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Access\Authorizable as AuthorizableContract;
 use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\Access\Authorizable;
@@ -16,7 +18,8 @@ use Laravel\Sanctum\HasApiTokens;
 
 class Customer extends Model implements AuthenticatableContract, AuthorizableContract, PasskeyUser
 {
-    use Authenticatable, Authorizable, HasApiTokens, PasskeyAuthenticatable;
+    /** @use HasFactory<CustomerFactory> */
+    use Authenticatable, Authorizable, HasApiTokens, HasFactory, PasskeyAuthenticatable;
 
     protected $fillable = ['name', 'email', 'phone', 'account_reference'];
 

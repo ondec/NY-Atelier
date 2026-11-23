@@ -18,12 +18,11 @@ class DemoStaffOrderController extends Controller
     public function options(Request $request): JsonResponse
     {
         $this->requireStaffPreview($request);
-        $customers = Customer::query()->orderBy('name')->get(['id', 'name']);
 
+        // Clients and their fittings are searched separately (customers endpoint), so this stays small at any size.
         return response()->json([
-            'customers' => $customers,
+            'customer_count' => Customer::query()->count(),
             'demo_customer_id' => Customer::query()->where('name', config('demo.customer_name'))->oldest('id')->value('id'),
-            'measurements' => DB::table('customer_measurements')->orderByDesc('measured_on')->orderByDesc('id')->get(['id', 'customer_id', 'measured_on']),
             'offerings' => config('demo.offerings'),
             'consultations' => DB::table('consultations')->where('status', 'confirmed')
                 ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('orders')->whereColumn('orders.consultation_id', 'consultations.id'))

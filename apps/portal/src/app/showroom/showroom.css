@@ -416,7 +416,9 @@ html:has(.showroom-welcome),body:has(.showroom-welcome),.workspace-frame:has(.sh
 .showroom .is-full-screen .inventory-form-panel{max-width:900px;margin:0 auto;padding:0;background:var(--alabaster)}
 .showroom .is-full-screen .inventory-form-title{position:sticky;top:0;z-index:3;align-items:center;gap:12px;margin:0 0 18px;padding:16px 0;background:var(--alabaster);border-bottom:1px solid var(--line)}
 .showroom .is-full-screen .inventory-form-title h2{flex:1;margin:0;font-size:24px;line-height:1.35}
-.showroom .is-full-screen .fitting-screen-back{display:inline-flex;align-items:center;justify-content:center;flex:none;min-width:44px;min-height:44px}
+.showroom .is-full-screen .fitting-screen-back{display:inline-flex;align-items:center;justify-content:center;flex:none;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border:1px solid var(--line);border-radius:50%;background:transparent}
+.showroom .is-full-screen .fitting-screen-back:hover{background:#ecefe7}
+.showroom .is-full-screen .fitting-screen-back:focus-visible{outline:2px solid var(--petrol);outline-offset:2px}
 .showroom .is-full-screen .fitting-screen-close{display:none}
 .showroom .is-full-screen input,.showroom .is-full-screen select{min-height:48px}
 .showroom .inventory-drawer.is-full-screen{overscroll-behavior-x:auto;overscroll-behavior-y:contain}
@@ -533,3 +535,7 @@ body:has(.showroom dialog[open]){overflow:hidden}
   .showroom.showroom-welcome .studio-welcome-progress{order:3;position:relative;inset:auto;width:min(300px,100%);margin-top:24px}
 }
 @media(max-height:650px) and (min-width:600px){.showroom-welcome-modules{grid-template-columns:repeat(2,minmax(0,1fr))}.showroom-welcome-content h1{font-size:40px}.showroom-welcome-modules>button{min-height:110px}}
+
+.showroom .customer-save-actions{gap:12px;flex-wrap:wrap}
+.showroom .customer-save-actions button{min-height:48px;font-size:14px;line-height:1.4}
+.showroom .customer-save-actions .customer-save-only{border:1px solid var(--line);background:transparent;color:var(--petrol)}
