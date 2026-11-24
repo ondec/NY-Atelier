@@ -8,14 +8,14 @@ import { canonicalMeasurement } from '@/lib/account-settings';
 import { sizingAccountKeys } from '@/lib/measurement-history';
 import { approvedSizingCharts, referenceSizing } from '@/data/sizing-data';
 import {
-  ALPHA_SIZES, convertMeasurement, formatMeasurement, recommendProductSize, regionalLabel, resolveProductSizing, selectVariant,
-  type AlphaSize, type Measurement, type PurchasableVariant,
+  SHOP_SIZES, convertMeasurement, formatMeasurement, recommendProductSize, regionalLabel, resolveProductSizing, selectVariant,
+  type ShopSize, type Measurement, type PurchasableVariant,
   type Recommendation, type Region, type SizingChart, type SizingProfile, type Unit,
 } from '@/lib/sizing';
 
 const names: Record<Measurement, string> = { chest: 'Chest', bust: 'Bust', waist: 'Waist', hip: 'Hips', shoulder: 'Shoulder', sleeveLength: 'Sleeve length', shirtLength: 'Shirt length', inseam: 'Inseam', outseam: 'Outseam' };
 const regionNames: Record<Region, string> = { GH: 'Ghana / International', UK: 'United Kingdom', US: 'United States', EU: 'Europe' };
-function SizingTable({ chart, region, unit, selectedSize }: { chart: SizingChart; region: Region; unit: Unit; selectedSize?: AlphaSize }) {
+function SizingTable({ chart, region, unit, selectedSize }: { chart: SizingChart; region: Region; unit: Unit; selectedSize?: ShopSize }) {
   const keys = [...new Set(chart.rows.flatMap(row => Object.keys(row.measurements) as Measurement[]))];
   const hasLabels = region !== 'GH' && chart.rows.some(row => row.labels[region]);
   return <ScrollView horizontal showsHorizontalScrollIndicator accessibilityLabel="Size measurement table" style={s.table} contentContainerStyle={s.tableContent}>
@@ -42,7 +42,7 @@ export function SizeGuide({ profile, variants, selectedVariantId, onSelectVarian
   const [saveMessage, setSaveMessage] = useState('');
   const [saveError, setSaveError] = useState('');
   const selected = variants.find(v => v.id === selectedVariantId);
-  const [pendingSize, setPendingSize] = useState<AlphaSize | null>(selected?.size ?? null);
+  const [pendingSize, setPendingSize] = useState<ShopSize | null>(selected?.size ?? null);
   const [expanded, setExpanded] = useState(false);
   const [unit, setUnit] = useState<Unit>('cm');
   const [region, setRegion] = useState<Region>('GH');
@@ -53,7 +53,7 @@ export function SizeGuide({ profile, variants, selectedVariantId, onSelectVarian
   const chart = parts[0]?.chart;
   const hasTrousers = parts.some(part => part.profile.category === 'trousers');
   const lengthVariants = variants.filter(v => v.size === (selected?.size ?? pendingSize) && v.length);
-  const availableSizes = ALPHA_SIZES.filter(size => variants.some(v => v.size === size));
+  const availableSizes = SHOP_SIZES.filter(size => variants.some(v => v.size === size));
   const fields = [...new Set(parts.flatMap(part => part.chart ? [...part.chart.required, ...part.chart.rows.flatMap(row => Object.keys(row.measurements) as Measurement[])] : []))];
   const required = new Set(parts.flatMap(part => part.chart?.required ?? []));
   if (hasTrousers && !fields.includes('inseam')) fields.push('inseam');
@@ -85,7 +85,7 @@ export function SizeGuide({ profile, variants, selectedVariantId, onSelectVarian
     // Keep each original input and unit; converted display values never replace it.
     setUnit(next); setResult(null);
   };
-  function chooseSize(size: AlphaSize) {
+  function chooseSize(size: ShopSize) {
     setPendingSize(size);
     const options = variants.filter(v => v.size === size && v.stock > 0);
     onSelectVariant(options.some(v => v.length) ? null : selectVariant(variants, size) ?? null);
@@ -107,7 +107,7 @@ export function SizeGuide({ profile, variants, selectedVariantId, onSelectVarian
         const options = variants.filter(v => v.size === size);
         const stock = options.reduce((sum, v) => sum + v.stock, 0);
         const label = regionalLabel(chart?.rows.find(r => r.size === size), size, region);
-        return <Choice key={size} label={`${label}${stock === 2 ? ' · 2 left' : stock === 0 ? ' · Sold out' : ''}`} selected={(selected?.size ?? pendingSize) === size} disabled={stock === 0} onPress={() => chooseSize(size)} />;
+        return <Choice key={size} label={`${label}${stock > 0 && stock <= 2 ? ' · Few left' : stock === 0 ? ' · Sold out' : ''}`} selected={(selected?.size ?? pendingSize) === size} disabled={stock === 0} onPress={() => chooseSize(size)} />;
       })}
     </View>
     {!availableSizes.length && <Text style={s.note}>No sizes are listed for this option.</Text>}

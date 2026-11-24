@@ -2,6 +2,7 @@ import type { ConsultationRequest } from "../../../mobile/src/lib/consultation-t
 
 export type StaffConsultation = ConsultationRequest & {
   created_at?: string;
+  source?: string | null;
   customer_id: number | null;
   customer_name: string | null;
   customer_email: string | null;

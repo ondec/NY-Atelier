@@ -2,6 +2,368 @@
 
 Use this file for dated handoffs between Claude, Codex and maintainers. Read the latest entry first, then [AI_HANDOFF.md](AI_HANDOFF.md) for architecture and design. Dates use Africa/Accra. Write facts and results, not hidden reasoning or a chat transcript. Do not include credentials or private fitting values.
 
+## 2026-11-24 — Codex — Website consultations to NY Office
+
+**Change:** The public website consultation form now sends requests to local Laravel `POST /api/consultations` instead of showing a preview-only success. The API validates the visitor's name, email, phone, meeting method, purpose and future Accra time; rate-limits submissions; and saves them in the shared consultation queue with `source=website`. Repeated submissions with the same request ID do not create duplicates. Website visitors are not silently linked to customer accounts by email. NY Office's consultation list and detail now show the visitor's contact details and website source. Staff can confirm the requested time, then contact the visitor directly; the Office UI does not offer app-only alternative-time replies for website requests.
+
+**Files:** `website/src/ContactPage.jsx`; `apps/api/routes/api.php`, `app/Http/Controllers/PublicConsultationController.php`, `app/Http/Controllers/DemoConsultationController.php`, `database/migrations/2026_11_24_200059_add_website_contact_to_consultations_table.php`, `tests/Feature/PublicConsultationTest.php`; `apps/portal/src/app/consultations.tsx`, `src/lib/consultations.ts`; this log and `AI_HANDOFF.md`. The migration was applied to the local development database. The general contact enquiry form remains a demonstration.
+
+**Checks:** API formatter passed. The new feature suite passed (4 tests, 27 assertions), then the full API suite passed (200 tests, 1,595 assertions). Portal TypeScript and lint passed. Website `npm run check` and `npm run build` passed; `dist/` was deleted. A browser submission on localhost showed the success state, and its record appeared in the shared consultation table with website source and awaiting-confirmation status. The temporary test record was deleted. At 375px the form had no page-wide horizontal overflow; the date choices use their intended horizontal scroller. No Git add, commit, push or deployment was done.
+
+**Limit:** No automatic confirmation email or SMS is sent to website visitors. Staff must contact them using the details shown in Office. The website enquiry form is still a preview. API, portal, website, RTW and Expo local development servers were left running; the iPhone simulator remained open.
+
+## 2026-11-24 — Codex — Customer Expo preview launched
+
+**Change:** No application code changed. Started `apps/mobile` with Expo SDK 58 on port 8081 and opened it in Expo Go on an iPhone 18 Pro Max simulator. The current local Laravel API is on port 8000; this Expo session overrides the older port 8001 value in `apps/mobile/.env.local` without editing that file. Started the local portal on port 3000 for published size guides, then reloaded the app. The customer Home screen rendered in the simulator.
+
+**Checks and state:** `npx expo lint` and `npx tsc --noEmit` passed. API and Expo returned HTTP 200; the portal was running and served `/api/size-charts` successfully. Expo, Laravel, the portal and both website Vite previews were left running for local review. Nothing was added to Git, committed, pushed or deployed. The existing `ImageBackground` deprecation warning remains; there was no app runtime error on reload.
+
+## 2026-11-24 — Codex — RTW stock label clarification
+
+**Finding:** The local catalogue has 861 size variants: 109 with verified positive stock, one with verified zero stock, and 751 without a verified stock count. The public catalogue treats unverified variants as unavailable for purchase, which leaves 102 of 111 products with no saleable size shown. The RTW store consequently displays “Out of stock” on those products; this label does not establish that their physical stock is zero.
+
+**Decision and files:** The owner asked to keep the existing “Out of stock” label. A proposed “Check availability” change was fully reverted; there is no lasting application-code change from this follow-up. Only this work-log entry was added. NY Studio stock verification remains the action needed to show more products as available.
+
+**Checks and state:** API formatter passed; the catalogue feature tests passed (3 tests, 18 assertions); RTW `npm run check` passed. The API and both local Vite servers returned HTTP 200 on ports 8000, 5173 and 5174. No Git add, commit, push or deployment was performed.
+
+## 2026-11-24 — Codex — Local RTW catalogue connection
+
+**Change:** With the owner's local-only direction, added public read-only `GET /api/shop/catalogue` in `apps/api/routes/api.php`, `app/Http/Controllers/ShopCatalogueController.php`, and `app/PublicShopCatalogue.php`. It reads revision 4 of the local shared `studio_catalogues` row (111 products, 861 variants, one collection), caches by revision for five minutes, and is rate-limited. The public response carries prices in GHS minor units, product/collection photos and colour/size availability bands; it excludes staff counts, SKUs, source IDs and reorder data. Unverified stock is sold out publicly. `tests/Feature/ShopCatalogueTest.php` covers public access, redaction, unverified stock, revision changes and an empty catalogue.
+
+**RTW store:** `rtw-store/src/live-catalogue.js` now loads that endpoint and supplies the existing shop/product/collection views. `src/catalog-ui.js` keeps UI labels separate from the sample fixture in `src/catalog.js`; `src/App.jsx` shows an error if the API is unavailable, refreshes shared-bag snapshots against the catalogue, disables checkout for unavailable lines, and keeps checkout a preview. `src/styles.css` styles the loading/error state, `vite.config.js` proxies local `/api` to port 8000, and `scripts/check-project.mjs` validates a public API-shaped fixture. No sample price or stock fallback is used by the live views.
+
+**Main website:** `website/src/App.jsx` now fetches the same public catalogue for the Home featured cards. It shows current names, photos and prices, and links to the corresponding RTW product pages. Removed static `RTW_PICKS` from `website/src/catalog.js`; added local `/api` proxy in `website/vite.config.js` and a status style in `website/src/styles.css`. The site's older fallback `/rtw-store` demonstration pages and its consultation form remain demonstrations.
+
+**Checks:** API formatter passed; `php artisan test --compact` passed (196 tests, 1,568 assertions). Both sites passed `npm run check` and `npm run build`; both `dist/` folders were removed. Browser review at desktop and 375×812 showed 111 store pieces, an imported product page, correct Home featured links/prices, loaded images and no horizontal overflow. `git diff --check` passed. Nothing was added to Git, committed, pushed or deployed.
+
+**Still to do:** The current catalogue has no explicit section/gender, new-arrival, colour swatch/group, size-guide or home-promotion data, so the corresponding filters/pages have no live items and the store uses a generic editorial hero. Staff editing for these fields and a trusted server checkout quote are future integration work; no payment or order submission is connected. Public product photos currently reference the WordPress media host. The API and both Vite dev servers were running locally at handoff (ports 8000, 5173 and 5174).
+
+## 2026-11-24 — Claude — Website home: new photos, store picks, social photo row
+
+**Change:**
+- New photos from `Image Assets/Website Images` in `website/public/images/home/`:
+  - Our story uses `our-story.webp` (cropped to remove a house number).
+  - The For him and For her cards use `for-him.webp` and `for-her.webp`.
+- "Selected pieces" now shows four RTW store pieces (`RTW_PICKS` in `website/src/catalog.js`) with the store's photos, labels, swatches and prices. Each card links to the store's product page.
+- Under "Follow our socials" there is now the same photo row as other pages (`HOME_GALLERY`, six photos).
+- "Beyond the ordinary" (Explore our services) now uses `website/public/images/home/beyond.webp`: library photo 35, a client in a white tuxedo jacket. It replaces the old WordPress `slide-3.jpg` link.
+
+**Checks:** website and store `npm run check` passed, and the website `npm run build` passed. Checked in the browser at desktop width and at 375×812, with no missing images and no sideways scroll. Nothing is committed.
+
+## 2026-11-24 — Claude — Website home: rounded, store-matched sections
+
+**Change:** on the website home page, from "The NY point of view" down to "Follow the house", sections now use the RTW store's rounded language. All of it is CSS, at the end of `website/src/styles.css`.
+- "Our story" and "Beyond the ordinary" are rounded panels inside the page width (32 px corners; 26 px on phones).
+- The menswear/womenswear cards have 28 px corners.
+- Product cards everywhere on the website have rounded photos (24 px) and a petrol pill label, as in the store.
+- "Selected pieces" sits on the page's silk background, with no separate band.
+- "The house of NY" services are rounded white cards with a pill number and a pill "Enquire" button.
+- On phones, "Beyond the ordinary" has a darker shade so its text is readable.
+
+**Checks:** desktop and 375×812 reviewed; no horizontal overflow. `npm run check` and `npm run build` passed; `dist/` removed. No commit, push or deployment.
+
+## 2026-11-24 — Claude — RTW polish and Codex integration brief
+
+**Change:**
+- In the RTW store, the "New arrivals" band now uses the page's silk background, so there is no separate tone.
+- Clicking the store's logo turns the wreath once, as on the main website (same `is-returning-home` class and 1.1 s timing).
+- [CODEX_PROMPT_RTW_INTEGRATION.md](CODEX_PROMPT_RTW_INTEGRATION.md) is the brief for Codex to connect the store and the website to the API, NY Studio and the shared catalogue. Its steps:
+  0. bring both sites into the repo (needs approval);
+  1. a public read-only catalogue API;
+  2. new catalogue fields and home promotions in NY Studio;
+  3. the store reading the live catalogue;
+  4. a trusted server quote, still without payment;
+  5. the signed-in bag.
+
+**Checks:** the logo animation and the background were verified in the browser. `npm run check` and `npm run build` passed; `dist/` removed. No commit, push or deployment.
+
+## 2026-11-24 — Claude — Dropdown arrows padded on both sites
+
+**Change:** the browser's own dropdown arrow ignores padding and sat against the rounded border. Every single-choice `<select>` on the website and the RTW store now uses a petrol chevron 18 px from the right edge, with 46 px right and 20 px left padding (rule at the end of both `styles.css` files). The dropdowns are the store's Sort and the size guide's Size system, plus the website's fallback store Sort. The Sort box is at least 200 px wide, so "Price: high to low" is no longer cut off; on phones it shares the row with Filter. No other dropdowns exist; the consultation and contact forms use chips.
+
+**Checks:** desktop and 375×812 reviewed; no horizontal overflow. `npm run check` and `npm run build` passed for both sites; `dist/` removed. No commit, push or deployment.
+
+## 2026-11-24 — Claude — RTW shop: filters in one menu
+
+**Change:** at the user's request, the store's shop page no longer shows rows of type and colour chips. A single **Filter** pill beside the Sort dropdown opens a menu with Type, Colour and Price, "Clear all" and "Show n pieces". It shows a count of active filters and closes on outside click or Escape. On phones it opens as a bottom sheet. Filters are kept in the address (`?type=`, `?colour=`, `?price=`), so a filtered page can be shared.
+
+**Checks:** desktop and 375×812 reviewed; filtering, clearing and closing work; no horizontal overflow. `npm run check` and `npm run build` passed; `dist/` removed. No commit, push or deployment.
+
+**Next (user):** the signed-in bag ([SIGNED_IN_BAG_PLAN.md](SIGNED_IN_BAG_PLAN.md)) continues in Codex.
+
+## 2026-11-24 — Claude — Plan: signed-in bag across devices
+
+**Change:** plan only, no code. [SIGNED_IN_BAG_PLAN.md](SIGNED_IN_BAG_PLAN.md) covers:
+- an account bag in the API (`customer_bag_items`, with get, replace and merge endpoints; server-checked stock and server prices);
+- customer web sign-in, using an HttpOnly session cookie for `.thenyatelier.com` (the staff-cookie pattern);
+- merging the guest bag on sign-in;
+- connecting the Expo app to the same bag.
+
+It depends on the store reading the real catalogue from the API first (after the WordPress import), and on a durable database. Four owner decisions are listed in the plan.
+
+## 2026-11-24 — Claude — RTW store: app features, promo hero, shared bag
+
+**Change:** the RTW store (`codebase/rtw-store/`) now follows the Expo app's shop:
+- **Product cards:** one round label per piece (NEW in petrol, SALE −n% in cognac, OUT OF STOCK in grey), the colour swatches stacked in a small pill at the bottom right (3 shown, then +n), and offer prices with the old price struck through.
+- **Catalogue (`src/catalog.js`):** the app's sample colours and per-size stock (`apps/mobile/src/data/demo-stock.ts`) and its Old Money offer example (GH₵1,300, was GH₵1,500). Colours without photography show the main photo with a "photo coming soon" note. These are sample values, labelled as such on the product page.
+- **Product page:** colour options with photo thumbnails and names; sizes that show "n left", or are struck through and disabled when sold out or not stocked; quantity and Add to bag capped at stock; and **Size guide & fit** (`src/SizeGuide.jsx`, data in `src/sizing.js`). The size guide is the app's reference body chart (GH/UK/US/EU labels, cm/in, shirt and trouser tables, inside-leg reference) with **Find my size**, which suggests a size and can select it. Measurements typed there are not saved.
+- **Shop:** colour-family and price filters, as in the app.
+- **Home hero:** now the app's home promotion (`PROMOTIONS` in `src/catalog.js`): the featured collection's campaign photos (Red Clover, "Shop the collection"), then New Arrivals. It has a counter, dots, previous / pause / next, and advances every 5.5 s unless reduced motion is requested. A new collection goes first in `PROMOTIONS`.
+
+**Shared bag:** `shared-bag.js` (identical copies in `rtw-store/src/` and `website/src/`; `npm run check` in the store fails if they differ) keeps one bag in a cookie, `ny_bag`. In production the cookie is set for `.thenyatelier.com`; locally it is shared across localhost ports. Each line carries a snapshot (name, colour, price, photo) so either site can show it. The website's bag icon and drawer show the same pieces; when the store is separate, its checkout button is "Checkout in the RTW store ↗" and opens the store with the bag open (`?bag=open`). Checkout is guest checkout, with no account needed. The store's old local bag is moved into the cookie once. Signed-in, cross-device bags need a customer cart in the API; there is none yet, and web sign-in does not exist.
+
+**Checks:** desktop and 375×812 reviewed (home hero, shop filters, cards, product page with size guide and Find my size, colour without photo); bag added in the store appeared on the website, removing it on the website updated the store, and "Checkout in the RTW store" opened the store's bag. Test items were cleared afterwards. `npm run check` and `npm run build` passed for both sites; `dist/` removed. No commit, push or deployment.
+
+## 2026-11-24 — Claude — RTW e-commerce store (separate site)
+
+**Change:** new local site `codebase/rtw-store/` (React 19 + Vite, the website's fonts, colours and rounded components), the NY Atelier RTW ready-to-wear store. It runs beside the website (store `npm --prefix codebase/rtw-store run dev` on port 5174; website on 5173; both are in `.claude/launch.json`). Pages: home (hero, shop by Men / Women / Accessories, new arrivals, Red Clover feature, every piece, bespoke band, visit band), `/shop` and `/shop/:section` with type chips and sort, `/collections`, `/product/:id` (gallery, colour via `?colour=`, sizes, quantity, save), saved pieces, search, bag drawer with a 4-step **preview** checkout (no payment is taken). The header and footer follow the Expo app: SHOP (New Arrivals, Men, Women, Accessories, Collections), BESPOKE (Our services, Book a consultation, Customise a piece), THE HOUSE (NY Atelier, Our story, Contact, Visit the store). Every bespoke/contact link goes back to the main site (`src/sites.js`, `VITE_MAIN_SITE_URL`, default `https://thenyatelier.com` in production) and carries the external ↗ arrow. The catalogue (`src/catalog.js`) is a preview from the mobile app's photos: menswear only, matching the live store; Women and Accessories show "coming soon" with a consultation link. The website's RTW links (header, footer, home cards, `/rtw-store/:id` redirects) point to the store through `RTW_STORE_URL` / `VITE_RTW_STORE_URL` in `website/src/App.jsx`; old product ids that the store no longer has now land on `/shop/men` or `/shop/women`.
+
+**Not done:** rtw.thenyatelier.com is not connected (user's instruction); no backend catalogue, stock or payments; the store is untracked like the website.
+
+**Checks:** both sites reviewed in the browser at desktop and 375×812 (store home, menu, women coming-soon, product); links between the sites verified, including `/contact#locations`. `npm run check` and `npm run build` passed for both; `dist/` removed. No commit, push or deployment.
+
+## 2026-11-24 — Claude — Footer Explore links
+
+**Change:** footer EXPLORE is now Home · RTW Store ↗ · Services · Consultation · Our Story ("Collections" removed; it belongs inside the RTW store). The RTW store will live on its own domain, so its footer link carries the external arrow. The address is one constant, `RTW_STORE_URL` in `website/src/App.jsx`: while it is a local path it opens `/rtw-store` in the same tab; once set to the store's `https://` address it opens in a new tab. Footer text links now change to cognac and underline on hover and keyboard focus. The header menu still points to the local `/rtw-store`.
+
+**Checks:** hover verified in the browser (colour and underline); `npm run check` and `npm run build` passed; `dist/` removed. No commit, push or deployment.
+
+**Next (user's request):** build the RTW e-commerce store. Its address will be `rtw.thenyatelier.com` (already live; not to be connected yet, per the user). `RTW_STORE_URL` stays local until then.
+
+## 2026-11-24 — Claude — Atelier phone number on Contact
+
+**Change:** with the user's approval, the atelier's public phone number from its Google Maps listing (050 074 4266, `tel:+233500744266`) was added to the Contact page: on the NY Atelier location card and as "Call the atelier" in the enquiry sidebar. Tapping it starts a call on phones; it has no arrow because it is not a web page.
+
+**Checks:** 1440×900 reviewed; `npm run check` and `npm run build` passed; `dist/` removed. No commit, push or deployment.
+
+## 2026-11-24 — Claude — Contact: two locations, varied gallery, follow icons
+
+**Change:** the Contact page has a new "Two homes in Accra." section with a card and an embedded (greyscale) Google map for each place, taken from the owner's Google Maps links: **NY Atelier**, the bespoke atelier (St Johns – Dome – Kwabenya – Brekusu Rd, Kwabenya; Plus Code MQG5+HF; 5.6763897, -0.2412862) and **NY Atelier RTW**, the ready-to-wear store (Haatso; Plus Code MR97+3CM; 5.6677162, -0.1864437). Each card has Get directions (opens Google Maps) and a link to Consultation or the RTW store. "Visit us" in the enquiry sidebar scrolls to it. The "From the atelier" photo row on Consultation and Contact now shows six different clients (`website/public/images/gallery/`, exported from `Image Assets/Website Images`; photo 01 was cropped to remove a small corner mark; sets carrying a photographer's watermark were not used). Monochrome TikTok and Facebook icons sit beside "Follow @ny_atelier_". The map embeds load from Google when the section is viewed.
+
+**Checks:** 1440×900 and 375×812 reviewed; maps load; no horizontal overflow. `npm run check` and `npm run build` passed; `dist/` and the temporary contact sheet were removed. No commit, push or deployment.
+
+## 2026-11-24 — Claude — Arrow icons now match where a link goes
+
+**Change:** the user set a website rule for arrows. Same-page actions (form submits, bag-drawer steps, "close and keep exploring") have no arrow; links further down the same page ("Explore services" on /services, "Choose a time" on /consultation, "Send a message" on /contact) use a new down arrow (`ArrowDown` in `website/src/NyIcons.jsx`, the right arrow turned 90°); links to other pages on the site use the right arrow; the diagonal up-right arrow is kept only for external links (Instagram, TikTok, Facebook). The homepage carousel and drawer "back" arrows are direction controls and were left as they are. Buttons without an icon now centre their label. The homepage "Scroll to discover ↓" cue already fits the rule.
+
+**Checks:** reviewed /services, /consultation and /contact at 1440×900; down-arrow links scroll to their section. `npm run check` and `npm run build` passed; `dist/` removed. No commit, push or deployment.
+
+## 2026-11-24 — Claude — Consultation and Contact are now separate pages
+
+**Change:** at the user's request the tabbed contact page was split into two pages, both in `website/src/ContactPage.jsx`: **Consultation** (`/consultation`, `ConsultationPage`: "Begin your journey.", the booking form, plan-ahead notes) and **Contact** (`/contact`, default export: "Begin a conversation.", the enquiry form and ways to reach the atelier). Each has its own photo collage hero, a "From the atelier" photo row, and a link across to the other page. The header menu is now Services · RTW Store · Consultation · Contact (`navItems` in `App.jsx`); `scripts/check-project.mjs` was updated to expect this menu. All "Book a consultation" links (Home, footer, Services) go to `/consultation`; Services "Enquire" links use `/consultation?service=<id>`, which pre-selects the service and scrolls to the form. Old `/contact#consultation` links forward to `/consultation`.
+
+**Checks:** 1440×900, 1024×768 and 375×812 reviewed (menu fits; phone menu lists Consultation; no horizontal overflow). `npm run check` and `npm run build` passed; `dist/` removed. No commit, push or deployment.
+
+## 2026-11-24 — Claude — Contact page split into consultation and enquiry
+
+**Change:** `/contact` moved out of `App.jsx` into `website/src/ContactPage.jsx` and was rebuilt with two tabs: **Book a consultation** (`/contact#consultation`) and **Send an enquiry** (`/contact`, `#enquiry`). The booking tab follows the mobile app's request flow (meet in person or virtually, service, preferred day, preferred time in Accra, notes) and the live thenyatelier.com/consultation page (phone required, opening hours 8:00–17:00, days offered from two weeks ahead, "Plan ahead" notes and an acknowledgement). A photo of the chosen service and a live summary sit beside the form. Services page "Enquire" links now pre-select their service (`?service=couture` etc.). The enquiry tab has topic pills, a message form, ways to reach the atelier (Accra plus socials) and a link across to booking. The page also has a photo collage hero that changes with the tab and a "From the atelier" photo row. Inputs, chips, tabs and buttons are all pill-shaped; text areas and cards are fully rounded. Services hero overlay changed to black. Forms are still preview-only: nothing is sent or saved.
+
+**Checks:** 1440×900 and 375×812 reviewed; a full booking was filled and checked; no horizontal overflow. `npm run check` and `npm run build` passed; `dist/` removed. No commit, push or deployment.
+
+## 2026-11-24 — Claude — Services hero: films, sticky hero and film controls
+
+**Change:** the Couture feature now shows the couple in the green-and-gold gown (`services/couture.webp`). The `/services` hero plays the six Our Story films full screen, one after another (`website/src/storyVideos.js` gives each film a focal point for wide screens; phones show each film whole). Services now behaves like Home: the header floats transparent over the hero and turns petrol once past it, the hero is sticky, and a rounded cream sheet (`.svc-after-hero`) rolls up over it; the film pauses once covered. Film controls: progress bars (jump to any film), previous / pause / next buttons, and an "01 / 06" counter on wide screens.
+
+**Checks:** 1440×900 and 375×812 reviewed in the browser: header states, rolling sheet, pause when covered, previous/next wrap-around, no horizontal overflow. `npm run check` and `npm run build` passed; `dist/` removed. No commit, push or deployment.
+
+**Still to do before going live:** compress the six films (about 56 MB in total); `website/public/images/services/hero-rope.webp` is now unused. A stray one-entry `website/docs/WORK_LOG.md` was created by mistake and can be deleted.
+
+## 2026-11-24 — Codex — Bespoke tailoring photo updated
+
+**Change:** replaced the Bespoke tailoring feature image on `/services` with the user's exact `This isn’t just a tux—this is presence, precision, and pure poise.From the textured white lapel .jpg` from `Image Assets/Website Images`. The local optimized copy is `website/public/images/services/bespoke-white-tux.webp`; `website/src/ServicesPage.jsx` now points to it with matching alt text and a crop that keeps the couple visible. The original JPEG and prior WebP remain untouched. Scanned the recently added files in the same asset folder for future placements; no other page images changed in this pass.
+
+**Checks:** desktop 1280×900 and phone 375×812 reviewed in the browser; the image and text are readable, with no horizontal overflow. `npm run check` and `npm run build` passed; `dist/` was deleted. The local dev server is still running at http://localhost:5173. No commit, push or deployment.
+
+## 2026-11-24 — Claude — Services photos from `Image Assets/Website Images`
+
+**Change:** at the user's request the Bespoke tailoring feature no longer uses the workshop photo; it now shows the white hand-embroidered two-piece ("RNAQ's Outfit", `services/bespoke.webp`). Also swapped from the same folder: Occasions & unique ideas → the groom in kente with groomsmen in orange (`occasion.webp`, replacing the cigar portrait; left edge cropped to remove a visible house number); Consultancy → the structured black trouser suit (`consultancy.webp`); Custom fabric selection → the cocoa floral jacquard close-up (`fabric.webp`, cropped to drop the printed site address). Photographer credit marks on other photos were not removed; photos carrying them (e.g. the green jacquard set) were not used. Desktop reviewed; `npm run check`/`build` passed, `dist/` removed.
+
+## 2026-11-24 — Claude — Services page redesigned as an editorial page
+
+**Change:** `/services` moved out of `App.jsx` into `website/src/ServicesPage.jsx` and was rebuilt, modelled on luxury tailoring house sites (large photography, few words, long editorial rhythm):
+1. Full-bleed photo hero (burgundy rope studio portrait) with "Services with intention.", Book a consultation and Explore services.
+2. Short statement with "Measured by hand / Fitted in person / Finished in Accra".
+3. Three signature services as alternating large rounded photo + text features with outlined numbers, a lead line, "what it includes" and an enquire pill: Bespoke tailoring (real workshop fitting photo), Couture experience, Occasions & unique ideas.
+4. "Every detail, considered." rounded panel of four photo cards: Consultancy, Custom fabric selection, Wardrobe revamping, Personalised accessories.
+5. "From conversation to wardrobe." four-step process cards, then the cream closing strip.
+Service list follows thenyatelier.com/our-services (7 services), rewritten shorter. All cards/photos rounded.
+
+**Photos:** new `public/images/services/` WebPs from `Image Assets/` (hero-rope, couture, occasion, consultancy, fabric, accessories), cropped to remove the printed "www.thenyatelier.com" lettering; plus existing `discover/workshop.webp` and `editorial/06-portrait.webp`. The home-page services teaser still uses `SERVICES` in `catalog.js` (unchanged).
+
+**Checks:** 1440×900 and 375px reviewed section by section, no overflow, no console errors; `npm run check`/`build` passed, `dist/` removed. A temporary contact sheet in `public/_sheet` was deleted.
+
+## 2026-11-24 — Claude — Social icons in the footer
+
+**Change:** a row of one-colour petrol icons (Instagram, TikTok, Facebook) in 38px circles now sits under "Accra, Ghana" in the footer's "Let's connect" column (34px on phones); hover fills petrol with a white icon. `SocialSection.jsx` now exports `SOCIALS` and `SocialIcons`, so Home's follow pills and the footer share one list of profiles. The old "Instagram ↗" text link in that column was then removed at the user's request, so the column reads Contact, Book a Consultation, Accra, Ghana, then the icons. Checked desktop and 375px; `npm run check`/`build` passed, `dist/` removed.
+
+## 2026-11-24 — Claude — Instagram posts strip removed
+
+**Change:** at the user's request the Instagram posts strip under "Follow our socials" is gone, along with its feed code (`VITE_INSTAGRAM_FEED_URL`, preview posts, post cards) and styles. The section keeps the heading and the Instagram, TikTok and Facebook follow pills. A live feed was not connected: it would need @ny_atelier_ as a Business/Creator account plus a Meta app or a feed service; see the two entries below if it comes back. Checked desktop and 375px; `npm run check`/`build` passed, `dist/` removed.
+
+## 2026-11-24 — Claude — TikTok follow link added
+
+**Change:** TikTok `@nyatelier` (`https://www.tiktok.com/@nyatelier`, address given by the user) now shows between Instagram and Facebook in Home's "Follow our socials". Checked desktop and 375px.
+
+## 2026-11-24 — Claude — Instagram grid shows the five newest posts
+
+**Change:** the grid now shows the five newest Instagram **posts** (one card per post, not individual images): cover (a video's thumbnail or an album's first picture), a small album or video badge, then the post date (cognac caps) and the first two lines of the caption. Feed shape for `VITE_INSTAGRAM_FEED_URL`: `{ posts: [{ id, permalink, image, caption, type: IMAGE|VIDEO|CAROUSEL_ALBUM, timestamp }] }`, newest first. Desktop shows five across; tablets and phones scroll sideways with snap. An unreadable timestamp is ignored rather than breaking the page (found while testing). Until the live feed exists, five editorial photos stand in, without captions.
+
+**Checks:** sample captions/dates/types rendered correctly in the browser, then removed; `npm run check`/`build` passed, `dist/` removed; 375px no overflow.
+
+## 2026-11-24 — Claude — Home "Follow our socials" section with Instagram grid
+
+**Change:** new `website/src/SocialSection.jsx`, placed on Home just before "Made for your story". Cream section: "Follow the house / Follow our socials." with pill follow links (Instagram `@ny_atelier_`, Facebook profile from thenyatelier.com), then a six-tile Instagram grid (4:5, 18px corners, petrol overlay with the Instagram icon on hover; 6 → 3 → 2 columns). TikTok is in the list but hidden until its address is confirmed (no guessed handle).
+
+**Instagram feed:** not live yet. The grid shows local editorial photos linking to the Instagram profile. Set `VITE_INSTAGRAM_FEED_URL` to an endpoint on our own server returning `{ posts: [{ id, permalink, image, caption }] }` and the grid shows the latest six posts instead (falls back to the photos if it fails). That endpoint still needs building in Laravel with the Instagram API (professional account + Meta app + long-lived token kept server-side, refreshed before its 60-day expiry, response cached). No token goes to the browser.
+
+**Checks:** `npm run check`/`build` passed, `dist/` removed; desktop and 375px checked, no overflow, no console errors.
+
+## 2026-11-24 — Claude — NY logo in the footer
+
+**Change:** the NY monogram (same wreath + letters masks as the header, `.footer-logo` in `App.jsx`/`styles.css`) now sits above "The house of NY" in the footer, petrol, 64–84px on desktop and 54px on phones. A thin divider and "NY ATELIER" in bold spaced Josefin follow it, as in the header (`.footer-logo-line`, `.footer-logo-name`). It links Home; on hover it turns cognac and the rope ring turns once (no motion with reduced-motion). Checked desktop and 375px; `npm run check`/`build` passed, `dist/` removed.
+
+## 2026-11-24 — Claude — Footer is one screen tall
+
+**Change:** the footer was up to 1080px tall (the photo filled most of it). It is now exactly one screen (`max(100svh, 620px)`, 560px minimum on phones) with the photo covering the full width and height from the bottom up. The footer text (lead, link columns, then the copyright row in a new `.footer-content` wrapper in `App.jsx`) stays together at the top, about 38% of the screen on desktop; the cream fade runs to ~40%. Pinning the copyright row at the 3/5 line was tried and put it across the models' heads, so it sits directly under the links instead. Checked at 1258×928, 1440×900 and 375×812 (no overflow); `npm run check`/`build` passed, `dist/` removed.
+
+## 2026-11-24 — Claude — Closing strips turned cream
+
+**Change:** the shared `.cta-strip` ("Made for your story." on Home, "Begin with a conversation." on Services) is now cream with charcoal heading, cognac eyebrow/emphasis and petrol pill outline button, so every page runs into the footer's cream fade with no edge. `npm run check`/`build` passed, `dist/` removed; checked Home and Services in the browser.
+
+## 2026-11-24 — Claude — Cream fade into the footer on every page
+
+**Change:** the cream-to-photo fade at the top of the footer is now the default `.site-footer` background on all pages (desktop and phone), replacing the Our Story-only rule. RTW Store, Contact and Our Story run into the footer with no edge. Home and Services still end with a petrol "Made for your story" / "Begin with a conversation" strip, so a petrol-to-cream edge remains above the footer there. `npm run check`/`build` passed, `dist/` removed.
+
+## 2026-11-24 — Claude — Our Story: atelier section blends into the footer
+
+**Change:** "From our workshop to your wardrobe" moved from petrol to the cream `--silk` with petrol text, cognac numbers and petrol pill outline buttons. On Our Story only (`.discover-page + .site-footer`), the footer photo now fades up out of the same cream (gradient over the top ~260–420px desktop, 240px phone, portrait photo kept on phones), so the page runs into the footer with no hard edge. Other pages' footers are unchanged. Checked at desktop and 375px (no overflow); `npm run check`/`build` passed, `dist/` removed.
+
+## 2026-11-24 — Claude — Our Story: rounded philosophy cards
+
+**Change:** the six "Our philosophy" cards now have 18px rounded corners like the team and leadership cards. Their cognac top edge (which would bend awkwardly around rounded corners) became a short 32px cognac bar inside each card, above the number. Design rule from the user: no hard corners on the website. Checked in the browser.
+
+## 2026-11-24 — Claude — Our Story: plain cream background and film sound
+
+**Change:** every light section on Our Story (makers/films, philosophy, leadership cards, team) now uses the mobile app's alabaster `#F6F3EC` (the website's `--silk`) instead of the grey-green and beige tints; cards keep a thin `#DCD6CB` line (the app's `line` colour) so they still read on the cream. The petrol "From our workshop to your wardrobe" band and the footer are unchanged. The film sound button now unmutes and resumes playback inside the click; before, the browser paused the film when it was unmuted, so no sound played. Sound stays on for the following films; if the browser refuses sound, it falls back to muted playback.
+
+**Checks:** `npm run check` and `npm run build` passed; `dist/` removed. Browser: a real click on the sound button leaves the film playing with audio decoding; film 2 starts unmuted after film 1 ends; no console errors.
+
+## 2026-11-24 — Claude — Our Story page: films and full logo
+
+**Change:** "Discover Us" is now "Our Story": the page lives at `/our-story` (`/discover-us` redirects there), and the footer link, Home button and Home eyebrow read Our Story. In the "A house built through the work of its makers" section the workshop photo is replaced by a portrait film player: six 720×1280 films from `Video Assets/` copied to `website/public/videos/our-story/01–06.mp4` (about 56 MB, uncompressed because ffmpeg is not installed). Rounded 28px frame; films autoplay muted and run one after another with a brass progress bar per film at the bottom (click a bar to jump); pause/play and sound buttons; pauses when scrolled out of view; no autoplay when reduced motion is requested. The hero's faint rope ring is now the full NY logo (`ny-mark.svg`) at 7% opacity.
+
+**Files:** `website/src/DiscoverPage.jsx`, `src/App.jsx`, `src/styles.css`, `scripts/check-project.mjs`, `public/videos/our-story/`.
+
+**Checks:** `npm run check` and `npm run build` passed; `dist/` removed. Browser: film 1 plays, jumping to its end advances to film 2 with bar 1 full; no console errors; no horizontal overflow at 375px.
+
+## 2026-11-24 — Claude — Takes over website front end from Codex
+
+**Change:** Codex ran out of credits, so Claude now owns `website/` front-end work until the user hands it back. No code changed in this entry; Claude reviewed Codex's current UI in the local Vite preview (port 5173): Home (editorial hero carousel, "NY point of view", Discover the house, For him/For her, Selected pieces, Beyond the ordinary, photographic footer), `/rtw-store`, `/services` and `/contact`. No console errors.
+
+**Noted for the user:** some editorial and product photos have "NY ATELIER"/"www.thenyatelier.com" lettering baked into the image; one RTW Store card (Ashwood Crest Set) shows a near-empty grey photo; the footer photo is very tall on desktop.
+
+**Next:** design changes section by section as the user directs. `website/` stays local and uncommitted.
+
+## 2026-11-24 — Codex — Home ready-to-wear editorial carousel
+
+**Change:** replaced the Home hero's three remote campaign slides with seven paired local editorial photos from `Image Assets/Editorial 4x3/`. The 4:3 landscapes load on larger screens and the matching portraits at widths up to 640px. Added a six-second automatic cycle with a 1.2-second dissolve/slide, retained previous/next buttons and the centered `01 / 07` count, added a pause/play button, and kept the scroll cue at the far right. The slideshow pauses in a hidden tab and does not autoplay when reduced motion is requested. The hero now invites visitors to explore new ready-to-wear pieces and links to `/rtw-store`. Following user review, removed the interim silk copy card and pale control backgrounds; white copy and brass emphasis sit directly on the photos with a neutral black gradient for legibility.
+
+**Files:** `website/src/App.jsx`, `src/catalog.js`, `src/styles.css`, and 14 new optimized WebPs under `website/public/images/editorial/` (`01`–`07`, landscape/portrait); AI_HANDOFF §10 and this log. Original source images remain untouched. No changes in `apps/`, catalogue products, APIs or payment/account flows.
+
+**Checks:** `npm run check` and `npm run build` passed; `dist/` was removed. Browser reviewed Home at 1240px desktop and 375px phone: matching local variants load, text and controls remain readable, the arrows update the image/count, and there is no horizontal overflow. The automatic carousel was observed advancing. Screenshots: `/tmp/ny-editorial-desktop.jpg` and `/tmp/ny-editorial-phone.jpg`. `git diff --check` passed; local Vite returned HTTP 200.
+
+**Limits/next:** the supplied images contain baked-in NY watermark and website lettering. The seven 4:3 landscapes are generated reinterpretations of the original portraits, so details can differ. The RTW catalogue and checkout remain demonstrations; this hero makes no price, size or stock claim. The dev server remains running on port 5173. `website/` is still untracked on `main`; no commit, push or deployment. Await the next user-directed section or page change.
+
+## 2026-11-24 — Codex — Editorial portraits in 4:3
+
+**Change:** seven portrait images were attached though the request said six. Generated a 4:3 landscape version of each, preserving the main subject in frame and extending the surrounding scene. Saved seven 1448 × 1086 PNGs in `Image Assets/Editorial 4x3/` and a ZIP at `Image Assets/NY Atelier editorial 4x3 set.zip`.
+
+**Checks/limit:** all seven outputs were visually reviewed and their exact dimensions verified. They are generated reinterpretations, so faces, clothing, background, monogram and website lettering can differ from the originals. No website asset was replaced and no application code, data or service changed.
+
+## 2026-11-24 — Codex — Home header scroll correction
+
+**Change:** corrected the Home header's scroll behavior: it remains transparent for the full hero section, changes to solid petrol only after the hero's natural end, hides while scrolling down and slides back in while scrolling up. The header remains visible again at the top. The footer was not changed.
+
+**Files:** `website/src/App.jsx`; AI_HANDOFF §10 and this log. No `apps/`, catalogue, API or environment changes.
+
+**Checks:** `npm run check` and `npm run build` passed; `dist/` removed afterward. Browser verified at 1240px desktop and 375px phone that downward scrolling within the hero hides a still-transparent header; upward scrolling within the hero returns it transparently. Beyond the hero, downward scrolling hides the petrol header and upward scrolling returns it. No horizontal overflow at either width. Screenshots: `/tmp/ny-header-after-hero-{desktop,phone}.png` and `/tmp/ny-header-within-hero-phone.png`.
+
+**Limits/next:** local Vite server remains running on port 5173. `website/` remains untracked on `main`; no commit, push or deployment. Await the next user-directed section or page change.
+
+## 2026-11-24 — Codex — Home hero and scrolling header
+
+**Change:** removed the always-visible announcement strip; it can return later for an actual promotion. The Home header is transparent over the photo at the top, then becomes solid petrol when scrolling. It slides out on upward scrolling and immediately slides back on downward scrolling, as requested; reaching the top shows it again. Other pages retain a silk header at the top and use petrol while scrolling. The Home hero now fills the viewport width and height and stays sticky while the following content rolls over it. The brand strip has 50px top corners and square bottom corners at desktop and phone widths.
+
+**Files:** `website/src/App.jsx`, `website/src/styles.css`; AI_HANDOFF §10 and this log. No catalogue, backend, environment or `apps/` changes.
+
+**Checks:** `npm run check` and `npm run build` passed; `dist/` removed afterward. Browser checked Home at 1240px desktop and 375px phone with no horizontal overflow, a transparent header at the top, the hero at full viewport size, sticky hero position during scroll, petrol header after scrolling, hide on upward scroll and return on downward scroll. The brand strip computed border radius was `50px 50px 0px 0px`. Screenshots: `/tmp/ny-home-top-desktop.png`, `/tmp/ny-home-top-phone.png`, `/tmp/ny-home-sticky-phone.png`.
+
+**Limits/next:** no promotion banner content is configured. The local Vite server remains running on port 5173. `website/` is still untracked on `main`; no commit, push or deployment. Await the next user-directed section or page change.
+
+## 2026-11-24 — Codex — Responsive photographic website footer
+
+**Change:** replaced the footer's dark background with the two user-supplied compositions in `Image Assets/Website Images`. Added compressed local WebP copies: the 4:3 landscape composition for larger screens and the 9:16 portrait composition at widths up to 640px. Adjusted footer height, layout and text colours so the heading, links, copyright and “Powered by Work on dec.” sit on the open wall above the figures. The original source PNGs remain untouched.
+
+**Files:** `website/src/styles.css`, new `website/public/images/footer-landscape.webp` and `footer-portrait.webp`; AI_HANDOFF §10 and this log. No `apps/`, catalogue, API or environment changes.
+
+**Checks:** `npm run check` and `npm run build` passed; `dist/` removed afterward. Browser visually reviewed the footer at 1217px desktop and 375px phone, verified the respective background asset and no horizontal overflow. Screenshots: `/tmp/ny-footer-photo-{desktop,phone}.png`.
+
+**Limits/next:** the images are decorative CSS backgrounds, so the text remains real accessible links and headings. The local Vite server remains running on port 5173. `website/` remains untracked on `main`; no commit, push or deployment. Await the next user-directed design change.
+
+## 2026-11-24 — Codex — Footer image variants
+
+**Change:** generated a 4:3 desktop footer composition and a 9:16 mobile composition from the lettering-free fashion image. Both place the people, framed portrait and sofa in the lower half with continuous pale wall above for text. Saved `Image Assets/NY Atelier footer desktop 4K 4x3.png` (3840 × 2880) and `Image Assets/NY Atelier footer mobile 4K 9x16.png` (2160 × 3840). Both were visually reviewed; dimensions and ratios were verified. The generator's native outputs were 1448 × 1086 and 941 × 1672, then resampled to final pixel dimensions, so the files are 4K-sized but do not contain native 4K detail.
+
+**Limit:** these are new generated compositions, not exact pixel-preserving edits of the source. No website code or deployed asset was changed; services were untouched.
+
+## 2026-11-24 — Codex — Image lettering removal
+
+**Change:** removed the user-selected lower-right “NY ATELIER” lettering from the supplied fashion photograph with image generation and saved the result as `Image Assets/NY Atelier hero without lettering.png`. The generated image was visually reviewed. No application code, data, services or implementation facts changed.
+
+**Limit:** the image generator re-rendered the full scene, so the result is a visual edit rather than pixel-identical preservation outside the selected area. No website asset was replaced or deployed.
+
+**Follow-up:** extended that edited image vertically to an exact 4:3 composition (1448 × 1086) while retaining all four figures, and saved `Image Assets/NY Atelier hero without lettering 4x3.png`. No application asset was replaced.
+
+## 2026-11-24 — Codex — Website footer and public copy
+
+**Change:** removed the back-to-top link and development-preview wording from the footer, added the exact credit “Powered by Work on dec.”, and replaced the top announcement's preview message with existing brand copy. Removed preview labels from the RTW result count, product detail, contact form and checkout demonstration. Kept clear notices that catalogue details need confirmation and that forms, checkout, orders and payments are not live.
+
+**Files:** `website/src/App.jsx`; AI_HANDOFF §10 and this log. No `apps/`, catalogue data, backend or environment changes.
+
+**Checks:** `npm run check` and `npm run build` passed; `dist/` removed afterward. Browser reviewed the footer and form at desktop (1217px) and phone (375px). Home, Services, RTW Store, product detail, Our Story and Contact had no horizontal overflow at either width; none showed a development-preview label or back-to-top link. Phone screenshot: `/tmp/ny-atelier-footer-phone.jpg`. Desktop footer was reviewed in the browser.
+
+**Limits/next:** the catalogue, bag, checkout and consultation form remain demonstrations; sample images, prices, sizes and availability still require verification. The local Vite server remains running on port 5173. `website/` is untracked; no commit, push or deployment. Await the next user-directed section or page change.
+
+## 2026-11-24 — Codex — Website logo navigation and rope motion
+
+**Change:** made the header silk on Home so the logo mark and full NY ATELIER name stay deep petrol and readable over the hero. Top navigation is now **Services, RTW Store, Contact** in that order on desktop and phone. Home remains the logo destination; Our Story remains a page linked from the footer. The actual logo vector was split into its supplied wreath and central-letter groups: clicking the logo navigates to Home and rotates only the wreath for 1.1 seconds. Existing reduced-motion CSS disables the animation for visitors who request it. Updated the website navigation check and README to match the user decision.
+
+**Files:** `website/src/App.jsx`, `src/styles.css`, `scripts/check-project.mjs`, `README.md`, new `public/ny-wreath.svg` and `public/ny-letters.svg`; AI_HANDOFF §10 and this log. `apps/` and business data were not changed.
+
+**Checks:** `npm run check` and `npm run build` passed; `dist/` removed afterward. Browser confirmed the Home header's computed deep petrol lockup, three-link order, logo click from Services returning to Home, and the wreath animation becoming active. At 1217px desktop and 375px phone, all six routes had document width equal to viewport width. Visually reviewed desktop hero/header, phone hero/header and expanded three-link menu. Screenshots: `/tmp/ny-atelier-website-header-v3-{desktop,phone}.jpg`.
+
+**Limits/next:** no backend, API, payment or account work. The catalogue and forms remain demonstrations; the Ashwood Crest Set image still uses its blank/fallback tile. The local Vite server remains running on port 5173 for review. `website/` is still untracked; no commit, push or deployment. Await the next user-directed section or page change.
+
+## 2026-11-24 — Codex — Website header feedback
+
+**Change:** kept the actual NY monogram and changed the adjacent header text from “ATELIER” to **“NY ATELIER”**. Replaced the filled active top-nav selection with an underline: brass below white text over the home photo, cognac text/line on light pages. The mobile menu's active item uses a cognac underline instead of a filled row. Only `website/src/App.jsx` and `src/styles.css` changed; no data, backend or setup changes.
+
+**Checks:** `npm run check` and `npm run build` passed; `dist/` removed afterwards. Browser verified the full name, transparent active background and underline colours on the photo and RTW Store headers. At 1178px desktop and 375px phone, Home and RTW Store had no horizontal overflow; the phone header had a visible gap between the name and action icons, and its expanded menu had no overlap. Preview screenshots: `/tmp/ny-atelier-website-nav-{desktop,phone}.jpg`.
+
+**Handoff:** local Vite dev server remains on port 5173 for review. `website/` remains untracked; no commit, push or deployment. Await the next user-directed section or page change.
+
+## 2026-11-24 — Codex — Public website shared UI and logo
+
+**Status:** first user-directed design pass complete locally; awaiting the next section or page idea. `website/` remains untracked on `main`; no commit, push or deployment.
+
+**Change:** replaced the header's typed “NY” with the actual NY monogram from Office/Studio, coloured through CSS so it works on photo and light headers. Reused selected NY customer-app icon definitions for the website's search, bag, menu, wishlist, arrows and other shared controls. Aligned navigation, buttons, filters, icon targets and form fields with the established pill/rounded NY UI; added visible focus rings. Kept the approved five-link navigation, local fonts, brand colours, page copy and demonstration flows.
+
+**Files:** `website/src/App.jsx`, `src/styles.css`, new `src/NyIcons.jsx`, `src/ny-icons.json` and `public/ny-mark.svg`; this log and AI_HANDOFF §10. No changes under `apps/`, no backend/data/environment changes.
+
+**Checks:** `npm run check` and `npm run build` passed; `dist/` was removed after the build. In the local browser, Home, RTW Store, a product detail, Services, Our Story and Contact each had document scroll width equal to viewport width at both 1178px desktop and 375px phone. Visually checked the photo-header logo/button, mobile menu, store controls and Contact at phone width; no overlap observed in those views. Desktop and phone screenshots: `/tmp/ny-atelier-website-shared-ui-{desktop,phone}.jpg`.
+
+**Limits/next:** this is the shared UI pass only; individual sections are ready for user review. The sample Ashwood Crest Set image rendered as a blank/fallback tile during the initial walkthrough and was not changed here. The catalogue, bag, checkout and consultation form remain demonstrations, with unverified sample content. The local Vite dev server on port 5173 was left running for review.
+
 ## 2026-11-23 — Claude → Codex — Website UI design handed to Codex
 
 **User decision:** Codex takes the visual/UI design of the new public website in `codebase/website`; the user will give design ideas section by section or page by page. Claude continues on the backend (`apps/`) and will not edit `website/` meanwhile. Brief, rules (local only, not in Git, later its own branch + live preview, integration later) and current state are in AI_HANDOFF §10 "Public website prototype". Claude's earlier dev server on port 5173 was stopped so Codex can start its own (`cd codebase/website && npm run dev`). `website/` is untracked: do not `git add -A` from `codebase/` on `main`. Pending, unrelated to the website: the owner's live run of **Import WordPress products** at office.thenyatelier.com; R2 photo storage once the Cloudflare admin grants access.

@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { atelier } from '@/atelier-theme';
 import { useEdgeSwipeBack } from '@/components/edge-swipe-back';
-import { products } from '@/data/shop-catalogue';
+import { useShopCatalogue } from '@/lib/shop-catalogue';
 import { productVariants, type PurchasableVariant } from '@/lib/sizing';
 import { useCustomerAuth } from '@/lib/customer-auth';
 
@@ -34,6 +34,7 @@ export function ShoppingBagProvider({ children }: { children: ReactNode }) {
   const [bagOpen, setBagOpen] = useState(false);
   const [checkoutNote, setCheckoutNote] = useState('');
   const { customer, requireSignIn } = useCustomerAuth();
+  const { products } = useShopCatalogue();
   const closeBag = useCallback(() => { setBagOpen(false); setCheckoutNote(''); }, []);
   useTabSwipeBlocker(bagOpen);
   const bagSwipe = useEdgeSwipeBack(closeBag, bagOpen);
@@ -86,14 +87,22 @@ export function ShoppingBagProvider({ children }: { children: ReactNode }) {
               <ScrollView style={styles.bagScroll}>
                 {bagEntries.map(([key, entry]) => {
                   const product = products.find((item) => item.id === entry.productId);
-                  if (!product) return null;
-                  const color = product.colors.find((item) => item.id === entry.colorId) || product.colors[0];
+                  const color = product?.colors.find((item) => item.id === entry.colorId);
+                  const stillSold = color?.inventory.some((variant) => variant.id === entry.id && variant.stock > 0);
+                  if (!product || !color) return <View key={key} style={styles.bagItem}>
+                    <View style={[styles.bagImage, styles.bagImageEmpty]} />
+                    <View style={styles.bagItemText}>
+                      <Text style={styles.productName}>No longer available</Text>
+                      <Text style={styles.bagSize}>This piece was removed from the collection.</Text>
+                      <Pressable accessibilityRole="button" accessibilityLabel="Remove unavailable piece from bag" onPress={() => removeFromBag(key)}><Text style={styles.removeText}>Remove</Text></Pressable>
+                    </View>
+                  </View>;
                   return <View key={key} style={styles.bagItem}>
-                    <Image source={color.photos[0]?.image ?? product.image} contentFit="cover" contentPosition="top center" style={styles.bagImage} />
+                    <Image source={color.photos[0]?.image ?? product.image ?? undefined} contentFit="cover" contentPosition="top center" style={styles.bagImage} />
                     <View style={styles.bagItemText}>
                       <Text style={styles.productName}>{product.name}</Text>
                       <Text style={styles.productPrice}>{product.price} · Qty {entry.quantity}</Text>
-                      <Text style={styles.bagSize}>{color.name}{color.concept ? ' · colour preview' : ''}</Text>
+                      <Text style={styles.bagSize}>{color.name}{stillSold ? '' : ' · now sold out'}</Text>
                       <Text style={styles.bagSize}>{`Size ${entry.size}${entry.length ? ` · ${entry.length.code} · Inseam ${entry.length.value} ${entry.length.unit}` : ''}`}</Text>
                       <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${product.name} in ${color.name}${entry.size ? ` size ${entry.size}` : ''} from bag`} onPress={() => removeFromBag(key)}><Text style={styles.removeText}>Remove</Text></Pressable>
                     </View>
@@ -102,7 +111,7 @@ export function ShoppingBagProvider({ children }: { children: ReactNode }) {
                 <View style={styles.totalRow}><Text style={styles.totalLabel}>SUBTOTAL</Text><Text style={styles.totalValue}>GH₵ {bagTotal.toLocaleString('en-GH')}</Text></View>
                 {customer ? <Text style={styles.bagFootnote}>Signed in as {customer.email ?? customer.phone}</Text> : null}
                 <Pressable accessibilityRole="button" onPress={() => { void checkout(); }} style={styles.checkoutButton}><Text style={styles.checkoutText}>{customer ? 'CONTINUE TO CHECKOUT' : 'SIGN IN TO CHECK OUT'}</Text></Pressable>
-                <Text accessibilityLiveRegion="polite" style={styles.bagFootnote}>{checkoutNote || 'Bag contents are held on this device. Payment is not connected yet.'}</Text>
+                <Text accessibilityLiveRegion="polite" style={styles.bagFootnote}>{checkoutNote || 'Bag contents are held on this device. Prices come from the NY Atelier catalogue. Payment is not connected yet.'}</Text>
               </ScrollView>
             )}
           </View>
@@ -123,6 +132,7 @@ const styles = StyleSheet.create({
   bagEmpty: { color: atelier.muted, fontFamily: atelier.body, fontSize: 15, lineHeight: 23, marginBottom: 24 },
   bagItem: { flexDirection: 'row', gap: 15, paddingBottom: 16, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: atelier.line },
   bagImage: { width: 78, height: 100, borderRadius: 12, backgroundColor: '#E8E7E2' },
+  bagImageEmpty: { opacity: 0.6 },
   bagItemText: { flex: 1, justifyContent: 'center', gap: 5 },
   productName: { color: atelier.slate, fontFamily: atelier.body, fontWeight: '700', fontSize: 16, marginBottom: 5 },
   productPrice: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 14 },

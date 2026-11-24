@@ -1,0 +1,366 @@
+{
+  "arrow-left": {
+    "tag": "svg",
+    "attrs": {
+      "fill": "none",
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round"
+    },
+    "children": [
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M4 12L3.64645 11.6464L3.29289 12L3.64645 12.3536L4 12ZM19 12.5C19.2761 12.5 19.5 12.2761 19.5 12C19.5 11.7239 19.2761 11.5 19 11.5V12.5ZM9.64645 5.64645L3.64645 11.6464L4.35355 12.3536L10.3536 6.35355L9.64645 5.64645ZM3.64645 12.3536L9.64645 18.3536L10.3536 17.6464L4.35355 11.6464L3.64645 12.3536ZM4 12.5H19V11.5H4V12.5Z",
+          "fill": "currentColor"
+        },
+        "children": []
+      }
+    ],
+    "source": {
+      "kind": "figma",
+      "key": "arrow-left",
+      "nodeId": "2165:4852",
+      "name": "Arrow_left_light"
+    }
+  },
+  "arrow-right": {
+    "tag": "svg",
+    "attrs": {
+      "fill": "none",
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round"
+    },
+    "children": [
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M20 12L20.3536 11.6464L20.7071 12L20.3536 12.3536L20 12ZM5 12.5C4.72386 12.5 4.5 12.2761 4.5 12C4.5 11.7239 4.72386 11.5 5 11.5V12.5ZM14.3536 5.64645L20.3536 11.6464L19.6464 12.3536L13.6464 6.35355L14.3536 5.64645ZM20.3536 12.3536L14.3536 18.3536L13.6464 17.6464L19.6464 11.6464L20.3536 12.3536ZM20 12.5H5V11.5H20V12.5Z",
+          "fill": "currentColor"
+        },
+        "children": []
+      }
+    ],
+    "source": {
+      "kind": "figma",
+      "key": "arrow-right",
+      "nodeId": "2165:4854",
+      "name": "Arrow_right_light"
+    }
+  },
+  "arrow-up-right": {
+    "tag": "svg",
+    "attrs": {
+      "fill": "none",
+      "stroke": "currentColor",
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round"
+    },
+    "children": [
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M6 18 18 6M7.5 6H18v10.5"
+        },
+        "children": []
+      }
+    ],
+    "source": {
+      "kind": "ny-atelier",
+      "name": "arrow-up-right"
+    }
+  },
+  "bag": {
+    "tag": "svg",
+    "attrs": {
+      "fill": "none",
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round"
+    },
+    "children": [
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M7.5 8.5L7.5 8C7.5 7.53566 7.5 7.30349 7.51926 7.10793C7.70631 5.20882 9.20882 3.70631 11.1079 3.51926C11.3035 3.5 11.5357 3.5 12 3.5C12.4643 3.5 12.6965 3.5 12.8921 3.51926C14.7912 3.7063 16.2937 5.20882 16.4807 7.10793C16.5 7.30349 16.5 7.53566 16.5 8L16.5 8.5",
+          "stroke": "currentColor",
+          "stroke-linecap": "round"
+        },
+        "children": []
+      },
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M15.5 13.5V11.5",
+          "stroke": "currentColor",
+          "stroke-linecap": "round"
+        },
+        "children": []
+      },
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M8.5 13.5V11.5",
+          "stroke": "currentColor",
+          "stroke-linecap": "round"
+        },
+        "children": []
+      },
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M5.5 12.1C5.5 10.4029 5.5 9.55442 6.02721 9.02721C6.55442 8.5 7.40294 8.5 9.1 8.5H14.9C16.5971 8.5 17.4456 8.5 17.9728 9.02721C18.5 9.55442 18.5 10.4029 18.5 12.1V14.5C18.5 17.3284 18.5 18.7426 17.6213 19.6213C16.7426 20.5 15.3284 20.5 12.5 20.5H11.5C8.67157 20.5 7.25736 20.5 6.37868 19.6213C5.5 18.7426 5.5 17.3284 5.5 14.5V12.1Z",
+          "stroke": "currentColor"
+        },
+        "children": []
+      }
+    ],
+    "source": {
+      "kind": "figma",
+      "key": "bag",
+      "nodeId": "2165:7630",
+      "name": "Bag_light"
+    }
+  },
+  "check": {
+    "tag": "svg",
+    "attrs": {
+      "fill": "none",
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round"
+    },
+    "children": [
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M5 14L8.23309 16.4248C8.66178 16.7463 9.26772 16.6728 9.60705 16.2581L18 6",
+          "stroke": "currentColor",
+          "stroke-linecap": "round"
+        },
+        "children": []
+      }
+    ],
+    "source": {
+      "kind": "figma",
+      "key": "check",
+      "nodeId": "2165:3312",
+      "name": "Done_round_light"
+    }
+  },
+  "chevron-down": {
+    "tag": "svg",
+    "attrs": {
+      "fill": "none",
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round"
+    },
+    "children": [
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M18 9L12 15L6 9",
+          "stroke": "currentColor"
+        },
+        "children": []
+      }
+    ],
+    "source": {
+      "kind": "figma",
+      "key": "chevron-down",
+      "nodeId": "2165:4878",
+      "name": "Expand_down_light"
+    }
+  },
+  "close": {
+    "tag": "svg",
+    "attrs": {
+      "fill": "none",
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round"
+    },
+    "children": [
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M18 6L6 18",
+          "stroke": "currentColor",
+          "stroke-linecap": "round",
+          "stroke-linejoin": "round"
+        },
+        "children": []
+      },
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M6 6L18 18",
+          "stroke": "currentColor",
+          "stroke-linecap": "round",
+          "stroke-linejoin": "round"
+        },
+        "children": []
+      }
+    ],
+    "source": {
+      "kind": "figma",
+      "key": "close",
+      "nodeId": "2165:270",
+      "name": "Close_round_light"
+    }
+  },
+  "heart": {
+    "tag": "svg",
+    "attrs": {
+      "fill": "none",
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round"
+    },
+    "children": [
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M4.45067 13.9082L11.4033 20.4395C11.6428 20.6644 11.7625 20.7769 11.9037 20.8046C11.9673 20.8171 12.0327 20.8171 12.0963 20.8046C12.2375 20.7769 12.3572 20.6644 12.5967 20.4395L19.5493 13.9082C21.5055 12.0706 21.743 9.0466 20.0978 6.92607L19.7885 6.52734C17.8203 3.99058 13.8696 4.41601 12.4867 7.31365C12.2913 7.72296 11.7087 7.72296 11.5133 7.31365C10.1304 4.41601 6.17972 3.99058 4.21154 6.52735L3.90219 6.92607C2.25695 9.0466 2.4945 12.0706 4.45067 13.9082Z",
+          "stroke": "currentColor"
+        },
+        "children": []
+      }
+    ],
+    "source": {
+      "kind": "figma",
+      "key": "heart",
+      "nodeId": "2165:6400",
+      "name": "Favorite_light"
+    }
+  },
+  "list": {
+    "tag": "svg",
+    "attrs": {
+      "fill": "none",
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round"
+    },
+    "children": [
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M5 7H19",
+          "stroke": "currentColor",
+          "stroke-linecap": "round"
+        },
+        "children": []
+      },
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M5 12H19",
+          "stroke": "currentColor",
+          "stroke-linecap": "round"
+        },
+        "children": []
+      },
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M5 17H19",
+          "stroke": "currentColor",
+          "stroke-linecap": "round"
+        },
+        "children": []
+      }
+    ],
+    "source": {
+      "kind": "figma",
+      "key": "list",
+      "nodeId": "2165:4140",
+      "name": "Menu"
+    }
+  },
+  "minus": {
+    "tag": "svg",
+    "attrs": {
+      "fill": "none",
+      "stroke": "currentColor",
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round"
+    },
+    "children": [
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M6 12h12"
+        },
+        "children": []
+      }
+    ],
+    "source": {
+      "kind": "ny-atelier",
+      "name": "minus"
+    }
+  },
+  "plus": {
+    "tag": "svg",
+    "attrs": {
+      "fill": "none",
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round"
+    },
+    "children": [
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M12 6L12 18",
+          "stroke": "currentColor",
+          "stroke-linecap": "round"
+        },
+        "children": []
+      },
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M18 12L6 12",
+          "stroke": "currentColor",
+          "stroke-linecap": "round"
+        },
+        "children": []
+      }
+    ],
+    "source": {
+      "kind": "figma",
+      "key": "plus",
+      "nodeId": "2165:35",
+      "name": "Add_round_light"
+    }
+  },
+  "search": {
+    "tag": "svg",
+    "attrs": {
+      "fill": "none",
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round"
+    },
+    "children": [
+      {
+        "tag": "circle",
+        "attrs": {
+          "cx": "11",
+          "cy": "11",
+          "r": "6",
+          "stroke": "currentColor"
+        },
+        "children": []
+      },
+      {
+        "tag": "path",
+        "attrs": {
+          "d": "M20 20L17 17",
+          "stroke": "currentColor",
+          "stroke-linecap": "round"
+        },
+        "children": []
+      }
+    ],
+    "source": {
+      "kind": "figma",
+      "key": "search",
+      "nodeId": "2165:640",
+      "name": "Search_light"
+    }
+  }
+}

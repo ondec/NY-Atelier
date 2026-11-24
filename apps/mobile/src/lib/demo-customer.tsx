@@ -4,6 +4,7 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useR
 import { AppState } from 'react-native';
 
 import { consultationApi, type ConsultationInput, type ConsultationRequest } from './consultations';
+import { useCustomerAuth } from './customer-auth';
 
 export const demoCustomer = {
   id: 'NY-DEMO-001',
@@ -28,18 +29,22 @@ export function DemoCustomerProvider({ children }: { children: ReactNode }) {
   const [drafts, setDrafts] = useState<ConsultationRequest[]>([]);
   const [unavailable, setUnavailable] = useState(false);
   const revision = useRef(0);
+  const { customer, getToken } = useCustomerAuth();
+  const customerId = customer?.id ?? null;
 
   const refreshRequests = useCallback(async () => {
     const attempt = ++revision.current;
+    // Each signed-in customer sees only their own requests; a new sign-in starts from a clean list.
+    if (customerId === null) { setRemote([]); setUnavailable(false); return; }
     try {
-      const rows = await consultationApi<ConsultationRequest[]>();
+      const rows = await consultationApi<ConsultationRequest[]>('', undefined, getToken());
       if (attempt !== revision.current) return;
       setRemote(rows);
       setUnavailable(false);
     } catch {
       if (attempt === revision.current) setUnavailable(true);
     }
-  }, []);
+  }, [customerId, getToken]);
 
   useEffect(() => {
     let mounted = true;
@@ -72,15 +77,16 @@ export function DemoCustomerProvider({ children }: { children: ReactNode }) {
   }
 
   async function addRequest(request: ConsultationInput, id: string) {
-    applyRequest(await consultationApi('', { method: 'POST', body: JSON.stringify({ ...request, id }) }));
+    applyRequest(await consultationApi('', { method: 'POST', body: JSON.stringify({ ...request, id }) }, getToken()));
   }
 
   async function respondToRequest(request: ConsultationRequest, option?: number) {
     try {
-      applyRequest(await consultationApi(`/${request.id}/customer`, {
+      const token = getToken();
+      applyRequest(await consultationApi(token ? `/${request.id}` : `/${request.id}/customer`, {
         method: 'PATCH',
         body: JSON.stringify({ action: option === undefined ? 'decline' : 'accept', option, version: request.version }),
-      }));
+      }, token));
     } catch (error) {
       void refreshRequests();
       throw error;

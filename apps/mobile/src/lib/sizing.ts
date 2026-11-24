@@ -1,5 +1,8 @@
 export const ALPHA_SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL'] as const;
 export type AlphaSize = typeof ALPHA_SIZES[number];
+// Sizes a shopper can buy. The catalogue also sells XS, which the reference charts do not cover.
+export const SHOP_SIZES = ['XS', ...ALPHA_SIZES] as const;
+export type ShopSize = typeof SHOP_SIZES[number];
 export type Unit = 'cm' | 'in';
 export type Gender = 'men' | 'women';
 export type GarmentCategory = 'long-sleeve-shirt' | 'short-sleeve-shirt' | 'trousers';
@@ -19,8 +22,8 @@ export type SizingChart = {
 export type SizingPart = { category: GarmentCategory; label?: string; fit?: Fit; chartId?: string; vendorChartId?: string };
 export type SizingProfile = SizingPart & { gender: Gender; parts?: SizingPart[] };
 export type ResolvedSizingPart = { profile: SizingProfile; chart: SizingChart | undefined; label: string };
-export type PurchasableVariant = { id: string; productId: string; colorId: string; size: AlphaSize; stock: number; length?: { code: string; value: number; unit: Unit } };
-export type VariantProduct = { id: string; colors: { id: string; stock?: Partial<Record<AlphaSize, number>>; inventory?: PurchasableVariant[] }[] };
+export type PurchasableVariant = { id: string; productId: string; colorId: string; size: ShopSize; stock: number; length?: { code: string; value: number; unit: Unit } };
+export type VariantProduct = { id: string; colors: { id: string; stock?: Partial<Record<ShopSize, number>>; inventory?: PurchasableVariant[] }[] };
 
 export function convertMeasurement(value: number, from: Unit, to: Unit): number {
   if (!Number.isFinite(value)) throw new Error('Measurement must be finite.');
@@ -142,16 +145,16 @@ export function resolveProductSizing(profile: SizingProfile | undefined, referen
     return { profile: single, chart: resolveChart(single, references, overrides), label: part.label ?? (part.category === 'trousers' ? 'Trousers' : part.category === 'short-sleeve-shirt' ? 'Short-sleeve top' : 'Long-sleeve top') };
   });
 }
-export function regionalLabel(row: ChartRow | undefined, size: AlphaSize, region: Region): string {
+export function regionalLabel(row: ChartRow | undefined, size: ShopSize, region: Region): string {
   return region === 'GH' ? size : row?.labels[region] ? `${row.labels[region]} · ${size}` : size;
 }
 export function productVariants(product: VariantProduct, colorId: string): PurchasableVariant[] {
   const color = product.colors.find(c => c.id === colorId);
-  const variants: PurchasableVariant[] = color?.inventory ?? ALPHA_SIZES.flatMap(size => color?.stock?.[size] === undefined ? [] : [{ id: `${product.id}:${colorId}:${size}`, productId: product.id, colorId, size, stock: color.stock[size]! }]);
+  const variants: PurchasableVariant[] = color?.inventory ?? SHOP_SIZES.flatMap(size => color?.stock?.[size] === undefined ? [] : [{ id: `${product.id}:${colorId}:${size}`, productId: product.id, colorId, size, stock: color.stock[size]! }]);
   const ids = new Set<string>();
   const combinations = new Set<string>();
   for (const variant of variants) {
-    enumValue(variant.size, ALPHA_SIZES);
+    enumValue(variant.size, SHOP_SIZES);
     if (!variant.id || ids.has(variant.id) || variant.productId !== product.id || variant.colorId !== colorId || !Number.isInteger(variant.stock) || variant.stock < 0) throw new Error('Invalid product inventory.');
     const combination = `${variant.size}:${variant.length?.code ?? ""}`;
     if (combinations.has(combination)) throw new Error("Duplicate purchasable size and length.");
@@ -161,7 +164,7 @@ export function productVariants(product: VariantProduct, colorId: string): Purch
   }
   return variants;
 }
-export function selectVariant(variants: PurchasableVariant[], size: AlphaSize, lengthCode?: string): PurchasableVariant | undefined {
+export function selectVariant(variants: PurchasableVariant[], size: ShopSize, lengthCode?: string): PurchasableVariant | undefined {
   return variants.find(v => v.size === size && v.stock > 0 && (v.length ? v.length.code === lengthCode : lengthCode === undefined));
 }
 export type Recommendation = { status: 'match'; size: AlphaSize; variants: PurchasableVariant[]; message: string } | { status: 'insufficient' | 'invalid' | 'out-of-range' | 'unavailable'; message: string };

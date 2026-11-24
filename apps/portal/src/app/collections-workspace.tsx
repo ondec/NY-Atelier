@@ -18,8 +18,29 @@ export type Collection = {
   description: string;
   photos: string[];
   productIds: string[];
-  featured: boolean;
+  featuredOn: FeaturedOn;
   order: number;
+};
+
+/** The three home heroes a collection can lead. Each site features at most one collection. */
+export type FeatureSite = "website" | "rtw" | "app";
+export type FeaturedOn = Record<FeatureSite, boolean>;
+export const featureSites: { id: FeatureSite; label: string; place: string }[] = [
+  { id: "website", label: "Feature on website", place: "the website home" },
+  { id: "rtw", label: "Feature on RTW store", place: "the RTW store home" },
+  { id: "app", label: "Feature on app", place: "the app home" },
+];
+const notFeatured: FeaturedOn = { website: false, rtw: false, app: false };
+
+/** Older records had one "Feature on Home" flag, which drove the RTW store and the app. */
+export function normaliseCollection(entry: Collection & { featured?: boolean }): Collection {
+  const { featured, ...rest } = entry;
+  const flags = entry.featuredOn && typeof entry.featuredOn === "object" ? entry.featuredOn : { ...notFeatured, rtw: featured === true, app: featured === true };
+  return { ...rest, featuredOn: { website: flags.website === true, rtw: flags.rtw === true, app: flags.app === true } };
+}
+const featuredLabel = (entry: Collection) => {
+  const places = featureSites.filter((site) => entry.featuredOn[site.id]).map((site) => site.id === "rtw" ? "RTW store" : site.id === "app" ? "app" : "website");
+  return places.length ? ` · Featured on ${places.join(", ")}` : "";
 };
 
 const collectionStorageKey = "ny-atelier-collections-v1";
@@ -27,17 +48,17 @@ export const sampleCollections: Collection[] = [{
   ...redCloverCollectionInfo,
   productIds: redCloverCollectionInfo.productIds.map((id) => `shop-${id}`),
   photos: Array.from({ length: 4 }, (_, index) => `/collections/royal-blue-stripes-${index + 1}.jpg`),
-  featured: true,
+  featuredOn: { website: false, rtw: true, app: true },
   order: 1,
 }];
-const blank: Collection = { id: "", title: "", description: "", photos: [], productIds: [], featured: false, order: 1 };
+const blank: Collection = { id: "", title: "", description: "", photos: [], productIds: [], featuredOn: notFeatured, order: 1 };
 const money = (amount: number) => new Intl.NumberFormat("en-GH", { style: "currency", currency: "GHS" }).format(amount);
 
 export function readCollections(): Collection[] {
   try {
     const stored = localStorage.getItem(collectionStorageKey);
     const parsed = stored && JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed : sampleCollections;
+    return Array.isArray(parsed) ? parsed.map(normaliseCollection) : sampleCollections;
   } catch {
     return sampleCollections;
   }
@@ -51,6 +72,9 @@ export default function CollectionsWorkspace() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [featuredOn, setFeaturedOn] = useState<FeaturedOn>(notFeatured);
+  // A site already featuring another collection waits for staff to confirm the switch.
+  const [pendingSite, setPendingSite] = useState<FeatureSite>();
   const selected = collections.find((entry) => entry.id === selectedId);
 
   useEffect(() => {
@@ -95,12 +119,13 @@ export default function CollectionsWorkspace() {
       if (!photos.length) throw new Error("Add at least one campaign photo.");
       const record: Collection = {
         id: draft.id || crypto.randomUUID(), title, description, productIds, photos, order,
-        featured: data.has("featured"),
+        featuredOn,
       };
       const next = [
-        ...readCollections().filter((item) => item.id !== record.id).map((item) =>
-          record.featured ? { ...item, featured: false } : item
-        ),
+        ...readCollections().filter((item) => item.id !== record.id).map((item) => ({
+          ...item,
+          featuredOn: { website: item.featuredOn.website && !featuredOn.website, rtw: item.featuredOn.rtw && !featuredOn.rtw, app: item.featuredOn.app && !featuredOn.app },
+        })),
         record,
       ];
       localStorage.setItem(collectionStorageKey, JSON.stringify(next));
@@ -119,7 +144,23 @@ export default function CollectionsWorkspace() {
 
   function openEditor(entry: Collection) {
     setError("");
+    setFeaturedOn(entry.featuredOn);
+    setPendingSite(undefined);
     setDraft(entry);
+  }
+
+  /** Who else currently leads this site's home hero. */
+  const holderOf = (site: FeatureSite) => collections.find((item) => item.id !== draft?.id && item.featuredOn[site]);
+
+  function toggleFeature(site: FeatureSite, on: boolean) {
+    if (on && holderOf(site)) { setPendingSite(site); return; }
+    setPendingSite(undefined);
+    setFeaturedOn((current) => ({ ...current, [site]: on }));
+  }
+
+  function answerSwitch(yes: boolean) {
+    if (yes && pendingSite) setFeaturedOn((current) => ({ ...current, [pendingSite]: true }));
+    setPendingSite(undefined);
   }
 
   function closeEditor() {
@@ -141,8 +182,8 @@ export default function CollectionsWorkspace() {
     {selected ? <>
       <section className="panel inventory-form-panel">
         <div className="eyebrow">CAMPAIGN · DISPLAY ORDER {selected.order}</div>
-        <h2>{selected.featured ? "Home hero & collection photos" : "Collection photos"}</h2>
-        <p className="collection-help">The first photo is the collection cover. When featured on Home, the photos cycle in this order with the collection name kept in place.</p>
+        <h2>{featuredLabel(selected) ? "Home hero & collection photos" : "Collection photos"}</h2>
+        <p className="collection-help">The first photo is the collection cover. Where the collection is featured, the photos cycle in this order on that home hero with the collection name kept in place.{featuredLabel(selected) && <strong>{featuredLabel(selected)}.</strong>}</p>
         <div className="collection-photos">{selected.photos.map((photo, index) => (
           <figure key={index}><Image src={photo} alt={`${selected.title} campaign photo ${index + 1}`} width={200} height={260} unoptimized /><figcaption>{index === 0 ? "Cover · Slide 1" : `Slide ${index + 1}`}</figcaption></figure>
         ))}</div>
@@ -179,7 +220,7 @@ export default function CollectionsWorkspace() {
     </> : <div className="collection-list">{ordered.map((entry) => (
       <button type="button" className="panel collection-card" key={entry.id} onClick={() => setSelectedId(entry.id)}>
         <Image src={entry.photos[0]} alt="" width={300} height={160} unoptimized />
-        <span className="collection-card-content"><strong>{entry.title}</strong><span>{entry.description}</span><small>{entry.productIds.length} {entry.productIds.length === 1 ? "garment" : "garments"}{entry.featured ? " · Featured on Home" : ""}</small></span>
+        <span className="collection-card-content"><strong>{entry.title}</strong><span>{entry.description}</span><small>{entry.productIds.length} {entry.productIds.length === 1 ? "garment" : "garments"}{featuredLabel(entry)}</small></span>
       </button>
     ))}</div>}
 
@@ -192,8 +233,23 @@ export default function CollectionsWorkspace() {
             <label className="inventory-wide-field">Collection description<textarea name="description" required maxLength={500} rows={4} defaultValue={draft.description} placeholder="Describe the look, inspiration or pieces in this collection." /></label>
             <label>Display order<input type="number" name="order" min={1} step={1} required defaultValue={draft.order} /></label>
           </div>
-          <label className="collection-check"><input type="checkbox" name="featured" defaultChecked={draft.featured} /> Feature on Home</label>
-          <p className="collection-help">One collection can be featured at a time. Its name stays on the hero as the campaign photos cycle.</p>
+          <fieldset className="collection-features">
+            <legend>Home hero</legend>
+            <p className="collection-help">Each site shows one featured collection, so the website, RTW store and app can each lead with a different one.</p>
+            {featureSites.map((site) => {
+              const holder = holderOf(site.id);
+              return <label className="collection-switch" key={site.id}>
+                <input type="checkbox" role="switch" checked={featuredOn[site.id]} onChange={(event) => toggleFeature(site.id, event.target.checked)} />
+                <span className="collection-switch-track" aria-hidden="true" />
+                <span><strong>{site.label}</strong><small>{featuredOn[site.id] ? `Leads ${site.place}.` : holder ? `${holder.title} is featured there now.` : "Nothing is featured there now."}</small></span>
+              </label>;
+            })}
+            {pendingSite && <div className="collection-confirm" role="alertdialog" aria-labelledby="collection-confirm-text">
+              <p id="collection-confirm-text"><strong>{holderOf(pendingSite)?.title}</strong> is featured on {featureSites.find((site) => site.id === pendingSite)?.place}. Turn it off there and feature {draft.title || "this collection"} instead?</p>
+              <div><button type="button" className="inventory-quiet-button" onClick={() => answerSwitch(false)}>No, keep it</button><button type="button" className="create-bill-button" onClick={() => answerSwitch(true)}>Yes, switch</button></div>
+            </div>}
+            <p className="collection-help">Changes go live when you save.</p>
+          </fieldset>
           <GalleryFields photos={draft.photos} label="Campaign photos" />
           <p className="collection-help">Choose the cover first. Portrait photos work best for the mobile hero.</p>
           <fieldset className="inventory-size-entries">
@@ -205,7 +261,7 @@ export default function CollectionsWorkspace() {
             </label>)}</div>
           </fieldset>
           {error && <p className="collection-error" role="alert">{error}</p>}
-          <div className="inventory-form-footer"><span>Saved in this browser for review.</span><button type="submit" disabled={saving}>{saving ? "Saving…" : "Save collection"}</button></div>
+          <div className="inventory-form-footer"><span>Saved in this browser for review.</span><button type="submit" disabled={saving || pendingSite !== undefined}>{saving ? "Saving…" : "Save collection"}</button></div>
         </form>
       </section>
     </InventoryDrawer>}

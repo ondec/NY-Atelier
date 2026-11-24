@@ -90,6 +90,7 @@ class DemoConsultationController extends Controller
             'option' => ['required_if:action,accept', 'integer', 'min:0', 'max:2'],
         ]);
         $row = $this->current($id, $data['version'], ['awaiting-customer']);
+        abort_unless($row->customer_id !== null, 404);
         if ($data['action'] === 'decline') {
             return $this->update($row, ['status' => 'needs-alternatives', 'options' => null]);
         }
@@ -104,7 +105,7 @@ class DemoConsultationController extends Controller
     }
 
     /** @param list<string> $statuses */
-    private function current(string $id, int $version, array $statuses): object
+    protected function current(string $id, int $version, array $statuses): object
     {
         $row = DB::table('consultations')->where('id', $id)->first();
         abort_unless($row, 404);
@@ -114,7 +115,7 @@ class DemoConsultationController extends Controller
     }
 
     /** @param array<string, string|null> $changes */
-    private function update(object $row, array $changes): JsonResponse
+    protected function update(object $row, array $changes): JsonResponse
     {
         $affected = DB::table('consultations')->where('id', $row->id)->where('version', $row->version)
             ->update([...$changes, 'version' => $row->version + 1, 'updated_at' => now()]);
@@ -123,15 +124,18 @@ class DemoConsultationController extends Controller
         return response()->json($this->present($this->records()->where('consultations.id', $row->id)->first()));
     }
 
-    private function records(): Builder
+    protected function records(): Builder
     {
         return DB::table('consultations')
             ->leftJoin('customers', 'customers.id', '=', 'consultations.customer_id')
             ->leftJoin('orders', 'orders.consultation_id', '=', 'consultations.id')
-            ->select('consultations.*', 'customers.name as customer_name', 'customers.email as customer_email', 'customers.phone as customer_phone', 'orders.reference as order_reference');
+            ->select('consultations.*', 'orders.reference as order_reference')
+            ->selectRaw('COALESCE(customers.name, consultations.contact_name) as customer_name')
+            ->selectRaw('COALESCE(customers.email, consultations.contact_email) as customer_email')
+            ->selectRaw('COALESCE(customers.phone, consultations.contact_phone) as customer_phone');
     }
 
-    private function requireFuture(string $date, string $time): void
+    protected function requireFuture(string $date, string $time): void
     {
         if ("$date $time" <= now('Africa/Accra')->format('Y-m-d H:i')) {
             throw ValidationException::withMessages(['time' => 'Choose a future time in Accra.']);
@@ -139,7 +143,7 @@ class DemoConsultationController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function present(object $row): array
+    protected function present(object $row): array
     {
         $result = (array) $row;
         $result['order_reference'] ??= null;

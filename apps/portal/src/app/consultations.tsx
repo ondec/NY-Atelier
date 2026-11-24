@@ -5,7 +5,6 @@ import StatusBadge from "./status-badge";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { CalendarDays, ChartGantt, ChevronLeft, ChevronRight, Columns3, List, Search, X } from "@/components/icons";
-import type { ConsultationRequest } from "../../../mobile/src/lib/consultation-types";
 import { calendarDays, consultationDay, consultationSlots, consultationStatuses as statusLabels, filterConsultations, shiftConsultationMonth, type ConsultationFilters, type StaffConsultation } from "@/lib/consultations";
 import { statusTone } from "@/lib/status";
 import { InventoryDrawer } from "./catalogue-editor";
@@ -56,7 +55,7 @@ export function useConsultations() {
 const slotLabel = (date: string, time: string) =>
   new Intl.DateTimeFormat("en-GH", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Accra" }).format(new Date(`${date}T${time}:00Z`));
 
-function ConsultationActions({ row }: { row: ConsultationRequest }) {
+function ConsultationActions({ row }: { row: StaffConsultation }) {
   const [optionCount, setOptionCount] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -105,7 +104,7 @@ function ConsultationActions({ row }: { row: ConsultationRequest }) {
         <button className="inventory-quiet-button" type="button" disabled={busy} onClick={() => setOptionCount(0)}>Cancel</button>
         <button className="create-bill-button" type="submit" value="propose" disabled={busy}>Send suggested times</button>
       </> : <>
-        <button className="inventory-quiet-button" type="button" disabled={busy} onClick={() => setOptionCount(1)}>Suggest new times</button>
+        {row.source !== "website" && <button className="inventory-quiet-button" type="button" disabled={busy} onClick={() => setOptionCount(1)}>Suggest new times</button>}
         {row.status === "awaiting-confirmation" && <button className="create-bill-button" type="submit" value="confirm" disabled={busy}>Confirm requested time</button>}
       </>}
     </div>
@@ -124,7 +123,11 @@ function ConsultationDetails({ row, onClose }: { row: StaffConsultation; onClose
       <div className="consultation-heading"><div><div className="eyebrow">CONSULTATION DETAILS</div><h2>{row.purpose}</h2></div><button type="button" className="icon-button" aria-label="Close consultation details" onClick={onClose}><X size={20} /></button></div>
       <StatusBadge status={statusLabels[row.status]} />
       <dl className="order-detail-facts">
-        <div><dt>Customer</dt><dd>{row.customer_id ? <Link prefetch={false} className="text-link" href={`/?section=customers&customer=${row.customer_id}`}>{row.customer_name}</Link> : "Customer not linked"}</dd></div>
+        <div><dt>Customer</dt><dd>{row.customer_id ? <Link prefetch={false} className="text-link" href={`/?section=customers&customer=${row.customer_id}`}>{row.customer_name}</Link> : row.customer_name ?? "Customer not linked"}</dd></div>
+        {row.source === "website" && <div><dt>Source</dt><dd>Website request</dd></div>}
+        {row.source === "app" && <div><dt>Source</dt><dd>App request</dd></div>}
+        {row.customer_email && <div><dt>Email</dt><dd><a href={`mailto:${row.customer_email}`}>{row.customer_email}</a></dd></div>}
+        {row.customer_phone && <div><dt>Phone</dt><dd><a href={`tel:${row.customer_phone}`}>{row.customer_phone}</a></dd></div>}
         <div><dt>Meeting</dt><dd>{row.method === "in-person" ? "In person" : "Virtual"}</dd></div>
         <div><dt>Requested time · Accra</dt><dd>{slotLabel(row.preferredDate, row.preferredTime)}</dd></div>
         {row.confirmedDate && row.confirmedTime && <div><dt>Confirmed time · Accra</dt><dd>{slotLabel(row.confirmedDate, row.confirmedTime)}</dd></div>}
@@ -135,7 +138,7 @@ function ConsultationDetails({ row, onClose }: { row: StaffConsultation; onClose
         <p className="consultation-muted">{row.order_reference ? "This consultation is linked to an order." : "Once the consultation has taken place, create an order with the agreed details."}</p>
         {row.order_reference ? <Link prefetch={false} className="inventory-quiet-button" href={`/?section=orders&order=${encodeURIComponent(row.order_reference)}`}>View linked order</Link> : <Link prefetch={false} className="inventory-quiet-button" href={`/?section=atelier&consultation=${encodeURIComponent(row.id)}`}>Create custom order</Link>}
       </div>}
-      {(row.status === "awaiting-confirmation" || row.status === "needs-alternatives") && <><h3>Respond to this request</h3><p className="consultation-muted">Confirm the requested time or offer alternatives for the customer to review in the app.</p><ConsultationActions key={row.version} row={row} /></>}
+      {(row.status === "awaiting-confirmation" || row.status === "needs-alternatives") && <><h3>Respond to this request</h3><p className="consultation-muted">{row.source === "website" ? "Confirm the requested time here, then contact the visitor directly. Office does not send a website confirmation yet." : "Confirm the requested time or offer alternatives for the customer to review in the app."}</p><ConsultationActions key={`${row.id}-${row.version}`} row={row} /></>}
     </div>
   </InventoryDrawer>;
 }
@@ -204,7 +207,7 @@ export default function Consultations({ selectedId }: { selectedId?: string }) {
       {loading ? <p className="empty-state" role="status">Loading consultations…</p> : !rows.length ? <p className="empty-state">{unavailable ? "Requests could not be loaded." : "No requests yet. Consultations from the customer app will appear here."}</p> : <>
         {!visible.length && <p className="empty-state">No consultations match these filters.</p>}
         {view === "list" && visible.length > 0 && <div className="table-wrap"><table className="order-table consultation-table"><thead><tr><th>Customer</th><th>Service</th><th>Date & time</th><th>Meeting</th><th>Status</th><th><span className="sr-only">Details</span></th></tr></thead><tbody>{visible.map(row => <tr key={row.id}>
-          <td>{row.customer_id ? <Link prefetch={false} className="text-link" href={`/?section=customers&customer=${row.customer_id}`}>{row.customer_name}</Link> : "Customer not linked"}</td>
+          <td>{row.customer_id ? <Link prefetch={false} className="text-link" href={`/?section=customers&customer=${row.customer_id}`}>{row.customer_name}</Link> : row.customer_name ?? "Customer not linked"}</td>
           <td><button type="button" className="order-reference-button text-link" onClick={() => open(row.id)}>{row.purpose}</button></td>
           <td>{consultationSlots(row).map(slot => <div className="consultation-table-slot" key={`${slot.date} ${slot.time}`}><strong>{dateLabel(slot.date)} · {timeLabel(slot.time)}</strong><small>{slot.label}</small></div>)}</td>
           <td>{row.method === "in-person" ? "In person" : "Virtual"}</td><td><StatusBadge status={statusLabels[row.status]} /></td><td><button type="button" className="inventory-quiet-button" aria-label={`View consultation: ${row.purpose}`} onClick={() => open(row.id)}>View request</button></td>

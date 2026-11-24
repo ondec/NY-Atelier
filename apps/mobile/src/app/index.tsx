@@ -14,8 +14,9 @@ import { NyMark } from '@/components/ny-mark';
 import { HomeDestinationCard } from '@/components/home-destination-card';
 
 import { redCloverCollection } from '@/data/shop-collections';
+import { type ImageSource, useShopCatalogue } from '@/lib/shop-catalogue';
 
-const stories = redCloverCollection.photos;
+const webSrc = (image: ImageSource) => (typeof image === 'number' ? undefined : image.uri);
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
@@ -26,7 +27,13 @@ export default function HomeScreen() {
   const closeService = useCallback(() => setService(null), [setService]);
   useTabSwipeBlocker(service !== null);
   const serviceSwipe = useEdgeSwipeBack(closeService, service !== null);
-  const [activeStory, setActiveStory] = useState(0);
+  const [storyIndex, setActiveStory] = useState(0);
+  // The collection staff tick "Feature on Home" for in NY Office; the built-in Red Clover set until one loads.
+  const { collections } = useShopCatalogue();
+  const live = collections.find((entry) => entry.featured && entry.photos.length);
+  const featured = live ?? redCloverCollection;
+  const stories: { id: string; image: ImageSource }[] = featured.photos;
+  const activeStory = storyIndex < stories.length ? storyIndex : 0;
   const slideWidth = Platform.OS === 'web' ? ('100vw' as ViewStyle['width']) : width;
   const heroHeight = Math.max(590, height);
 
@@ -49,7 +56,7 @@ export default function HomeScreen() {
       carouselRef.current?.scrollTo({ x: next * width, animated: true });
     }, 5500);
     return () => clearTimeout(timer);
-  }, [activeStory, width]));
+  }, [activeStory, stories.length, width]));
 
   return (
     <View style={styles.screen}>
@@ -72,9 +79,9 @@ export default function HomeScreen() {
               }
             }}>
             {stories.map((slide, index) => (
-              <View key={slide.id} style={{ width: slideWidth, height: heroHeight }}>
+              <View key={`${featured.id}-${slide.id}`} style={{ width: slideWidth, height: heroHeight }}>
                 {Platform.OS === 'web' ? (
-                  <img src={slide.image.uri} alt="" loading={index === 0 ? 'eager' : 'lazy'} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={webSrc(slide.image)} alt="" loading={index === 0 ? 'eager' : 'lazy'} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   <ImageBackground source={slide.image} resizeMode="cover" imageStyle={styles.coverImage} style={StyleSheet.absoluteFill} />
                 )}
@@ -92,9 +99,9 @@ export default function HomeScreen() {
             <View pointerEvents="box-none" style={{ paddingBottom: insets.bottom + 86 }}>
               <View pointerEvents="none">
                 <Text style={styles.heroEyebrow}>FEATURED COLLECTION</Text>
-                <Text style={styles.heroTitle}>{redCloverCollection.title}</Text>
+                <Text style={styles.heroTitle}>{featured.title}</Text>
               </View>
-              <Pressable accessibilityRole="button" onPress={() => router.navigate({ pathname: '/shop', params: { collection: redCloverCollection.id } })} style={styles.shopButton}>
+              <Pressable accessibilityRole="button" onPress={() => router.navigate({ pathname: '/shop', params: { collection: featured.id } })} style={styles.shopButton}>
                 <Text style={styles.shopButtonText}>SHOP THE COLLECTION</Text>
                 <ShopActionIcon name="arrow-up-right" color={atelier.petrol} />
               </Pressable>

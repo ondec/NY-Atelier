@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1200" viewBox="0 0 1800 1200">
+ <defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#506968"/><stop offset=".53" stop-color="#294b4b"/><stop offset="1" stop-color="#092d35"/></linearGradient>
+  <linearGradient id="satin" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#bda783"/><stop offset=".5" stop-color="#856d56"/><stop offset="1" stop-color="#d9c39e"/></linearGradient>
+  <linearGradient id="shadow" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#071f26"/><stop offset="1" stop-color="#2d4848"/></linearGradient>
+ </defs>
+ <rect width="1800" height="1200" fill="url(#bg)"/>
+ <path d="M1020-100C1170 150 1520 245 1820 370V1200H980Z" fill="#cfb98f" opacity=".12"/>
+ <path d="M1390-50C1210 220 1190 480 1030 740S785 1110 665 1240" stroke="#f2dcac" opacity=".24" fill="none" stroke-width="3"/>
+ <path d="M1470-30C1340 225 1240 410 1140 700S990 1020 850 1270" stroke="#efe0bd" opacity=".13" fill="none" stroke-width="2"/>
+ <circle cx="1355" cy="265" r="110" fill="#4c3830"/>
+ <path d="M1260 280Q1230 390 1300 440Q1360 476 1420 420L1433 305Q1380 344 1340 321Z" fill="#553b31"/>
+ <path d="M1240 410Q1130 510 1070 890L980 1240H1770L1630 820Q1592 575 1480 425Q1450 403 1408 400L1360 470L1296 407Z" fill="url(#satin)"/>
+ <path d="M1296 406L1360 469L1408 401L1472 440L1380 690L1300 520L1230 441Z" fill="#e0cda8" opacity=".76"/>
+ <path d="M1180 520Q1235 770 1145 1160M1490 480Q1420 760 1550 1190" stroke="#6c5148" stroke-width="13" fill="none" opacity=".5"/>
+ <path d="M1200 690Q1370 740 1545 676L1660 1240H1080Z" fill="#152f35" opacity=".21"/>
+ <path d="M1385 385Q1338 417 1290 390Q1235 320 1285 215Q1320 152 1400 175Q1472 208 1440 320Q1430 362 1385 385Z" fill="#6e4a37"/>
+ <path d="M1270 233Q1250 145 1355 127Q1478 112 1480 240Q1460 203 1431 186Q1392 207 1345 190Q1308 220 1270 233Z" fill="url(#shadow)"/>
+ <path d="M1170 570Q1090 740 1030 970M1560 580Q1650 860 1650 1090" stroke="#e7cf9f" stroke-width="5" opacity=".2"/>
+ <rect x="55" y="70" width="1690" height="1060" fill="none" stroke="#e9dcbf" stroke-opacity=".18"/>
+</svg>

@@ -2,6 +2,7 @@ import { Tabs, usePathname } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { ShoppingBagProvider } from '@/components/shopping-bag';
+import { ShopCatalogueProvider } from '@/lib/shop-catalogue';
 import { TabIcon } from '@/components/tab-icon';
 import { OrderUpdatesProvider } from '@/lib/order-updates';
 import { DemoCustomerProvider } from '@/lib/demo-customer';
@@ -45,6 +46,7 @@ export default function RootLayout() {
     <PublishedSizingProvider>
     <CustomerAuthProvider>
     <AccountMeasurementsProvider>
+    <ShopCatalogueProvider>
     <ShoppingBagProvider>
       <DemoCustomerProvider>
       <OrderUpdatesProvider>
@@ -53,6 +55,7 @@ export default function RootLayout() {
       </OrderUpdatesProvider>
       </DemoCustomerProvider>
     </ShoppingBagProvider>
+    </ShopCatalogueProvider>
     </AccountMeasurementsProvider>
     </CustomerAuthProvider>
     </PublishedSizingProvider>

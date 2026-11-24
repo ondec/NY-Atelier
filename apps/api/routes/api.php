@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CatalogueTransferController;
 use App\Http\Controllers\CustomerAuthController;
+use App\Http\Controllers\CustomerConsultationController;
 use App\Http\Controllers\CustomerPasskeyController;
 use App\Http\Controllers\DemoConsultationController;
 use App\Http\Controllers\DemoCustomerController;
@@ -12,6 +13,8 @@ use App\Http\Controllers\DemoStudioSaleController;
 use App\Http\Controllers\DemoTeamController;
 use App\Http\Controllers\FinanceOverviewController;
 use App\Http\Controllers\OwnerOverviewController;
+use App\Http\Controllers\PublicConsultationController;
+use App\Http\Controllers\ShopCatalogueController;
 use App\Http\Controllers\StaffAuthController;
 use App\Http\Controllers\StaffPasswordResetController;
 use App\Models\Customer;
@@ -39,6 +42,8 @@ $listOrders = function (Request $request, OrderWorkflow $workflow) {
 };
 
 Route::get('/demo/orders', $listOrders);
+Route::get('/shop/catalogue', [ShopCatalogueController::class, 'index'])->middleware('throttle:60,1');
+Route::post('/consultations', [PublicConsultationController::class, 'store'])->middleware('throttle:5,1');
 Route::prefix('customer/auth')->group(function () {
     Route::post('/start', [CustomerAuthController::class, 'start'])->middleware('throttle:10,1');
     Route::post('/verify', [CustomerAuthController::class, 'verify'])->middleware('throttle:30,1');
@@ -67,6 +72,11 @@ Route::get('/demo/size-chart-collections', function () {
     $payload = DB::table('studio_catalogues')->where('id', 1)->value('payload');
 
     return response()->json(['collections' => collect(json_decode($payload ?? '{}', true)['collections'] ?? [])->map(fn ($row) => ['id' => $row['id'], 'productIds' => $row['productIds']])]);
+});
+Route::prefix('customer/consultations')->middleware('auth:sanctum')->group(function () {
+    Route::get('/', [CustomerConsultationController::class, 'mine'])->middleware('throttle:60,1');
+    Route::post('/', [CustomerConsultationController::class, 'book'])->middleware('throttle:10,1');
+    Route::patch('/{id}', [CustomerConsultationController::class, 'reply'])->whereUuid('id')->middleware('throttle:30,1');
 });
 Route::prefix('demo/consultations')->group(function () {
     Route::get('/', [DemoConsultationController::class, 'index']);

@@ -15,7 +15,8 @@ import { HeroScrollView } from '@/components/hero-scroll-view';
 import { OpenBagButton } from '@/components/open-bag-button';
 import { NyMark } from '@/components/ny-mark';
 import { formatConsultationTime } from '@/lib/consultations';
-import { createConsultationId, demoCustomer, useDemoCustomer } from '@/lib/demo-customer';
+import { createConsultationId, useDemoCustomer } from '@/lib/demo-customer';
+import { useCustomerAuth } from '@/lib/customer-auth';
 
 const journeySteps = [
   { number: '01', title: 'Measurements & fittings', note: 'A fit that belongs to you.' },
@@ -38,6 +39,7 @@ export default function AtelierScreen() {
   const [preferredTime, setPreferredTime] = useState('');
   const [notes, setNotes] = useState('');
   const { requests, addRequest } = useDemoCustomer();
+  const { customer, requireSignIn } = useCustomerAuth();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const focused = useIsFocused();
@@ -88,6 +90,13 @@ export default function AtelierScreen() {
 
   async function submitRequest() {
     if (!canSubmit) return;
+    // Requests are saved to the customer's account, so NY Office knows who to contact.
+    if (!customer) {
+      setBookingOpen(false);
+      const signedIn = await requireSignIn('booking');
+      setBookingOpen(true);
+      if (!signedIn) return;
+    }
     setSubmitting(true);
     setBookingError('');
     try {
@@ -215,7 +224,7 @@ export default function AtelierScreen() {
             <Text style={styles.eyebrow}>BEGIN YOUR JOURNEY</Text>
             <Text style={styles.modalTitle}>Request a consultation.</Text>
             <Text style={styles.modalCopy}>Choose a preferred time to discuss your idea. The team can confirm your time or suggest alternatives.</Text>
-            <View style={styles.demoIdentity}><NyMark color={atelier.petrol} size={26} /><View><Text style={styles.demoIdentityTitle}>{demoCustomer.name}</Text><Text style={styles.demoIdentityNote}>DEMO CUSTOMER ACCOUNT</Text></View></View>
+            <View style={styles.demoIdentity}><NyMark color={atelier.petrol} size={26} /><View><Text style={styles.demoIdentityTitle}>{customer ? customer.name || customer.email || customer.phone : 'Sign in to send'}</Text><Text style={styles.demoIdentityNote}>{customer ? 'YOUR NY ATELIER ACCOUNT' : 'WE WILL ASK YOU TO SIGN IN'}</Text></View></View>
 
             <Text style={styles.formLabel}>HOW WOULD YOU LIKE TO MEET?</Text>
             <View style={styles.formOptions}>{(['in-person', 'virtual'] as const).map((value) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: method === value }} onPress={() => setMethod(value)} style={[styles.formChip, method === value && styles.formChipSelected]}><Text style={[styles.formChipText, method === value && styles.formChipTextSelected]}>{value === 'in-person' ? 'In person' : 'Virtual'}</Text></Pressable>)}</View>

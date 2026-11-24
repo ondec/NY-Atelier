@@ -37,6 +37,8 @@ type CustomerAuth = {
   updateName: (name: string) => Promise<void>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
+  /** The signed-in session token, for API calls that act as this customer. */
+  getToken: () => string | null;
 };
 
 const tokenKey = 'ny-atelier-customer-session-v1';
@@ -174,10 +176,12 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     });
   }, [state.status]);
 
+  const getToken = useCallback(() => token.current, []);
+
   const value = useMemo<CustomerAuth>(() => ({
     state, customer: state.status === 'signed-in' ? state.customer : null,
-    requireSignIn, startSignIn, verifySignIn, passkeysAvailable, signInWithPasskey, addPasskey, updateName, signOut, refresh,
-  }), [state, requireSignIn, startSignIn, verifySignIn, passkeysAvailable, signInWithPasskey, addPasskey, updateName, signOut, refresh]);
+    requireSignIn, startSignIn, verifySignIn, passkeysAvailable, signInWithPasskey, addPasskey, updateName, signOut, refresh, getToken,
+  }), [state, requireSignIn, startSignIn, verifySignIn, passkeysAvailable, signInWithPasskey, addPasskey, updateName, signOut, refresh, getToken]);
 
   return <CustomerAuthContext.Provider value={value}>
     {children}

@@ -4,10 +4,8 @@ import { useCallback, useRef, useState } from 'react';
 import { Animated, Modal, Platform, Pressable, ScrollView, ScrollViewInstance, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { unitsOnHand } from '@/data/demo-stock';
 import { useEdgeSwipeBack } from '@/components/edge-swipe-back';
-import { products, type Product, type ClothingType, type ColorGroup } from '@/data/shop-catalogue';
-import { shopCollections } from '@/data/shop-collections';
+import { useShopCatalogue, type ShopProduct as Product, type ClothingType, type ColorGroup } from '@/lib/shop-catalogue';
 import { useShoppingBag } from '@/components/shopping-bag';
 import { atelier } from '@/atelier-theme';
 import { IconLabel, ShopActionIcon } from '@/components/shop-action-icon';
@@ -22,7 +20,7 @@ import { productVariants, publishedProductProfile } from '@/lib/sizing';
 const filters = ['All', 'New Arrivals', 'Men', 'Women', 'Accessories', 'Collections'] as const;
 type PriceRange = 'all' | 'under1200' | '1200plus';
 type SortBy = 'featured' | 'low' | 'high';
-type TypeFilter = 'all' | ClothingType;
+type TypeFilter = 'all' | Exclude<ClothingType, 'other'>;
 type ColorFilter = 'all' | ColorGroup;
 type AvailabilityFilter = 'all' | 'available' | 'unavailable';
 const typeOptions: { value: TypeFilter; label: string }[] = [
@@ -57,9 +55,10 @@ function editionName(product: Product, color: Product['colors'][number]) {
 
 export default function ShopScreen() {
   const { publication, unavailable: sizingUnavailable } = usePublishedSizing();
-  const liveProducts = products.map(product => {
+  const { status: catalogueStatus, products, collections: shopCollections, reload: reloadCatalogue } = useShopCatalogue();
+  const liveProducts = products.map((product): Product => {
     const sizing = publishedProductProfile(product.id, product.sizing, publication);
-    return { ...product, sizing, category: sizing ? sizing.gender === 'women' ? 'WOMEN' : 'MEN' : product.category };
+    return { ...product, sizing, category: product.category || (sizing ? sizing.gender === 'women' ? 'WOMEN' : 'MEN' : '') };
   });
   const { bag, bagCount, addToBag, openBag } = useShoppingBag();
   const galleryRef = useRef<ScrollViewInstance>(null);
@@ -100,19 +99,19 @@ export default function ShopScreen() {
       if (filter === 'Women') return product.category === 'WOMEN';
       if (filter === 'Men') return product.category === 'MEN';
       if (filter === 'Accessories') return product.clothingType === 'accessories';
-      if (filter === 'New Arrivals') return product.newArrivalPreview;
+      if (filter === 'New Arrivals') return product.isNew;
       if (filter === 'Collections') return activeCollection?.productIds.includes(product.id);
       return true;
     })
     .filter((product) => typeFilter === 'all' || product.clothingType === typeFilter)
     .filter((product) => activeCollection || colorFilter === 'all' || product.colorGroups.includes(colorFilter))
-    .filter((product) => activeCollection || availabilityFilter === 'all' || (availabilityFilter === 'available' ? !product.stockStateExample : !!product.stockStateExample))
+    .filter((product) => activeCollection || availabilityFilter === 'all' || (availabilityFilter === 'available' ? !product.soldOut : product.soldOut))
     .filter((product) => priceRange === 'all' || (priceRange === 'under1200' ? product.priceValue < 1200 : product.priceValue >= 1200))
     .sort((a, b) => sortBy === 'low' ? a.priceValue - b.priceValue : sortBy === 'high' ? b.priceValue - a.priceValue : 0);
   const visibleCards = visibleProducts.flatMap<ProductCard>((product) => {
-    if (!activeCollection) return [{ product, variant: undefined, name: product.name, soldOut: Boolean(product.stockStateExample) }];
+    if (!activeCollection) return [{ product, variant: undefined, name: product.name, soldOut: product.soldOut }];
     return product.colors.flatMap((variant) => {
-      const soldOut = unitsOnHand(variant.stock ?? {}) === 0;
+      const soldOut = variant.inventory.every((item) => item.stock === 0);
       if (availabilityFilter !== 'all' && soldOut !== (availabilityFilter === 'unavailable')) return [];
       return [{ product, variant, name: editionName(product, variant), soldOut }];
     });
@@ -124,7 +123,7 @@ export default function ShopScreen() {
   const showEditionSwatch = Boolean(productCollection && selectedColor && !selectedColor.photos.length);
   const selectedPhotos = selectedColor?.photos.length
     ? selectedColor.photos
-    : selected ? [{ id: 'reference', label: 'Reference photo', image: selected.image }] : [];
+    : selected?.photos.length ? selected.photos : [];
   const inventory = selected && selectedColor ? productVariants(selected, selectedColor.id) : [];
   const variantTotal = inventory.reduce((sum, variant) => sum + variant.stock, 0);
   const selectedVariant = inventory.find(v => v.id === selectedVariantId);
@@ -206,7 +205,7 @@ export default function ShopScreen() {
               </ImageBackground>
             </Pressable>
           ))
-        ) : filter === 'Women' ? (
+        ) : filter === 'Women' && !liveProducts.some((product) => product.category === 'WOMEN') ? (
           <View style={styles.womenPreview}>
             <View style={[styles.listHeading, styles.womenListHeading]}>
               <Text style={styles.listTitle}>Womenswear</Text>
@@ -225,13 +224,13 @@ export default function ShopScreen() {
             </View>
             <Text style={styles.eyebrow}>WOMENSWEAR</Text>
             <Text style={styles.womenTitle}>A collection to come.</Text>
-            <Text style={styles.womenCopy}>NY Atelier womenswear will have its own place here. Verified product photography, prices and availability are still being prepared for this app preview.</Text>
+            <Text style={styles.womenCopy}>NY Atelier womenswear will have its own place here. Pieces will appear here as soon as the atelier lists them.</Text>
           </View>
         ) : (
           <>
             {filter === 'New Arrivals' ? <View style={styles.arrivalsIntro}>
               <Text style={styles.arrivalsIntroLabel}>NEW ARRIVALS</Text>
-              <Text style={styles.arrivalsIntroCopy}>Recently listed pieces from NY Atelier’s store. Launch dates are still to be confirmed.</Text>
+              <Text style={styles.arrivalsIntroCopy}>Recently listed pieces from NY Atelier.</Text>
             </View> : null}
             {activeCollection ? (
               <View style={styles.collectionFeature}>
@@ -261,7 +260,8 @@ export default function ShopScreen() {
             <View style={styles.grid} onLayout={event => setCatalogueWidth(event.nativeEvent.layout.width)}>
               {visibleCards.map(({ product, variant, name, soldOut }) => {
                 const saved = savedIds.includes(product.id);
-                const visibleColors = variant ? [variant] : product.colors;
+                // Show colour dots only once NY Studio has given colours a swatch.
+                const visibleColors = (variant ? [variant] : product.colors).filter((color) => color.hasSwatch);
                 return (
                   <View key={variant ? `${product.id}:${variant.id}` : product.id} style={[styles.product, { width: `${100 / columns}%` }]}>
                     <View style={styles.productVisual}>
@@ -270,35 +270,41 @@ export default function ShopScreen() {
                           ? <View style={[styles.productImage, styles.variantPlaceholder, { backgroundColor: variant.swatch }, soldOut && styles.productImageMuted]}>
                               <Text style={styles.variantPlaceholderText}>COLOUR SWATCH</Text>
                             </View>
-                          : <Image source={variant?.photos[0]?.image ?? product.image} contentFit="cover" contentPosition="top center" style={[styles.productImage, soldOut && styles.productImageMuted]} />}
+                          : <Image source={variant?.photos[0]?.image ?? product.image ?? undefined} contentFit="cover" contentPosition="top center" style={[styles.productImage, soldOut && styles.productImageMuted]} />}
                       </Pressable>
-                      {product.newArrivalPreview || product.promotionPreviewPrice || soldOut ? <View style={[styles.productTag, product.promotionPreviewPrice && styles.productTagOffer, soldOut && styles.productTagStock]}>
-                        <Text numberOfLines={1} style={styles.productTagText}>{soldOut ? 'OUT OF STOCK' : product.newArrivalPreview ? 'NEW' : 'OFFER'}</Text>
+                      {product.isNew || product.compareAtPrice || soldOut ? <View style={[styles.productTag, !soldOut && product.compareAtPrice && styles.productTagOffer, soldOut && styles.productTagStock]}>
+                        <Text numberOfLines={1} style={styles.productTagText}>{soldOut ? 'OUT OF STOCK' : product.compareAtPrice ? `SALE −${product.percentOff}%` : 'NEW'}</Text>
                       </View> : null}
                       <Pressable accessibilityRole="button" accessibilityLabel={`${saved ? 'Remove' : 'Add'} ${name} ${saved ? 'from' : 'to'} wishlist`} accessibilityState={{ selected: saved }} onPress={() => toggleSaved(product.id)} style={[styles.imageAction, styles.heartAction]}>
                         <ShopActionIcon name="heart" color={saved ? atelier.cognac : atelier.petrol} filled={saved} size={21} />
                       </Pressable>
-                      <View accessible accessibilityLabel={`${name}: ${visibleColors.map((color) => `${color.name}${color.concept ? ' visual preview' : ' colour'}`).join(', ')}`} style={styles.cardColors}>
+                      {visibleColors.length ? <View accessible accessibilityLabel={`${name}: ${visibleColors.map((color) => `${color.name} colour`).join(', ')}`} style={styles.cardColors}>
                         {visibleColors.slice(0, 3).map((color, index) => (
                           <View key={color.id} style={[styles.cardColorSwatch, index > 0 && styles.cardColorOverlap, { backgroundColor: color.swatch }]} />
                         ))}
                         {visibleColors.length > 3 ? <Text style={styles.cardColorMore}>+{visibleColors.length - 3}</Text> : null}
-                      </View>
+                      </View> : null}
                     </View>
-                    <Pressable accessibilityRole="button" accessibilityLabel={`View ${name}, ${product.price}${product.promotionPreviewPrice ? ', promotion layout example' : ''}${soldOut ? ', out of stock' : ''}`} onPress={() => openProduct(product, variant?.id)} style={[styles.productDetails, soldOut && styles.productDetailsMuted]}>
-                      <Text style={styles.productCategory}>{product.category}  /  READY-TO-WEAR</Text>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`View ${name}, ${product.price}${product.compareAtPrice ? `, was ${product.compareAtPrice}` : ''}${soldOut ? ', out of stock' : ''}`} onPress={() => openProduct(product, variant?.id)} style={[styles.productDetails, soldOut && styles.productDetailsMuted]}>
+                      <Text style={styles.productCategory}>{product.category ? `${product.category}  /  ` : ''}READY-TO-WEAR</Text>
                       <Text style={styles.productName}>{name}</Text>
                       <View style={styles.productPriceRow}>
                         <Text style={styles.productPrice}>{product.price}</Text>
-                        {product.promotionPreviewPrice ? <Text style={styles.productPriceWas}>{product.promotionPreviewPrice}</Text> : null}
+                        {product.compareAtPrice ? <Text style={styles.productPriceWas}>{product.compareAtPrice}</Text> : null}
                       </View>
                     </Pressable>
                   </View>
                 );
               })}
             </View>
-            {visibleCards.length === 0 ? <Text style={styles.emptyNote}>{filter === 'Accessories' && !products.some(product => product.clothingType === 'accessories') ? 'No accessories are available yet.' : 'No pieces match these filters. Try another selection.'}</Text> : null}
-            <Text style={styles.previewNote}>Catalogue design example using NY Atelier store images and listed prices. New, offer and out-of-stock treatments are illustrative; launch dates, discounts and stock states have not been confirmed. Checkout is not connected yet.</Text>
+            {catalogueStatus === 'loading' && !products.length ? <Text style={styles.emptyNote}>Loading the collection…</Text>
+              : catalogueStatus === 'error' && !products.length ? <View style={styles.catalogueError}>
+                <Text style={styles.catalogueErrorTitle}>The collection could not load.</Text>
+                <Text style={styles.catalogueErrorCopy}>Check your connection and try again. The atelier can also help you by phone or WhatsApp.</Text>
+                <Pressable accessibilityRole="button" onPress={reloadCatalogue} style={styles.retryButton}><Text style={styles.retryText}>TRY AGAIN</Text></Pressable>
+              </View>
+              : visibleCards.length === 0 ? <Text style={styles.emptyNote}>{filter === 'Accessories' && !products.some(product => product.clothingType === 'accessories') ? 'No accessories are available yet.' : filter === 'New Arrivals' && !products.some(product => product.isNew) ? 'New arrivals will appear here once the atelier marks them.' : 'No pieces match these filters. Try another selection.'}</Text> : null}
+            {products.length ? <Text style={styles.previewNote}>Prices and availability come from the NY Atelier catalogue. Payment is not connected yet.</Text> : null}
           </>
         )}
       </ScrollView>
@@ -396,27 +402,27 @@ export default function ShopScreen() {
                 {productCollection ? <Text style={styles.detailCollection}>Collection · {productCollection.title}</Text> : null}
                 <View style={styles.detailPriceRow}>
                   <Text style={styles.detailPrice}>{selected?.price}</Text>
-                  {selected?.promotionPreviewPrice ? <Text style={styles.detailPriceWas}>{selected.promotionPreviewPrice}</Text> : null}
+                  {selected?.compareAtPrice ? <Text style={styles.detailPriceWas}>{selected.compareAtPrice}</Text> : null}
                 </View>
-                {selected?.promotionPreviewPrice ? <Text style={styles.promotionPreviewNote}>Example offer styling. NY Atelier has not listed an active discount for this item.</Text> : null}
-                {selected?.stockStateExample ? <Text style={styles.stockDetailNote}>This product has no units in the sample stock.</Text> : null}
+                {selected?.compareAtPrice ? <Text style={styles.promotionPreviewNote}>Sale price · {selected.percentOff}% off</Text> : null}
+                {selected?.soldOut ? <Text style={styles.stockDetailNote}>This piece is out of stock right now. Ask the atelier about making one for you.</Text> : null}
                 <View style={styles.detailRule} />
-                <Text style={styles.detailLabel}>COLOUR / FABRIC <Text style={styles.detailLabelLight}>· {selectedColor?.name.toUpperCase()}{selectedColor?.concept ? ' PREVIEW' : ''}</Text></Text>
+                <Text style={styles.detailLabel}>COLOUR / FABRIC <Text style={styles.detailLabelLight}>· {selectedColor?.name.toUpperCase()}</Text></Text>
                 <View style={styles.colorRow}>
-                  {selected?.colors.map((color) => <Pressable key={color.id} accessibilityRole="button" accessibilityLabel={`${color.name}${color.concept ? ' visual preview' : ''}`} accessibilityState={{ selected: selectedColorId === color.id }} onPress={() => { setSelectedColorId(color.id); setSelectedPhotoIndex(0); setSelectedVariantId(null); setSelectedQuantity(1); setSizeError(false); setDetailAdded(false); }} style={styles.colorOption}>
+                  {selected?.colors.map((color) => <Pressable key={color.id} accessibilityRole="button" accessibilityLabel={color.name} accessibilityState={{ selected: selectedColorId === color.id }} onPress={() => { setSelectedColorId(color.id); setSelectedPhotoIndex(0); setSelectedVariantId(null); setSelectedQuantity(1); setSizeError(false); setDetailAdded(false); }} style={styles.colorOption}>
                     <View style={[styles.colorImageFrame, selectedColorId === color.id && styles.colorImageFrameSelected]}>
                       {color.photos[0] ? <Image source={color.photos[0].image} contentFit="cover" contentPosition="top center" style={styles.colorImage} /> : <View style={[styles.colorImage, { backgroundColor: color.swatch }]} />}
                     </View>
                     <View style={styles.colorCaption}><View style={[styles.colorSwatch, { backgroundColor: color.swatch }]} /><Text style={[styles.colorName, selectedColorId === color.id && styles.colorNameSelected]}>{color.name}</Text></View>
                   </Pressable>)}
                 </View>
-                {selectedColor && (selectedColor.concept || !selectedColor.photos.length) && <Text style={styles.colorPreviewNote}>{selectedColor.concept ? 'Concept photo' : showEditionSwatch ? 'Product photography is pending for this edition.' : 'Reference photo shown for this sample option'}</Text>}
+                {selectedColor && !selectedColor.photos.length && <Text style={styles.colorPreviewNote}>{showEditionSwatch ? 'Product photography is pending for this edition.' : 'Photos show the piece as listed; colour photos are coming.'}</Text>}
                 {selected && selectedColor && <SizeGuide key={`${selected.id}:${selectedColor.id}`} profile={publishedProductProfile(selected.id, products.find(product => product.id === selected.id)?.sizing, publication)} overrideCharts={[...approvedSizingCharts, ...publication.charts]} cachedChart={sizingUnavailable && publication.revision > 0} variants={inventory} selectedVariantId={selectedVariantId} onSelectVariant={variant => { setSelectedVariantId(variant?.id ?? null); setSelectedQuantity(1); setSizeError(false); setDetailAdded(false); }} />}
                 {sizeError ? <Text style={styles.sizeError}>Select an available size and, where offered, an inseam length.</Text> : null}
-                <View style={styles.descriptionSection}>
+                {selected?.description ? <View style={styles.descriptionSection}>
                   <Text style={styles.descriptionHeading}>DESCRIPTION</Text>
-                  <Text style={styles.descriptionText}>{selected?.description}</Text>
-                </View>
+                  <Text style={styles.descriptionText}>{selected.description}</Text>
+                </View> : null}
                 <View style={styles.quantitySection}>
                   <Text style={styles.quantityHeading}>QUANTITY</Text>
                   <View style={styles.quantityControl}>
@@ -508,6 +514,11 @@ const styles = StyleSheet.create({
   productPrice: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 14 },
   productPriceWas: { color: atelier.muted, fontFamily: atelier.body, fontSize: 11, textDecorationLine: 'line-through' },
   emptyNote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 14, paddingHorizontal: 24, paddingVertical: 30 },
+  catalogueError: { marginHorizontal: 24, marginBottom: 26, borderRadius: 18, backgroundColor: atelier.white, borderWidth: 1, borderColor: atelier.line, padding: 22 },
+  catalogueErrorTitle: { color: atelier.petrol, fontFamily: atelier.display, fontSize: 21, marginBottom: 8 },
+  catalogueErrorCopy: { color: atelier.muted, fontFamily: atelier.body, fontSize: 13, lineHeight: 20, marginBottom: 16 },
+  retryButton: { alignSelf: 'flex-start', borderRadius: atelier.buttonRadius, backgroundColor: atelier.petrol, paddingHorizontal: 20, paddingVertical: 13 },
+  retryText: { color: atelier.white, fontFamily: atelier.body, fontWeight: '700', fontSize: 11, letterSpacing: 1.3 },
   previewNote: { color: atelier.muted, fontFamily: atelier.body, fontSize: 11, lineHeight: 17, paddingHorizontal: 24 },
   coverImage: { width: '100%', height: '100%' },
   womenPreview: { paddingHorizontal: 24 },
