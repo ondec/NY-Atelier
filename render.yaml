@@ -38,6 +38,16 @@ services:
         value: https://office.thenyatelier.com
       - key: NY_STAFF_COOKIE_DOMAIN
         value: thenyatelier.com
+      # Public website and RTW store, served by this same service on their own addresses (portal src/proxy.ts).
+      # Cloudflare CNAMEs home and store -> ny-atelier-preview.onrender.com (DNS only), added as custom domains
+      # in Render like studio and office. Also used at build time for the links between the two sites.
+      # On approval: https://thenyatelier.com and https://rtw.thenyatelier.com, and remove NY_PUBLIC_SITES_NOINDEX.
+      - key: NY_WEBSITE_ORIGIN
+        value: https://home.thenyatelier.com
+      - key: NY_STORE_ORIGIN
+        value: https://store.thenyatelier.com
+      - key: NY_PUBLIC_SITES_NOINDEX
+        value: "1"
       # Invitation, password-reset links and the email logo use the Studio address.
       - key: NY_STAFF_PORTAL_URL
         value: https://studio.thenyatelier.com
@@ -88,6 +98,7 @@ services:
         sync: false
       - key: NY_PREVIEW_RECEPTIONIST_EMAIL
         sync: false
+
 
 databases:
   - name: ny-atelier-preview-db

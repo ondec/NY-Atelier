@@ -126,6 +126,11 @@ class DemoStudioSaleController extends Controller
             'inventory.products.*.wordpressId' => ['sometimes', 'integer', 'min:1'],
             'inventory.products.*.sourceUrl' => ['sometimes', 'url:https', 'max:2000'],
             'inventory.products.*.description' => ['sometimes', 'nullable', 'string', 'max:20000'],
+            'inventory.products.*.section' => ['sometimes', 'nullable', 'in:men,women,accessories'],
+            'inventory.products.*.isNew' => ['sometimes', 'boolean'],
+            'inventory.products.*.offerPrice' => ['sometimes', 'nullable', 'numeric', 'gt:0', 'max:9999999'],
+            'inventory.products.*.sizing' => ['sometimes', 'array', 'max:2'],
+            'inventory.products.*.sizing.*' => ['in:shirt,trousers', 'distinct'],
             'inventory.products.*.photo' => ['sometimes', 'nullable', 'string'],
             'inventory.products.*.gallery' => ['sometimes', 'array'],
             'inventory.products.*.colours' => ['sometimes', 'array'],
@@ -142,7 +147,9 @@ class DemoStudioSaleController extends Controller
             'inventory.variants.*.reorderAt' => ['required', 'integer', 'min:0'],
             'inventory.variants.*.location' => ['sometimes', 'nullable', 'string', 'max:150'],
             'inventory.variants.*.sku' => ['required', 'string', 'max:150', 'distinct'],
-            'inventory.visuals' => ['sometimes', 'array'], 'inventory.movements' => ['present', 'array', 'list'],
+            'inventory.visuals' => ['sometimes', 'array'],
+            'inventory.visuals.*.swatch' => ['sometimes', 'nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'inventory.visuals.*.group' => ['sometimes', 'nullable', 'in:black,blue,light,brown'], 'inventory.movements' => ['present', 'array', 'list'],
             'collections' => ['present', 'array', 'list'],
         ]);
         foreach ($data['inventory']['variants'] as &$variant) {

@@ -3,7 +3,7 @@
 
 # New sign-in to your account
 
-Someone signed in to your NY Atelier account with a one-time {{ $method }} code.
+Someone signed in to your NY Atelier account {{ $method }}.
 
 <x-mail::note>If this was you, there’s nothing to do. If it wasn’t, contact NY Atelier straight away.</x-mail::note>
 

@@ -62,7 +62,9 @@ export default function AccountScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState('');
-  const { customer, updateName, signOut, passkeysAvailable, addPasskey } = useCustomerAuth();
+  const { customer, updateName, signOut, passkeysAvailable, addPasskey, changePassword } = useCustomerAuth();
+  // Add or change the email password (Security & sign-in).
+  const [passwordForm, setPasswordForm] = useState<{ current: string; next: string } | null>(null);
   const close = useCallback(() => {
     if (!saving) { setError(''); setPanel(current => current === 'fitting' ? 'measurements' : current === 'address-edit' ? 'addresses' : current === 'privacy' ? 'help' : null); }
   }, [saving]);
@@ -130,6 +132,19 @@ export default function AccountScreen() {
     setSaving(true); setError(''); setSaved('');
     try { await addPasskey(); setSaved('Passkey set up. Next time, sign in with Face ID, Touch ID or your phone unlock.'); }
     catch (failure) { if (!(failure instanceof PasskeyCancelledError)) setError((failure as Error).message); }
+    finally { setSaving(false); }
+  }
+  async function savePassword() {
+    if (saving || !passwordForm) return;
+    const { current, next } = passwordForm;
+    if (!(next.length >= 8 && /[a-z]/i.test(next) && /\d/.test(next))) { setError('Use at least 8 characters, with letters and numbers.'); return; }
+    if (customer?.hasPassword && !current) { setError('Enter your current password.'); return; }
+    setSaving(true); setError(''); setSaved('');
+    try {
+      await changePassword(next, customer?.hasPassword ? current : undefined);
+      setPasswordForm(null);
+      setSaved(customer?.hasPassword ? 'Password changed. Your other phones have been signed out.' : 'Password added. You can now sign in with your email and password.');
+    } catch (failure) { setError((failure as Error).message); }
     finally { setSaving(false); }
   }
   async function contact(subject: string) {
@@ -244,10 +259,19 @@ export default function AccountScreen() {
             <View style={styles.formCard}>
               <SecurityItem icon="user" title="Signed in" text={`${customer?.email ?? customer?.phone ?? ''}${customer?.email && customer.phone ? ` · ${customer.phone}` : ''}`} />
               <SecurityItem icon="lock" title={customer?.passkey.status === 'enrolled' ? 'Passkey: set up' : 'Passkey'} text={customer?.passkey.status === 'enrolled' ? 'Face ID, Touch ID or your device unlock signs you in.' : !passkeysAvailable ? 'Passkeys are not available on this device. Sign in with a code sent to your email or phone.' : customer?.passkey.status === 'required' ? 'A passkey is now required to keep signing in quickly.' : 'Use Face ID, Touch ID or your device unlock to sign in instead of waiting for a code.'} />
+              <SecurityItem icon="lock" title={customer?.hasPassword ? 'Password: set' : 'Password'} text={customer?.hasPassword ? 'Sign in with your email and password on any phone.' : customer?.email && customer.emailVerified ? 'Add a password to sign in with your email without waiting for a code.' : 'Sign in once with an email code to add a password.'} />
               <SecurityItem icon="send" title="Email or phone code" text="If your passkey is unavailable, we can send a one-time code to your verified email or phone." />
             </View>
+            {passwordForm ? <View style={styles.formCard}>
+              <Text style={[styles.cardTitle, styles.formTitle]}>{customer?.hasPassword ? 'Change password' : 'Add a password'}</Text>
+              {customer?.hasPassword ? <Field label="Current password" value={passwordForm.current} onChangeText={current => setPasswordForm(form => form && { ...form, current })} secureTextEntry autoCapitalize="none" autoCorrect={false} autoComplete="current-password" textContentType="password" maxLength={128} /> : null}
+              <Field label="New password" value={passwordForm.next} onChangeText={next => setPasswordForm(form => form && { ...form, next })} secureTextEntry autoCapitalize="none" autoCorrect={false} autoComplete="new-password" textContentType="newPassword" passwordRules="minlength: 8; required: lower; required: digit;" maxLength={128} />
+              <Text style={styles.hint}>At least 8 characters, with letters and numbers.{customer?.hasPassword ? ' Other phones will be signed out.' : ''}</Text>
+              <Pressable accessibilityRole="button" onPress={() => { void savePassword(); }} disabled={saving} style={[styles.primary, saving && styles.disabled]}><Text style={styles.primaryText}>{saving ? 'SAVING…' : 'SAVE PASSWORD'}</Text></Pressable>
+              <SmallAction label="Cancel" disabled={saving} onPress={() => { setPasswordForm(null); setError(''); }} />
+            </View> : customer?.email && customer.emailVerified ? <SmallAction label={customer.hasPassword ? 'Change password' : 'Add a password'} icon="lock" disabled={saving} onPress={() => { setSaved(''); setError(''); setPasswordForm({ current: '', next: '' }); }} /> : null}
             {passkeysAvailable && customer && customer.passkey.status !== 'enrolled' ? <SmallAction label={saving ? 'Setting up…' : 'Set up a passkey'} icon="lock" disabled={saving} onPress={() => { void setUpPasskey(); }} /> : null}
-            <SmallAction label="Sign out of this device" icon="logout" disabled={saving} onPress={() => { setSaving(true); void signOut().finally(() => { setSaving(false); setPanel(null); }); }} />
+            <SmallAction label="Sign out of this device" icon="logout" disabled={saving} onPress={() => { setSaving(true); setSaved(''); setPasswordForm(null); void signOut().finally(() => { setSaving(false); setPanel(null); }); }} />
             <Text style={styles.hint}>Lost access to your email or phone? Contact NY Atelier and the team will verify your identity before updating your account.</Text>
           </>}
           {panel === 'help' && <>
@@ -321,5 +345,6 @@ const styles = StyleSheet.create({
   measurementRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#EEEAE2' }, measurementValue: { color: atelier.petrol, fontFamily: atelier.body, fontSize: 14, fontWeight: '700' },
   history: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, marginTop: 20 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 18, paddingVertical: 14 }, toggleText: { flex: 1 },
+  formTitle: { marginBottom: 14 },
   securityItem: { flexDirection: 'row', gap: 15, paddingVertical: 14, alignItems: 'flex-start' }, notice: { flexDirection: 'row', gap: 12, marginTop: 22, padding: 18, borderRadius: 18, backgroundColor: '#E9F0ED' }, noticeText: { flex: 1 },
 });

@@ -26,6 +26,22 @@ live.setLiveCatalogue({ revision: 4, currency: 'GHS', collections: [], promotion
 }] });
 if (live.PRODUCTS.length !== 1 || live.PRODUCTS[0].price !== 960 || live.availabilityOf(live.PRODUCTS[0].colours[0], 'M') !== 'low' || live.availabilityOf(live.PRODUCTS[0].colours[0], 'L') !== 'sold_out') throw new Error('Live catalogue adapter did not preserve API price or availability');
 
+// Size guide: a chart published in NY Office wins; collection defaults follow the section; otherwise the reference chart.
+const sizing = await import('../src/sizing.js');
+const published = await import('../src/published-sizing.js');
+const officeChart = { id: 'staff-product-example-1', gender: 'men', category: 'long-sleeve-shirt', source: 'product', unit: 'cm', measurementType: 'garment', mode: 'maximum', fit: 'regular', required: ['chest'], fitAllowance: { chest: 8 },
+  rows: [{ size: 'M', measurements: { chest: 108 }, labels: {} }, { size: 'S', measurements: { chest: 100 }, labels: {} }] };
+const publication = { revision: 1, charts: [officeChart], products: { example: { gender: 'men', category: 'long-sleeve-shirt', chartId: officeChart.id } }, collections: {
+  'col:men': { productIds: ['other'], profile: { gender: 'men', category: 'long-sleeve-shirt', chartId: officeChart.id } },
+  'col:women': { productIds: ['other'], profile: { gender: 'women', category: 'trousers' } } } };
+const fromOffice = sizing.chartsFor({ id: 'shop-example', gender: null, sizing: [] }, publication, published.publishedCharts);
+if (fromOffice.length !== 1 || fromOffice[0].source !== 'product' || fromOffice[0].rows[0].size !== 'S') throw new Error('Office size chart was not used');
+if (sizing.recommendSize(fromOffice, { chest: '95' }, 'cm')?.size !== 'M') throw new Error('Garment chart must subtract the fit allowance');
+if (published.publishedProfile({ id: 'shop-other', gender: null }, publication) !== null) throw new Error('Two collection defaults need a section to choose');
+if (published.publishedProfile({ id: 'shop-other', gender: 'men' }, publication)?.gender !== 'men') throw new Error('Collection default for the section was not used');
+const reference = sizing.chartsFor({ id: 'shop-none', gender: 'women', sizing: ['trousers'] }, publication, published.publishedCharts);
+if (reference.length !== 1 || reference[0].source !== 'reference') throw new Error('Reference chart fallback failed');
+
 // The bag is shared with the main website through one file that must stay identical on both sites.
 const websiteBag = '../website/src/shared-bag.js';
 if (existsSync(websiteBag) && readFileSync(websiteBag, 'utf8') !== readFileSync('src/shared-bag.js', 'utf8')) throw new Error('src/shared-bag.js differs from website/src/shared-bag.js; keep the two copies identical');

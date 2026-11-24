@@ -50,7 +50,7 @@ class PublicShopCatalogue
                     'name' => implode(' · ', array_filter([$colour, $fabric])) ?: 'Edition',
                     'fabric' => $fabric ?: null,
                     'swatch' => preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($visual['swatch'] ?? '')) ? $visual['swatch'] : null,
-                    'group' => $visual['group'] ?? null,
+                    'group' => in_array($visual['group'] ?? null, ['black', 'blue', 'light', 'brown'], true) ? $visual['group'] : null,
                     'photos' => $this->photos($visual['gallery'] ?? [], $visual['photo'] ?? null),
                     'sizes' => [],
                 ];

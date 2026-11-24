@@ -6,7 +6,7 @@ import type { StatusTone } from "@/lib/status";
 import { demoStock } from "../../../mobile/src/data/demo-stock";
 import Image from "next/image";
 import Link from "next/link";
-import { emptyInventory, inventoryChanged, isLowStock, stockKnown, normalize, parseInventory, productTypes, storageKey, variantKey, variantLabel, type Inventory, type Movement, type Product, type Variant, type VariantVisual } from "@/lib/inventory";
+import { emptyInventory, inventoryChanged, isLowStock, stockKnown, normalize, parseInventory, productSections, productTypes, colourGroups, storageKey, variantKey, variantLabel, type Inventory, type Movement, type Product, type ProductSection, type ColourGroup, type Variant, type VariantVisual } from "@/lib/inventory";
 import SizeChartEditor from "./size-chart-editor";
 import { productSizing } from "../../../mobile/src/data/product-sizing";
 import { sizingProductId } from "../../../mobile/src/lib/sizing";
@@ -47,6 +47,22 @@ function ProductGallery({ photos, label }: { photos: string[]; label: string }) 
 
 const catalogueHref = "/?section=inventory&view=products";
 const distinctLabels = (labels: readonly string[]) => [...new Map(labels.filter(Boolean).map((label) => [normalize(label), label])).values()];
+
+function ColourDetails({ visual }: { visual?: VariantVisual }) {
+  const [mode, setMode] = useState<"colour" | "none">(visual?.swatch ? "colour" : "none");
+  const [swatch, setSwatch] = useState(visual?.swatch ?? "#123c45");
+  return <div className="inventory-form-grid">
+    <label>Customer swatch<select name="swatchMode" value={mode} onChange={(event) => setMode(event.target.value === "colour" ? "colour" : "none")}>
+      <option value="none">{visual?.photo ? "Use the fabric photo" : "No swatch"}</option>
+      <option value="colour">Solid colour</option>
+    </select></label>
+    {mode === "colour" && <label>Swatch colour<span className="inventory-swatch-picker"><input type="color" name="swatch" value={swatch} onChange={(event) => setSwatch(event.target.value)} /><span>{swatch.toUpperCase()}</span></span></label>}
+    <label>Colour group<select name="group" defaultValue={visual?.group ?? ""}>
+      <option value="">Not set</option>
+      {colourGroups.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+    </select></label>
+  </div>;
+}
 
 function VariantAppearance() {
   const [mode, setMode] = useState<"colour" | "photo">("colour");
@@ -144,6 +160,16 @@ export default function ReadyToWearInventory({ view, productId, canImport = fals
       showMessage("Enter a product name, clothing type and valid price.");
       return;
     }
+    const description = field(data, "description").slice(0, 20000);
+    const section = productSections.find((option) => option.value === field(data, "section"))?.value as ProductSection | undefined;
+    const offerText = field(data, "offerPrice");
+    const offerPrice = offerText ? Number(offerText) : undefined;
+    if (offerPrice !== undefined && (!Number.isFinite(offerPrice) || offerPrice <= 0 || offerPrice >= price)) {
+      showMessage("The offer price must be more than 0 and lower than the regular price.");
+      return;
+    }
+    const isNew = data.get("isNew") === "on";
+    const details = { description: description || undefined, section, offerPrice, isNew: isNew || undefined };
     if (inventory.products.some((product) => (!editing || product.id !== selected?.id) && normalize(product.name) === normalize(name))) {
       showMessage("That product name is already in use.");
       return;
@@ -155,13 +181,13 @@ export default function ReadyToWearInventory({ view, productId, canImport = fals
       if (!form.isConnected) return;
       const photo = gallery[0] ?? "";
       if (editing && selected) {
-        const product = { ...selected, name, type, price, photo, gallery };
+        const product = { ...selected, name, type, price, photo, gallery, ...details };
         save({ ...inventory, products: inventory.products.map((item) => item.id === product.id ? product : item) });
         setFormMode(null);
         showMessage(`${name} updated.`, "success");
         return;
       }
-      const product: Product = { id: crypto.randomUUID(), name, type, price, photo, gallery, createdAt: new Date().toISOString() };
+      const product: Product = { id: crypto.randomUUID(), name, type, price, photo, gallery, ...details, createdAt: new Date().toISOString() };
       save({ ...inventory, products: [...inventory.products, product] });
       openVariantForm(product.id);
       showMessage(`${name} added. You can now add its first variant.`, "success");
@@ -180,11 +206,18 @@ export default function ReadyToWearInventory({ view, productId, canImport = fals
     const visual = inventory.visuals?.[key];
     setSavingVariant(true);
     try {
-      const gallery = await readGallery(new FormData(form), visual?.gallery ?? []);
+      const data = new FormData(form);
+      const gallery = await readGallery(data, visual?.gallery ?? []);
       if (!form.isConnected) return;
-      save({ ...inventory, visuals: { ...inventory.visuals, [key]: { ...visual, gallery } } });
+      const picked = field(data, "swatch");
+      const swatch = data.get("swatchMode") === "colour" && /^#[0-9a-f]{6}$/i.test(picked) ? picked : undefined;
+      const group = colourGroups.find((option) => option.value === field(data, "group"))?.value as ColourGroup | undefined;
+      const next: VariantVisual = { ...visual, gallery, swatch, group };
+      if (!swatch) delete next.swatch;
+      if (!group) delete next.group;
+      save({ ...inventory, visuals: { ...inventory.visuals, [key]: next } });
       setFormMode(null);
-      showMessage("Variant gallery updated.", "success");
+      showMessage(`${variantLabel(sizeVariant)} updated.`, "success");
     } catch (error) {
       showMessage(error instanceof Error ? error.message : "Could not save the gallery in this browser.", "danger");
     } finally {
@@ -333,8 +366,8 @@ export default function ReadyToWearInventory({ view, productId, canImport = fals
 
   const formHelp = {
     product: "Create a garment with a name, clothing type and price. You can add its first colour or fabric variant after saving.",
-    "edit-gallery": "Add or remove photos for this colour or fabric. Its customer swatch is managed separately.",
-    "edit-product": "Update the name, clothing type or price of this garment.",
+    "edit-gallery": "Set the swatch customers tap, the colour group used by the shop filters, and the photos for this colour or fabric.",
+    "edit-product": "Update the garment's name, type, price, shop section, offer, description and photos. Choose New arrival to show it in New arrivals on the store and app.",
     variant: sizeVariant
       ? "Add sizes and opening quantities to this colour or fabric."
       : "Create a colour or fabric option for this garment, then enter its sizes, SKUs and opening quantities.",
@@ -342,7 +375,7 @@ export default function ReadyToWearInventory({ view, productId, canImport = fals
     movement: "Choose a colour and size by SKU. Use Stock in for received or returned units, or Stock out for sold or damaged units. Choose a reason and add a note. Saving updates the quantity on hand and logs the change in Stock activity.",
   };
 
-  const formPanel = formMode && <section className="panel inventory-form-panel"><div className="inventory-form-title"><div><h2>{formMode === "edit-gallery" ? "Edit variant gallery" : formMode === "edit-product" ? "Edit product details" : formMode === "product" ? "Add a ready-to-wear product" : formMode === "variant" ? sizeVariant ? `Add size · ${variantLabel(sizeVariant)}` : "Add a colour or fabric variant" : formMode === "restock" ? "Add stock" : "Record a stock movement"}</h2></div><button type="button" aria-label="Close form" title="Close form" onClick={() => setFormMode(null)}><X size={18} /></button></div>
+  const formPanel = formMode && <section className="panel inventory-form-panel"><div className="inventory-form-title"><div><h2>{formMode === "edit-gallery" ? `Edit ${sizeVariant ? variantLabel(sizeVariant) : "colour"}` : formMode === "edit-product" ? "Edit product details" : formMode === "product" ? "Add a ready-to-wear product" : formMode === "variant" ? sizeVariant ? `Add size · ${variantLabel(sizeVariant)}` : "Add a colour or fabric variant" : formMode === "restock" ? "Add stock" : "Record a stock movement"}</h2></div><button type="button" aria-label="Close form" title="Close form" onClick={() => setFormMode(null)}><X size={18} /></button></div>
       <p className="portal-form-help">{formHelp[formMode]}</p>
       {message && <p className="inventory-message" data-tone={messageTone} role={messageTone === "success" ? "status" : "alert"}>{message}</p>}
       {(formMode === "product" || (formMode === "edit-product" && selected)) && <form key={formMode} onSubmit={saveProduct}>
@@ -350,13 +383,23 @@ export default function ReadyToWearInventory({ view, productId, canImport = fals
           <label>Product name<input name="name" defaultValue={formMode === "edit-product" ? selected?.name : undefined} placeholder="e.g. Amani Set" required /></label>
           <label>Clothing type<select name="type" defaultValue={formMode === "edit-product" ? selected?.type : undefined}>{productTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
           <label>Price (GHS)<input name="price" type="number" min="0" step="0.01" defaultValue={formMode === "edit-product" ? selected?.price : undefined} required /></label>
+          <label>Shop section<select name="section" defaultValue={formMode === "edit-product" ? selected?.section ?? "" : ""}>
+            <option value="">Not set</option>
+            {productSections.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select></label>
+          <label>Offer price (GHS)<input name="offerPrice" type="number" min="0" step="0.01" placeholder="Leave empty for no offer" defaultValue={formMode === "edit-product" ? selected?.offerPrice : undefined} /></label>
+        </div>
+        <label className="inventory-description">Description<textarea name="description" rows={4} maxLength={20000} placeholder="Fabric, fit and care notes customers will see" defaultValue={formMode === "edit-product" ? selected?.description : undefined} /></label>
+        <div className="inventory-product-options">
+          <label className="inventory-check"><input type="checkbox" name="isNew" defaultChecked={formMode === "edit-product" && selected?.isNew === true} /> Show as a new arrival</label>
         </div>
         <GalleryFields label="Product photos" photos={formMode === "edit-product" && selected ? selected.gallery ?? (selected.photo ? [selected.photo] : []) : []} />
         <div className="inventory-form-footer"><button type="submit" disabled={savingVariant}>{savingVariant ? "Saving…" : formMode === "edit-product" ? "Save changes" : "Save product"}</button></div>
       </form>}
       {formMode === "edit-gallery" && sizeVariant && <form key={sizeVariant.id} onSubmit={saveVariantGallery}>
+        <ColourDetails visual={inventory.visuals?.[variantKey(sizeVariant)]} />
         <GalleryFields label={`${variantLabel(sizeVariant)} photos`} photos={inventory.visuals?.[variantKey(sizeVariant)]?.gallery} />
-        <div className="inventory-form-footer"><button type="submit" disabled={savingVariant}>{savingVariant ? "Saving…" : "Save gallery"}</button></div>
+        <div className="inventory-form-footer"><button type="submit" disabled={savingVariant}>{savingVariant ? "Saving…" : "Save colour"}</button></div>
       </form>}
       {formMode === "variant" && <form key={sizeVariant?.id ?? selectedProduct} onSubmit={addVariant}>
         <div className="inventory-form-grid">
@@ -544,7 +587,7 @@ export default function ReadyToWearInventory({ view, productId, canImport = fals
               setSizeVariant(variant);
               setFormMode("edit-gallery");
               showMessage("");
-            }}>{visual?.gallery?.length ? "Edit gallery" : "Add photos"}</button>
+            }}>Edit colour & photos</button>
             {visual?.gallery?.length ? <ProductGallery photos={visual.gallery} label={`${variantLabel(variant)} gallery`} /> : null}
           </div>
           {(formMode === "variant" || formMode === "edit-gallery") && sizeVariant && variantKey(sizeVariant) === key && <div className="inventory-inline-form">{formPanel}</div>}

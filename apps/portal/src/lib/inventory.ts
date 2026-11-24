@@ -3,10 +3,15 @@ import { shopCatalogue } from "./shop-catalogue";
 
 export const productTypes = ["Tops & shirts", "Trousers", "Two-piece sets", "Kaftans", "Agbadas", "Suits", "Dresses", "Skirts", "Other"] as const;
 export type ProductType = (typeof productTypes)[number];
-export type Product = { id: string; name: string; type: ProductType; price: number; createdAt?: string; catalogueId?: string; wordpressId?: number; sourceUrl?: string; description?: string; photo?: string; gallery?: string[]; colours?: readonly string[] };
+export type Product = { id: string; name: string; type: ProductType; price: number; createdAt?: string; catalogueId?: string; wordpressId?: number; sourceUrl?: string; description?: string; section?: ProductSection; isNew?: boolean; offerPrice?: number; sizing?: SizingPart[]; photo?: string; gallery?: string[]; colours?: readonly string[] };
+export const productSections = [{ value: "men", label: "Men" }, { value: "women", label: "Women" }, { value: "accessories", label: "Accessories" }] as const;
+export type ProductSection = (typeof productSections)[number]["value"];
+export type SizingPart = "shirt" | "trousers";
+export const colourGroups = [{ value: "black", label: "Black" }, { value: "blue", label: "Blue" }, { value: "light", label: "Light" }, { value: "brown", label: "Brown" }] as const;
+export type ColourGroup = (typeof colourGroups)[number]["value"];
 export type Variant = { id: string; productId: string; colour: string; fabric?: string; size: string; sku: string; location?: string; quantity: number; stockVerified?: boolean; reorderAt: number };
 export type Movement = { id: string; variantId: string; change: number; reason: string; note: string; occurredAt: string };
-export type VariantVisual = { swatch?: string; photo?: string; gallery?: string[] };
+export type VariantVisual = { swatch?: string; group?: ColourGroup; photo?: string; gallery?: string[] };
 export type Inventory = { visuals?: Record<string, VariantVisual>; products: Product[]; variants: Variant[]; movements: Movement[] };
 export const storageKey = "ny-atelier-rtw-inventory-draft-v1";
 

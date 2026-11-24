@@ -17,6 +17,10 @@ class CustomerSignInAlertMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(markdown: 'mail.customer.sign-in-alert', with: ['method' => $this->channel === 'phone' ? 'phone' : 'email']);
+        return new Content(markdown: 'mail.customer.sign-in-alert', with: ['method' => match ($this->channel) {
+            'phone' => 'with a one-time phone code',
+            'password' => 'with your email and password',
+            default => 'with a one-time email code',
+        }]);
     }
 }

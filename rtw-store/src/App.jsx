@@ -4,6 +4,8 @@ import { ChevronLeft, ChevronRight, MapPin, Pause, Play, Ruler, Scissors, Slider
 import { ArrowLeft, ArrowRight, ArrowUpRight, Check, Heart, Menu, Minus, Plus, Search, ShoppingBag, X } from './NyIcons.jsx';
 import { SocialIcons } from './SocialSection.jsx';
 import { SizeGuide } from './SizeGuide.jsx';
+import { publishedCharts, usePublishedSizing } from './published-sizing.js';
+import { chartsFor } from './sizing.js';
 import { COLLECTIONS, COLOUR_GROUPS, PRODUCTS, PROMOTIONS, SECTIONS, availabilityOf, badgeOf, coverOf, findProduct, formatGHS, isSoldOut, loadLiveCatalogue, percentOff, photosOf, productsIn, unitsOf } from './live-catalogue.js';
 import { MAX_QTY, bagCount, bagTotal, readBag, sameLine, watchBag, writeBag } from './shared-bag.js';
 import { mainSite } from './sites.js';
@@ -449,9 +451,11 @@ function ProductPage() {
   const [photoIndex, setPhotoIndex] = useState(0);
   const [error, setError] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const publishedSizing = usePublishedSizing();
   const { bag, addToBag, saved, toggleSaved } = useStore();
   useEffect(() => { setPhotoIndex(0); setSize(''); setQty(1); setError(false); setGuideOpen(false); }, [id]);
   if (!product) return <NotFound/>;
+  const sizeCharts = chartsFor(product, publishedSizing, publishedCharts);
   const colour = product.colours.find(item => item.id === params.get('colour')) ?? product.colours[0];
   const photos = photosOf(product, colour);
   const photo = photos[Math.min(photoIndex, photos.length - 1)];
@@ -489,7 +493,7 @@ function ProductPage() {
             <span className="rtw-colour-caption"><i style={{ background: item.swatch }}/>{item.name}</span>
           </button>)}</div>
         </div>
-        <div className="size-header"><span>SELECT SIZE</span>{product.sizing.length > 0 && <button type="button" className="rtw-size-guide-link" onClick={() => { setGuideOpen(true); document.getElementById('size-guide-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }}>SIZE GUIDE</button>}</div>
+        <div className="size-header"><span>SELECT SIZE</span>{sizeCharts.length > 0 && <button type="button" className="rtw-size-guide-link" onClick={() => { setGuideOpen(true); document.getElementById('size-guide-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }}>SIZE GUIDE</button>}</div>
         <div className="size-selector rtw-size-selector" role="radiogroup" aria-label="Sizes">{Object.keys(colour.availability).map(value => {
           const status = availabilityOf(colour, value);
           const out = status === 'sold_out';
@@ -499,7 +503,7 @@ function ProductPage() {
         })}</div>
         {error && <p className="field-error" role="alert">Please select a size to continue.</p>}
         {size && inBag > 0 && <p className="rtw-size-note">{inBag} already in your bag. Final availability is confirmed by the atelier.</p>}
-        <SizeGuide product={product} selectedSize={size} open={guideOpen} onToggle={() => { setGuideOpen(value => !value); }} onUseSize={value => { if (availabilityOf(colour, value) !== 'sold_out') chooseSize(value); }}/>
+        <SizeGuide product={product} charts={sizeCharts} selectedSize={size} open={guideOpen} onToggle={() => { setGuideOpen(value => !value); }} onUseSize={value => { if (availabilityOf(colour, value) !== 'sold_out') chooseSize(value); }}/>
         <div className="product-qty"><span>QUANTITY</span><div><button type="button" aria-label="Decrease quantity" disabled={qty <= 1} onClick={() => { setQty(n => Math.max(1, n - 1)); }}><Minus size={15}/></button><span>{qty}</span><button type="button" aria-label="Increase quantity" disabled={qty >= remaining} onClick={() => { setQty(n => Math.min(remaining, n + 1)); }}><Plus size={15}/></button></div></div>
         <button type="button" className="button button-solid add-to-bag" disabled={cannotAdd} onClick={add}>{colourUnits === 0 ? 'OUT OF STOCK' : cannotAdd ? 'BAG LIMIT REACHED' : 'ADD TO BAG'}</button>
         <button type="button" className="favourite-inline" onClick={() => { toggleSaved(product.id); }}><Heart size={16} fill={isSaved ? 'currentColor' : 'none'}/>{isSaved ? 'SAVED' : 'SAVE FOR LATER'}</button>

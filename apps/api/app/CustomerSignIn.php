@@ -7,6 +7,7 @@ use App\Mail\CustomerSignInCodeMail;
 use App\Models\Customer;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -56,8 +57,11 @@ class CustomerSignIn
     }
 
     /** @return array{challengeId: string, channel: string, destination: string, expiresAt: string} */
-    public function start(string $channel, string $destination, ?string $ip): array
+    public function start(string $channel, string $destination, ?string $ip, ?string $password = null): array
     {
+        if ($password !== null && $channel !== 'email') {
+            throw ValidationException::withMessages(['password' => 'Passwords can only be used with an email address.']);
+        }
         $normalized = self::normalizeDestination($channel, $destination);
         if (! $normalized) {
             throw ValidationException::withMessages(['destination' => $channel === 'phone' ? 'Enter a valid phone number.' : 'Enter a valid email address.']);
@@ -74,7 +78,7 @@ class CustomerSignIn
         $id = (string) Str::uuid();
         $expiresAt = now()->addMinutes($minutes);
 
-        DB::transaction(function () use ($id, $channel, $normalized, $code, $linkToken, $expiresAt, $ip) {
+        DB::transaction(function () use ($id, $channel, $normalized, $code, $linkToken, $expiresAt, $ip, $password) {
             // A new request replaces any earlier unused code for the same destination.
             DB::table('customer_sign_in_challenges')->where('destination', $normalized)->whereNull('consumed_at')->update(['consumed_at' => now()]);
             DB::table('customer_sign_in_challenges')->insert([
@@ -83,6 +87,8 @@ class CustomerSignIn
                 'destination' => $normalized,
                 'code_hash' => $this->hash($id.'|code|'.$code),
                 'link_hash' => $linkToken ? $this->hash($id.'|link|'.$linkToken) : null,
+                // Creating an account or resetting a password: saved only once the email is proven.
+                'password_hash' => $password !== null ? Hash::make($password) : null,
                 'expires_at' => $expiresAt,
                 'ip' => $ip,
                 'created_at' => now(),
@@ -124,6 +130,9 @@ class CustomerSignIn
             DB::table('customer_sign_in_challenges')->where('id', $row->id)->update(['consumed_at' => now(), 'updated_at' => now()]);
 
             $customer = $this->findOrCreate($row->channel, $row->destination, $name);
+            if ($row->password_hash !== null) {
+                $this->applyPassword($customer, $row->password_hash, $ip);
+            }
             $customer->forceFill([
                 $row->channel === 'email' ? 'email_verified_at' : 'phone_verified_at' => now(),
                 'first_signed_in_at' => $customer->first_signed_in_at ?? now(),
@@ -144,6 +153,65 @@ class CustomerSignIn
         }
 
         return $this->session($customer, $result);
+    }
+
+    /** Email and password sign-in. The same message is shown whether the email or the password is wrong. */
+    public function passwordSignIn(string $email, string $password, ?string $ip): array
+    {
+        $normalized = self::normalizeDestination('email', $email);
+        $key = 'customer-password:'.hash('sha256', (string) $normalized);
+        if (RateLimiter::tooManyAttempts($key, 8)) {
+            throw ValidationException::withMessages(['password' => 'Too many attempts. Wait a few minutes, or sign in with an email code.']);
+        }
+        $customer = $normalized ? Customer::query()->whereRaw('LOWER(email) = ?', [$normalized])->whereNotNull('password')->oldest('id')->first() : null;
+        // Check a hash either way so a missing account takes as long as a wrong password.
+        $matches = Hash::check($password, $customer?->password ?? self::dummyHash());
+        if (! $customer || ! $matches) {
+            RateLimiter::hit($key, 15 * 60);
+            $this->record($customer, 'password_failed', 'email', [], $ip);
+            throw ValidationException::withMessages(['password' => 'That email and password do not match.']);
+        }
+        RateLimiter::clear($key);
+        if (Hash::needsRehash($customer->password)) {
+            $customer->forceFill(['password' => Hash::make($password)]);
+        }
+        $customer->forceFill(['first_signed_in_at' => $customer->first_signed_in_at ?? now(), 'last_signed_in_at' => now()])->save();
+        $this->record($customer, 'signed_in', 'email', ['method' => 'password'], $ip);
+        if ($customer->hasPasskeysEnabled()) {
+            $this->alertFallbackSignIn($customer, 'password', $ip);
+        }
+
+        return $this->session($customer, 'password');
+    }
+
+    /** Signed-in customers add or change their password. A current password is required if one exists. */
+    public function changePassword(Customer $customer, ?string $current, string $password, ?string $ip): void
+    {
+        if ($customer->hasPassword() && ($current === null || ! Hash::check($current, $customer->password))) {
+            throw ValidationException::withMessages(['currentPassword' => 'Your current password is not right.']);
+        }
+        if (blank($customer->email) || $customer->email_verified_at === null) {
+            throw ValidationException::withMessages(['password' => 'Confirm your email address first, then add a password.']);
+        }
+        $this->applyPassword($customer, Hash::make($password), $ip, keepTokenId: $customer->currentAccessToken()?->getKey());
+    }
+
+    /** Saves a password hash. Changing an existing password signs out the customer's other devices. */
+    private function applyPassword(Customer $customer, string $hash, ?string $ip, mixed $keepTokenId = null): void
+    {
+        $replacing = $customer->hasPassword();
+        $customer->forceFill(['password' => $hash, 'password_changed_at' => now()])->save();
+        if ($replacing) {
+            $customer->tokens()->when($keepTokenId !== null, fn ($query) => $query->whereKeyNot($keepTokenId))->delete();
+        }
+        $this->record($customer, $replacing ? 'password_changed' : 'password_added', 'email', [], $ip);
+    }
+
+    private static function dummyHash(): string
+    {
+        static $hash = null;
+
+        return $hash ??= Hash::make(Str::random(32));
     }
 
     /** Issues a device session token. The channel ability records how the customer proved who they are. */
@@ -177,6 +245,7 @@ class CustomerSignIn
             'phone' => $customer->phone,
             'emailVerified' => $customer->email_verified_at !== null,
             'phoneVerified' => $customer->phone_verified_at !== null,
+            'hasPassword' => $customer->hasPassword(),
             'firstSignedInAt' => $customer->first_signed_in_at?->toIso8601String(),
             'passkey' => $this->passkeyStatus($customer),
         ];

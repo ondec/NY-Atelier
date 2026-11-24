@@ -1,4 +1,5 @@
-# One preview web service: Next.js is public; Laravel listens only on loopback.
+# One preview web service: Next.js is public (staff portal, plus the website and RTW store on their own
+# addresses); Laravel listens only on loopback.
 FROM node:22-bookworm-slim AS portal-build
 WORKDIR /build/apps/portal
 COPY apps/portal/package*.json ./
@@ -7,6 +8,20 @@ COPY apps/portal/ ./
 COPY apps/mobile/src/ /build/apps/mobile/src/
 ENV NY_STANDALONE=1 NEXT_TELEMETRY_DISABLED=1
 RUN npm run build -- --webpack
+
+# The public website and RTW store, served by the portal on their own addresses (src/proxy.ts).
+# Render passes the service's environment variables in as these build arguments.
+FROM node:22-bookworm-slim AS sites-build
+ARG NY_WEBSITE_ORIGIN=https://home.thenyatelier.com
+ARG NY_STORE_ORIGIN=https://store.thenyatelier.com
+WORKDIR /build
+COPY website/package*.json website/
+COPY rtw-store/package*.json rtw-store/
+RUN cd website && npm ci --no-audit --no-fund && cd ../rtw-store && npm ci --no-audit --no-fund
+COPY website/ website/
+COPY rtw-store/ rtw-store/
+RUN cd website && npm run check && VITE_RTW_STORE_URL="$NY_STORE_ORIGIN" npm run build \
+    && cd ../rtw-store && npm run check && VITE_MAIN_SITE_URL="$NY_WEBSITE_ORIGIN" npm run build
 
 FROM php:8.4-apache-bookworm AS api-build
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -40,6 +55,8 @@ COPY --from=portal-build /usr/local/bin/node /usr/local/bin/node
 COPY --from=portal-build /build/apps/portal/.next/standalone/ /srv/portal/
 COPY --from=portal-build /build/apps/portal/.next/static/ /srv/portal/apps/portal/.next/static/
 COPY --from=portal-build /build/apps/portal/public/ /srv/portal/apps/portal/public/
+COPY --from=sites-build /build/website/dist/ /srv/portal/apps/portal/public/_sites/website/
+COPY --from=sites-build /build/rtw-store/dist/ /srv/portal/apps/portal/public/_sites/store/
 COPY deploy/render/apache.conf /etc/apache2/sites-available/000-default.conf
 COPY deploy/render/php.ini /usr/local/etc/php/conf.d/ny-preview.ini
 COPY deploy/render/start.sh /usr/local/bin/ny-start

@@ -66,6 +66,25 @@ class CustomerAuthTest extends TestCase
         $this->postJson('/api/customer/auth/verify', ['challengeId' => $query['challenge'], 'code' => $mail->code])->assertUnprocessable();
     }
 
+    public function test_email_link_opens_an_https_page_that_hands_the_link_to_the_app(): void
+    {
+        config(['customer_auth.link_base' => 'https://api.example.test/api/customer/auth/link', 'customer_auth.app_link_base' => 'nyatelier://sign-in']);
+        [$challenge, $mail] = $this->startEmail();
+        $this->assertStringStartsWith('https://api.example.test/api/customer/auth/link?', $mail->link);
+        parse_str(parse_url($mail->link, PHP_URL_QUERY), $query);
+
+        $page = $this->get('/api/customer/auth/link?'.http_build_query($query))->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+        $page->assertSee('nyatelier://sign-in?challenge='.$challenge['challengeId'].'&amp;token='.$query['token'], false);
+
+        // Opening the page does not use up the link; the app still signs in with it.
+        $this->postJson('/api/customer/auth/verify', ['challengeId' => $query['challenge'], 'token' => $query['token']])->assertOk();
+    }
+
+    public function test_incomplete_email_link_page_does_not_open_the_app(): void
+    {
+        $this->get('/api/customer/auth/link?challenge=nope&token=bad')->assertNotFound()->assertDontSee('nyatelier://', false);
+    }
+
     public function test_verified_email_links_the_existing_studio_customer_instead_of_creating_a_duplicate(): void
     {
         $studio = Customer::query()->create(['name' => 'Kofi Asante', 'email' => 'ama@example.com']);

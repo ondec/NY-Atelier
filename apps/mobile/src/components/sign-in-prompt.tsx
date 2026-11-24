@@ -7,7 +7,7 @@ import { useCustomerAuth } from '@/lib/customer-auth';
 
 const promptCopy: Partial<Record<SignInReason, { title: string; text: string }>> = {
   orders: { title: 'Your orders live here', text: 'Sign in with your email or phone to follow your pieces, alterations and consultations.' },
-  account: { title: 'Sign in to your account', text: 'Keep your details, addresses and measurements with you. No password needed.' },
+  account: { title: 'Sign in to your account', text: 'Keep your details, addresses and measurements with you. Use your password or a one-time code.' },
 };
 
 /** Shown in place of a signed-in screen. Browsing elsewhere in the app never needs an account. */
@@ -20,7 +20,7 @@ export function SignInPrompt({ reason }: { reason: 'orders' | 'account' }) {
     <Text style={styles.title}>{copy.title}</Text>
     <Text style={styles.text}>{copy.text}</Text>
     <Pressable accessibilityRole="button" onPress={() => { void requireSignIn(reason); }} style={styles.primary}><Text style={styles.primaryText}>SIGN IN</Text></Pressable>
-    <Text style={styles.hint}>New to NY Atelier? The same step creates your account.</Text>
+    <Text style={styles.hint}>New to NY Atelier? Create an account from the same screen.</Text>
   </View>;
 }
 

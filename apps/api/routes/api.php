@@ -15,6 +15,7 @@ use App\Http\Controllers\FinanceOverviewController;
 use App\Http\Controllers\OwnerOverviewController;
 use App\Http\Controllers\PublicConsultationController;
 use App\Http\Controllers\ShopCatalogueController;
+use App\Http\Controllers\SizeChartController;
 use App\Http\Controllers\StaffAuthController;
 use App\Http\Controllers\StaffPasswordResetController;
 use App\Models\Customer;
@@ -22,7 +23,6 @@ use App\Models\Order;
 use App\OrderWorkflow;
 use App\StaffAccess;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 $listOrders = function (Request $request, OrderWorkflow $workflow) {
@@ -43,15 +43,20 @@ $listOrders = function (Request $request, OrderWorkflow $workflow) {
 
 Route::get('/demo/orders', $listOrders);
 Route::get('/shop/catalogue', [ShopCatalogueController::class, 'index'])->middleware('throttle:60,1');
+// Read by the portal's public /api/size-charts (the app and the RTW store); Laravel itself is internal on Render.
+Route::get('/size-charts', [SizeChartController::class, 'show']);
 Route::post('/consultations', [PublicConsultationController::class, 'store'])->middleware('throttle:5,1');
 Route::prefix('customer/auth')->group(function () {
     Route::post('/start', [CustomerAuthController::class, 'start'])->middleware('throttle:10,1');
+    Route::get('/link', [CustomerAuthController::class, 'link'])->middleware('throttle:30,1');
+    Route::post('/login', [CustomerAuthController::class, 'login'])->middleware('throttle:20,1');
     Route::post('/verify', [CustomerAuthController::class, 'verify'])->middleware('throttle:30,1');
     Route::post('/passkey/login/options', [CustomerPasskeyController::class, 'loginOptions'])->middleware('throttle:20,1');
     Route::post('/passkey/login', [CustomerPasskeyController::class, 'login'])->middleware('throttle:20,1');
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [CustomerAuthController::class, 'me']);
         Route::patch('/me', [CustomerAuthController::class, 'update'])->middleware('throttle:30,1');
+        Route::put('/password', [CustomerAuthController::class, 'password'])->middleware('throttle:10,1');
         Route::post('/logout', [CustomerAuthController::class, 'logout']);
         Route::get('/passkeys', [CustomerPasskeyController::class, 'index']);
         Route::post('/passkeys/options', [CustomerPasskeyController::class, 'registrationOptions'])->middleware('throttle:20,1');
@@ -67,11 +72,6 @@ Route::prefix('staff/auth')->group(function () {
     Route::post('/activate', [StaffAuthController::class, 'activate'])->middleware('throttle:10,1');
     Route::get('/me', [StaffAuthController::class, 'me'])->middleware(['auth:sanctum', 'can:staff.studio']);
     Route::post('/logout', [StaffAuthController::class, 'logout'])->middleware('auth:sanctum');
-});
-Route::get('/demo/size-chart-collections', function () {
-    $payload = DB::table('studio_catalogues')->where('id', 1)->value('payload');
-
-    return response()->json(['collections' => collect(json_decode($payload ?? '{}', true)['collections'] ?? [])->map(fn ($row) => ['id' => $row['id'], 'productIds' => $row['productIds']])]);
 });
 Route::prefix('customer/consultations')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [CustomerConsultationController::class, 'mine'])->middleware('throttle:60,1');
@@ -108,6 +108,7 @@ Route::prefix('demo/staff')->middleware(['auth:sanctum', 'can:staff.office'])->g
     Route::patch('/orders/{reference}/workflow', [DemoOrderWorkflowController::class, 'update'])->middleware(['can:staff.orders.manage', 'throttle:60,1']);
     Route::post('/orders', [DemoStaffOrderController::class, 'store'])->middleware('throttle:30,1');
     Route::get('/consultations', [DemoConsultationController::class, 'index'])->middleware('can:staff.consultations');
+    Route::put('/size-charts', [SizeChartController::class, 'update'])->middleware(['can:staff.catalogue.manage', 'throttle:60,1']);
     Route::prefix('salaries')->middleware('can:staff.finances')->group(function () {
         Route::get('/', [DemoSalaryController::class, 'index']);
         Route::get('/{id}', [DemoSalaryController::class, 'show'])->whereUuid('id');

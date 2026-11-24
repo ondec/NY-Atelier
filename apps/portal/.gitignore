@@ -44,3 +44,6 @@ next-env.d.ts
 /.next-staff-preview/
 
 /.studio-data/
+
+# Website and RTW store builds, copied in when the Render image is built
+/public/_sites/

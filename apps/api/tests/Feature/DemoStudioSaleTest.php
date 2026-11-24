@@ -119,6 +119,45 @@ class DemoStudioSaleTest extends TestCase
         $this->postJson('/api/demo/staff/studio/sales', [...$data, 'revision' => 2])->assertCreated()->assertJsonPath('receipt.lines.0.photo', '/pinstripe.jpg')->assertJsonPath('receipt.lines.0.fabric', 'Pinstripe cotton');
     }
 
+    public function test_office_shop_details_are_saved_and_reach_the_public_catalogue(): void
+    {
+        $this->prepare();
+        $catalogue = $this->catalogue();
+        $catalogue['inventory']['products'][0] += ['description' => 'Linen two-piece.', 'section' => 'women', 'isNew' => true, 'offerPrice' => 15, 'sizing' => ['shirt', 'trousers']];
+        $catalogue['inventory']['visuals']['["clover","olive","cotton"]'] += ['swatch' => '#556b2f', 'group' => 'brown'];
+        $this->postJson('/api/demo/staff/studio/catalogue', [...$catalogue, 'revision' => 1])->assertOk()
+            ->assertJsonPath('inventory.products.0.section', 'women')
+            ->assertJsonPath('inventory.visuals.["clover","olive","cotton"].group', 'brown');
+
+        $this->getJson('/api/shop/catalogue')->assertOk()
+            ->assertJsonPath('products.0.description', 'Linen two-piece.')
+            ->assertJsonPath('products.0.section', 'women')
+            ->assertJsonPath('products.0.isNew', true)
+            ->assertJsonPath('products.0.offerPriceMinor', 1500)
+            ->assertJsonPath('products.0.sizing', ['shirt', 'trousers'])
+            ->assertJsonPath('products.0.colours.0.swatch', '#556b2f')
+            ->assertJsonPath('products.0.colours.0.group', 'brown');
+    }
+
+    public function test_unknown_shop_sections_groups_and_swatches_are_refused(): void
+    {
+        $this->prepare();
+        foreach ([
+            ['products', 'section', 'kids'],
+            ['products', 'sizing', ['hat']],
+            ['visuals', 'group', 'purple'],
+            ['visuals', 'swatch', 'red'],
+        ] as [$list, $key, $value]) {
+            $catalogue = $this->catalogue();
+            if ($list === 'products') {
+                $catalogue['inventory']['products'][0][$key] = $value;
+            } else {
+                $catalogue['inventory']['visuals']['["clover","olive","cotton"]'][$key] = $value;
+            }
+            $this->postJson('/api/demo/staff/studio/catalogue', [...$catalogue, 'revision' => 1])->assertUnprocessable();
+        }
+    }
+
     public static function invalidPayments(): array
     {
         return [

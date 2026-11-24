@@ -17,6 +17,8 @@ export type Customer = {
   phone: string | null;
   emailVerified: boolean;
   phoneVerified: boolean;
+  /** True once the customer has added an email password. */
+  hasPassword: boolean;
   firstSignedInAt: string | null;
   passkey: { status: PasskeyStatus; requiredFrom: string | null };
 };
@@ -28,7 +30,11 @@ type CustomerAuth = {
   customer: Customer | null;
   /** Opens the sign-in sheet when needed. Resolves true once the customer is signed in. */
   requireSignIn: (reason: SignInReason) => Promise<boolean>;
-  startSignIn: (channel: SignInChannel, destination: string) => Promise<SignInChallenge>;
+  /** With a password, the emailed code or link creates the account or resets the password. */
+  startSignIn: (channel: SignInChannel, destination: string, password?: string) => Promise<SignInChallenge>;
+  signInWithPassword: (email: string, password: string) => Promise<Customer>;
+  /** Adds a password, or changes it (the current one is required then). Other devices are signed out on a change. */
+  changePassword: (password: string, currentPassword?: string) => Promise<void>;
   verifySignIn: (challengeId: string, proof: { code: string } | { token: string }, name?: string) => Promise<Customer>;
   /** True when this phone can create and use passkeys (not the web preview or Expo Go). */
   passkeysAvailable: boolean;
@@ -42,6 +48,8 @@ type CustomerAuth = {
 };
 
 const tokenKey = 'ny-atelier-customer-session-v1';
+/** The challenge id of the last magic link opened (not secret; the token is never stored). */
+const handledLinkKey = 'ny-atelier-last-sign-in-link-v1';
 type SignedIn = { token: string; customer: Customer };
 type Ceremony<T> = { ceremonyId: string; options: T };
 const CustomerAuthContext = createContext<CustomerAuth | null>(null);
@@ -114,22 +122,25 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => { void refresh(); }, [refresh]);
 
   // Magic links open the app at nyatelier://sign-in?challenge=…&token=…
+  // A link works once. The app remembers the last one it opened, because the launch link is
+  // offered again whenever the app reloads, and opening it twice would only show an error.
   useEffect(() => {
-    const openLink = (url: string | null) => {
+    const openLink = async (url: string | null) => {
       if (!url) return;
       const { path, hostname, queryParams } = Linking.parse(url);
       const challengeId = queryParams?.challenge, linkToken = queryParams?.token;
-      if ((path === 'sign-in' || hostname === 'sign-in') && typeof challengeId === 'string' && typeof linkToken === 'string') {
-        setSheet(current => ({ reason: current?.reason ?? 'link', link: { challengeId, token: linkToken } }));
-      }
+      if (!((path === 'sign-in' || hostname === 'sign-in') && typeof challengeId === 'string' && typeof linkToken === 'string')) return;
+      if (await AsyncStorage.getItem(handledLinkKey).catch(() => null) === challengeId) return;
+      await AsyncStorage.setItem(handledLinkKey, challengeId).catch(() => {});
+      setSheet(current => ({ reason: current?.reason ?? 'link', link: { challengeId, token: linkToken } }));
     };
     void Linking.getInitialURL().then(openLink);
-    const subscription = Linking.addEventListener('url', event => openLink(event.url));
+    const subscription = Linking.addEventListener('url', event => { void openLink(event.url); });
     return () => subscription.remove();
   }, []);
 
-  const startSignIn = useCallback((channel: SignInChannel, destination: string) =>
-    authApi<SignInChallenge>('/start', { method: 'POST', body: JSON.stringify({ channel, destination }) }), []);
+  const startSignIn = useCallback((channel: SignInChannel, destination: string, password?: string) =>
+    authApi<SignInChallenge>('/start', { method: 'POST', body: JSON.stringify({ channel, destination, password }) }), []);
 
   const keepSession = useCallback(async (result: SignedIn) => {
     token.current = result.token;
@@ -140,6 +151,14 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
   const verifySignIn = useCallback(async (challengeId: string, proof: { code: string } | { token: string }, name?: string) =>
     keepSession(await authApi<SignedIn>('/verify', { method: 'POST', body: JSON.stringify({ challengeId, ...proof, name: name?.trim() || undefined }) })), [keepSession]);
+
+  const signInWithPassword = useCallback(async (email: string, password: string) =>
+    keepSession(await authApi<SignedIn>('/login', { method: 'POST', body: JSON.stringify({ email, password }) })), [keepSession]);
+
+  const changePassword = useCallback(async (password: string, currentPassword?: string) => {
+    const { customer } = await authApi<{ customer: Customer }>('/password', { method: 'PUT', body: JSON.stringify({ password, currentPassword }) }, token.current);
+    setState({ status: 'signed-in', customer });
+  }, []);
 
   const passkeysAvailable = useMemo(() => passkeysSupported(), []);
 
@@ -180,8 +199,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<CustomerAuth>(() => ({
     state, customer: state.status === 'signed-in' ? state.customer : null,
-    requireSignIn, startSignIn, verifySignIn, passkeysAvailable, signInWithPasskey, addPasskey, updateName, signOut, refresh, getToken,
-  }), [state, requireSignIn, startSignIn, verifySignIn, passkeysAvailable, signInWithPasskey, addPasskey, updateName, signOut, refresh, getToken]);
+    requireSignIn, startSignIn, verifySignIn, signInWithPassword, changePassword, passkeysAvailable, signInWithPasskey, addPasskey, updateName, signOut, refresh, getToken,
+  }), [state, requireSignIn, startSignIn, verifySignIn, signInWithPassword, changePassword, passkeysAvailable, signInWithPasskey, addPasskey, updateName, signOut, refresh, getToken]);
 
   return <CustomerAuthContext.Provider value={value}>
     {children}
@@ -191,6 +210,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       link={sheet.link}
       start={startSignIn}
       verify={verifySignIn}
+      signInWithPassword={signInWithPassword}
       passkey={passkeysAvailable ? signInWithPasskey : undefined}
       onSignedIn={() => { setSheet(null); settle(true); }}
       onClose={() => { setSheet(null); settle(false); }}

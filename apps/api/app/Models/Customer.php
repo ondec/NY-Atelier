@@ -23,6 +23,8 @@ class Customer extends Model implements AuthenticatableContract, AuthorizableCon
 
     protected $fillable = ['name', 'email', 'phone', 'account_reference'];
 
+    protected $hidden = ['password'];
+
     protected function casts(): array
     {
         return [
@@ -30,6 +32,7 @@ class Customer extends Model implements AuthenticatableContract, AuthorizableCon
             'phone_verified_at' => 'datetime',
             'first_signed_in_at' => 'datetime',
             'last_signed_in_at' => 'datetime',
+            'password_changed_at' => 'datetime',
         ];
     }
 
@@ -64,10 +67,15 @@ class Customer extends Model implements AuthenticatableContract, AuthorizableCon
         return collect([$this->email, $this->phone])->first(fn ($value) => filled($value)) ?? 'customer-'.$this->getKey();
     }
 
-    /** Customers do not have passwords; sign-in uses one-time codes and passkeys. */
+    /** Optional email password, set only after the customer proves they own the email. Codes and passkeys still work. */
     public function getAuthPassword(): string
     {
-        return '';
+        return (string) $this->password;
+    }
+
+    public function hasPassword(): bool
+    {
+        return filled($this->password);
     }
 
     public function getRememberTokenName(): string
