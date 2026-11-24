@@ -1,8 +1,8 @@
-// The public website and RTW store are served by this same service on their own addresses,
-// like NY Studio and NY Office: NY_WEBSITE_ORIGIN (for example https://home.thenyatelier.com)
-// and NY_STORE_ORIGIN (https://store.thenyatelier.com). Their built files are copied to
-// public/_sites/<site>/ when the Render image is built. Nothing else in the portal is reachable
-// on those addresses: only the named public API calls below.
+// The public website and RTW store are served by this same service. With NY_WEBSITE_ORIGIN and
+// NY_STORE_ORIGIN set (for example https://home.thenyatelier.com), each has its own address, like
+// NY Studio and NY Office. Without them, they are previews under /home and /store on the service's
+// own address. Their built files are copied to public/_sites/<site>/ when the Render image is built.
+// Only the named public API calls below are reachable through them.
 type Environment = Record<string, string | undefined>;
 export type PublicSite = 'website' | 'store';
 export type SiteRoute = { kind: 'rewrite'; path: string } | { kind: 'block'; status: 404 | 405 };
@@ -15,6 +15,19 @@ function host(value: string | undefined): string | null {
     throw new Error('Public site origins must be HTTPS addresses without a path.');
   }
   return url.host.toLowerCase();
+}
+
+/** Own addresses when configured; otherwise (or with NY_PUBLIC_SITES_PREVIEW_PATHS=1) /home and /store. */
+export function sitesUseOwnAddresses(env: Environment = process.env): boolean {
+  if (env.NY_PUBLIC_SITES_PREVIEW_PATHS === '1') return false;
+  return Boolean(env.NY_WEBSITE_ORIGIN || env.NY_STORE_ORIGIN);
+}
+
+const previewPaths: Record<string, PublicSite> = { '/home': 'website', '/store': 'store' };
+/** The preview site for a path like /store/product/x, with the path inside that site. */
+export function siteForPath(pathname: string): { site: PublicSite; inner: string } | null {
+  const prefix = Object.keys(previewPaths).find(path => pathname === path || pathname.startsWith(`${path}/`));
+  return prefix ? { site: previewPaths[prefix], inner: pathname.slice(prefix.length) || '/' } : null;
 }
 
 export function siteForHost(requestHost: string, env: Environment = process.env): PublicSite | null {

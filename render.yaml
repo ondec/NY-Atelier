@@ -48,6 +48,11 @@ services:
         value: https://store.thenyatelier.com
       - key: NY_PUBLIC_SITES_NOINDEX
         value: "1"
+      # Until home/store are added as custom domains (Render's free plan allows two, used by studio and office),
+      # the sites are previews at https://ny-atelier-preview.onrender.com/home and /store. Set to "0" once the
+      # domains are added, so each site uses its own address.
+      - key: NY_PUBLIC_SITES_PREVIEW_PATHS
+        value: "1"
       # Invitation, password-reset links and the email logo use the Studio address.
       - key: NY_STAFF_PORTAL_URL
         value: https://studio.thenyatelier.com

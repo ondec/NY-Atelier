@@ -9,19 +9,27 @@ COPY apps/mobile/src/ /build/apps/mobile/src/
 ENV NY_STANDALONE=1 NEXT_TELEMETRY_DISABLED=1
 RUN npm run build -- --webpack
 
-# The public website and RTW store, served by the portal on their own addresses (src/proxy.ts).
+# The public website and RTW store, served by the portal (src/proxy.ts): on their own addresses, or as
+# previews under /home and /store when NY_PUBLIC_SITES_PREVIEW_PATHS=1 (or no addresses are set).
 # Render passes the service's environment variables in as these build arguments.
 FROM node:22-bookworm-slim AS sites-build
-ARG NY_WEBSITE_ORIGIN=https://home.thenyatelier.com
-ARG NY_STORE_ORIGIN=https://store.thenyatelier.com
+ARG NY_WEBSITE_ORIGIN=
+ARG NY_STORE_ORIGIN=
+ARG NY_PUBLIC_SITES_PREVIEW_PATHS=
 WORKDIR /build
 COPY website/package*.json website/
 COPY rtw-store/package*.json rtw-store/
 RUN cd website && npm ci --no-audit --no-fund && cd ../rtw-store && npm ci --no-audit --no-fund
 COPY website/ website/
 COPY rtw-store/ rtw-store/
-RUN cd website && npm run check && VITE_RTW_STORE_URL="$NY_STORE_ORIGIN" npm run build \
-    && cd ../rtw-store && npm run check && VITE_MAIN_SITE_URL="$NY_WEBSITE_ORIGIN" npm run build
+RUN cd website && npm run check && cd ../rtw-store && npm run check
+RUN if [ "$NY_PUBLIC_SITES_PREVIEW_PATHS" = "1" ] || { [ -z "$NY_WEBSITE_ORIGIN" ] && [ -z "$NY_STORE_ORIGIN" ]; }; then \
+      cd /build/website && NY_SITE_BASE=/home/ VITE_API_URL=/home VITE_RTW_STORE_URL=/store npm run build \
+      && cd /build/rtw-store && NY_SITE_BASE=/store/ VITE_API_URL=/store VITE_SIZE_GUIDE_URL=/store VITE_MAIN_SITE_URL=/home npm run build; \
+    else \
+      cd /build/website && VITE_RTW_STORE_URL="$NY_STORE_ORIGIN" npm run build \
+      && cd /build/rtw-store && VITE_MAIN_SITE_URL="$NY_WEBSITE_ORIGIN" npm run build; \
+    fi
 
 FROM php:8.4-apache-bookworm AS api-build
 RUN apt-get update && apt-get install -y --no-install-recommends \

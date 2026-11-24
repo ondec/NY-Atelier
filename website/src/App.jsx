@@ -18,7 +18,8 @@ const sizes = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
  * the built site keeps using its own /rtw-store pages.
  */
 const RTW_STORE_URL = import.meta.env.VITE_RTW_STORE_URL ?? (import.meta.env.DEV ? 'http://localhost:5174' : '/rtw-store');
-const RTW_IS_SEPARATE = RTW_STORE_URL.startsWith('http');
+// The store is its own site unless it is the built-in /rtw-store fallback (a full address, or /store on the preview).
+const RTW_IS_SEPARATE = RTW_STORE_URL !== '/rtw-store';
 /** Website product ids that have a matching page in the store. */
 const RTW_PRODUCT_PATHS = { 'aegis-set': '/product/aegis', 'amani-set': '/product/amani', 'arctic-edge-set': '/product/arctic', regal: '/shop/men', 'effortless-elegance': '/shop/women', 'dionny-black': '/shop/women', 'dionny-wine': '/shop/women' };
 const RTW_CATEGORY_PATHS = { Men: '/shop/men', Women: '/shop/women', Collections: '/collections' };
