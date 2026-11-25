@@ -3,18 +3,19 @@
 import Image from "next/image";
 import {WorkspaceLink} from "./web-app";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Tablet } from "@/components/icons";
+import { LayoutDashboard, Scissors, Tablet } from "@/components/icons";
 
-export default function WorkspaceRail({officeHref="/",studioHref="/showroom",office=true}:{officeHref?:string;studioHref?:string;office?:boolean}) {
+export default function WorkspaceRail({officeHref="/",studioHref="/showroom",productionHref,office=true}:{officeHref?:string;studioHref?:string;productionHref?:string;office?:boolean}) {
   const pathname = usePathname();
   const showroom = pathname === "/showroom" || pathname.startsWith("/showroom/");
+  const production = pathname === "/production" || pathname.startsWith("/production/");
 
   return <nav className="workspace-rail" aria-label="Switch workspace">
     <WorkspaceLink href={officeHref} className="workspace-rail-brand" aria-label="NY Atelier home">
       <Image src="/ny-mark.svg" width={40} height={40} alt="" />
     </WorkspaceLink>
     <div className="workspace-rail-tabs">
-      {office && <WorkspaceLink href={officeHref} className="workspace-rail-tab" aria-label="NY Office" aria-current={!showroom ? "page" : undefined}>
+      {office && <WorkspaceLink href={officeHref} className="workspace-rail-tab" aria-label="NY Office" aria-current={!showroom && !production ? "page" : undefined}>
         <LayoutDashboard size={21} aria-hidden="true" />
         <span className="workspace-rail-tooltip" role="tooltip">NY Office</span>
       </WorkspaceLink>}
@@ -22,6 +23,10 @@ export default function WorkspaceRail({officeHref="/",studioHref="/showroom",off
         <Tablet size={21} aria-hidden="true" />
         <span className="workspace-rail-tooltip" role="tooltip">NY Studio</span>
       </WorkspaceLink>
+      {productionHref && <WorkspaceLink href={productionHref} className="workspace-rail-tab" aria-label="NY Production" aria-current={production ? "page" : undefined}>
+        <Scissors size={21} aria-hidden="true" />
+        <span className="workspace-rail-tooltip" role="tooltip">NY Production</span>
+      </WorkspaceLink>}
     </div>
   </nav>;
 }

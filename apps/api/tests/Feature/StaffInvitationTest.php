@@ -152,6 +152,14 @@ class StaffInvitationTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'someone@example.test']);
     }
 
+    public function test_production_staff_keep_their_session_without_studio_access(): void
+    {
+        foreach (['production', 'tailor'] as $role) {
+            $this->signInStaff($role);
+            $this->getJson('/api/staff/auth/me')->assertOk()->assertJsonPath('staff.role', $role)->assertJsonPath('staff.officeHref', '/production');
+        }
+    }
+
     public function test_the_records_role_reaches_customer_records_only(): void
     {
         $this->signInStaff('records');

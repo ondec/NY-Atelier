@@ -1,4 +1,4 @@
-import type {StaffIdentity} from "@/lib/staff-permissions";
+import {can, type StaffIdentity} from "@/lib/staff-permissions";
 import {WorkspaceLink} from "./web-app";
 import StaffAccountMenu from "./staff-account-menu";
 import Image from "next/image";
@@ -41,7 +41,7 @@ export default function TopWorkspaceShell({ staff, current, finance, inventoryVi
   ] : [];
   return <div className="top-workspace-shell">
     <header className="top-workspace-header">
-      <div className="top-workspace-brand"><Link prefetch={false} href="/" aria-label="NY Atelier overview"><Image src="/ny-mark.svg" width={42} height={42} alt="" /></Link><div><Link prefetch={false} className="top-workspace-wordmark" href="/">NY ATELIER</Link><details className="top-workspace-switch"><summary>NY Office <ChevronDown size={12} /></summary><div><Link prefetch={false} href="/">NY Office</Link><WorkspaceLink href={staff.studioHref??"/showroom"}>NY Studio</WorkspaceLink>{comparisonLinks && <a href="http://127.0.0.1:3000/">Original layout <ArrowUpRight size={13} /></a>}</div></details></div></div>
+      <div className="top-workspace-brand"><Link prefetch={false} href="/" aria-label="NY Atelier overview"><Image src="/ny-mark.svg" width={42} height={42} alt="" /></Link><div><Link prefetch={false} className="top-workspace-wordmark" href="/">NY ATELIER</Link><details className="top-workspace-switch"><summary>NY Office <ChevronDown size={12} /></summary><div><Link prefetch={false} href="/">NY Office</Link><WorkspaceLink href={staff.studioHref??"/showroom"}>NY Studio</WorkspaceLink>{can(staff,"production")&&<WorkspaceLink href={staff.productionHref??"/production"}>NY Production</WorkspaceLink>}{comparisonLinks && <a href="http://127.0.0.1:3000/">Original layout <ArrowUpRight size={13} /></a>}</div></details></div></div>
       <nav className="top-workspace-primary" aria-label="Main navigation">{primary.map(item => <Link prefetch={false} key={item.id} href={item.href} aria-current={active === item.id ? "page" : undefined}>{item.label}</Link>)}</nav>
       <div className="top-workspace-account"><Notifications items={notifications} unavailable={unavailable} /><StaffAccountMenu staff={staff}/></div>
     </header>

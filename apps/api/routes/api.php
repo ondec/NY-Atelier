@@ -75,7 +75,7 @@ Route::prefix('staff/auth')->group(function () {
     Route::post('/login', [StaffAuthController::class, 'login'])->middleware('throttle:30,1');
     Route::post('/activation', [StaffAuthController::class, 'activation'])->middleware('throttle:30,1');
     Route::post('/activate', [StaffAuthController::class, 'activate'])->middleware('throttle:10,1');
-    Route::get('/me', [StaffAuthController::class, 'me'])->middleware(['auth:sanctum', 'can:staff.studio']);
+    Route::get('/me', [StaffAuthController::class, 'me'])->middleware('auth:sanctum');
     Route::post('/logout', [StaffAuthController::class, 'logout'])->middleware('auth:sanctum');
 });
 Route::prefix('customer/consultations')->middleware('auth:sanctum')->group(function () {

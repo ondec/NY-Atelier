@@ -30,9 +30,10 @@ class StaffAuthController extends Controller
         return $this->signedIn($user);
     }
 
+    /** Any active staff account, including production managers and tailors who have no NY Studio access. */
     public function me(Request $request): JsonResponse
     {
-        return response()->json(['staff' => StaffAccess::profile($request->user())]);
+        return response()->json(['staff' => StaffAccess::profile(StaffAccess::requireStaffToken($request))]);
     }
 
     public function logout(Request $request): JsonResponse
