@@ -5,19 +5,18 @@ namespace App\Http\Controllers;
 use App\CustomerSignIn;
 use App\Models\Customer;
 use App\StaffAccess;
+use App\StoredMedia;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DemoCustomerController extends Controller
 {
@@ -25,7 +24,7 @@ class DemoCustomerController extends Controller
 
     private const MAX_PAGE = 100;
 
-    private const MEASUREMENTS = [
+    public const MEASUREMENTS = [
         'height' => 'Height', 'weight' => 'Weight', 'neck' => 'Neck', 'shoulder' => 'Shoulder width',
         'chest' => 'Chest / bust', 'waist' => 'Waist', 'hips' => 'Hips', 'sleeve' => 'Sleeve length',
         'arm' => 'Upper arm', 'wrist' => 'Wrist', 'top_length' => 'Top length',
@@ -58,6 +57,7 @@ class DemoCustomerController extends Controller
             'has_more' => $page * $perPage < $total,
             'fields' => self::MEASUREMENTS,
             'templates' => config('fittings.templates'),
+            'pieces' => config('fittings.pieces'),
         ]);
     }
 
@@ -106,6 +106,7 @@ class DemoCustomerController extends Controller
                 'garment_type' => $row->garment_type, 'unit' => 'cm', 'recorded_unit' => $row->recorded_unit,
                 'values' => json_decode($row->values, true, 512, JSON_THROW_ON_ERROR),
                 'additional_measurements' => json_decode($row->additional_measurements ?? '[]', true, 512, JSON_THROW_ON_ERROR),
+                'pieces' => json_decode($row->pieces ?? '[]', true, 512, JSON_THROW_ON_ERROR),
                 'attachments' => ($attachments->get($row->id) ?? collect())->map(fn (object $file): array => [
                     'id' => $file->id, 'name' => $file->name, 'mime_type' => $file->mime_type, 'size' => $file->size,
                 ])->values(),
@@ -180,6 +181,42 @@ class DemoCustomerController extends Controller
         return response()->json(['id' => $customer->id], $exists ? 200 : 201);
     }
 
+    /**
+     * Checks the added pieces: each once, not clashing with the garment type's own sections, with a name, and with
+     * at least one reading (its own fields, or custom readings grouped under it).
+     *
+     * @param  list<array{key: string, title?: string|null, values: array<string, mixed>}>  $pieces
+     * @param  list<array{label: string, value: mixed, group?: string|null}>  $custom
+     * @return list<array{key: string, title: string, values: array<string, mixed>}>
+     */
+    private function pieces(array $pieces, ?string $garmentType, array $custom): array
+    {
+        $catalogue = config('fittings.pieces');
+        $taken = array_map(fn (array $group): string => Str::lower($group['title']), config("fittings.templates.$garmentType.groups", []));
+        $result = [];
+        foreach ($pieces as $index => $piece) {
+            $title = trim((string) ($piece['key'] === 'custom' ? ($piece['title'] ?? '') : $catalogue[$piece['key']]['title']));
+            if ($title === '') {
+                throw ValidationException::withMessages(["pieces.$index.title" => 'Name the piece you are adding.']);
+            }
+            if (in_array(Str::lower($title), $taken, true)) {
+                throw ValidationException::withMessages(["pieces.$index.title" => "$title is already part of this fitting."]);
+            }
+            $allowed = $piece['key'] === 'custom' ? [] : $catalogue[$piece['key']]['fields'];
+            if (array_diff(array_keys($piece['values']), $allowed)) {
+                throw ValidationException::withMessages(["pieces.$index.values" => "Choose measurements that belong to the $title."]);
+            }
+            $hasCustom = collect($custom)->contains(fn (array $row): bool => Str::lower(trim((string) ($row['group'] ?? ''))) === Str::lower($title));
+            if (! $piece['values'] && ! $hasCustom) {
+                throw ValidationException::withMessages(["pieces.$index.values" => "Enter at least one measurement for the $title."]);
+            }
+            $taken[] = Str::lower($title);
+            $result[] = ['key' => $piece['key'], 'title' => $title, 'values' => $piece['values']];
+        }
+
+        return $result;
+    }
+
     public function measure(Request $request, Customer $customer): JsonResponse
     {
         $this->staffOnly($request);
@@ -190,7 +227,7 @@ class DemoCustomerController extends Controller
                 throw ValidationException::withMessages(['payload' => 'The fitting details could not be read.']);
             }
             abort_unless(is_array($payload), 422, 'Choose valid fitting details.');
-            $request->merge(Arr::only($payload, ['request_id', 'garment_type', 'measured_on', 'unit', 'values', 'additional_measurements', 'notes']));
+            $request->merge(Arr::only($payload, ['request_id', 'garment_type', 'measured_on', 'unit', 'values', 'additional_measurements', 'pieces', 'notes']));
         }
         $data = $request->validate([
             'request_id' => ['required', 'uuid'],
@@ -204,22 +241,41 @@ class DemoCustomerController extends Controller
             'additional_measurements.*.label' => ['required', 'string', 'max:80'],
             'additional_measurements.*.value' => ['required', 'numeric', 'min:0.1', 'max:999', 'decimal:0,2'],
             'additional_measurements.*.group' => ['nullable', 'string', 'max:80'],
+            'pieces' => ['sometimes', 'array', 'list', 'max:6'],
+            'pieces.*' => ['required', 'array:key,title,values'],
+            'pieces.*.key' => ['required', 'string', Rule::in(array_keys(config('fittings.pieces')))],
+            'pieces.*.title' => ['nullable', 'string', 'max:60'],
+            'pieces.*.values' => ['present', 'array:'.implode(',', array_keys(self::MEASUREMENTS))],
+            'pieces.*.values.*' => ['required', 'numeric', 'min:0.1', 'max:999', 'decimal:0,2'],
             'attachments' => ['sometimes', 'array', 'list', 'max:6'],
             'attachments.*' => ['required', 'file', 'mimetypes:image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,video/mp4,video/quicktime,video/webm', 'max:20480'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
         $custom = $data['additional_measurements'] ?? [];
-        if (count($data['values']) + count($custom) === 0) {
+        $pieces = $this->pieces($data['pieces'] ?? [], $data['garment_type'] ?? null, $custom);
+        if (count($data['values']) + count($custom) + count($pieces) === 0) {
             throw ValidationException::withMessages(['values' => 'Enter at least one measurement.']);
         }
+        // Labels must be distinct within each piece; the same reading (e.g. Neck) may appear on a jacket and a shirt.
+        $pieceTitles = array_map(fn (array $piece): string => Str::lower($piece['title']), $pieces);
         $labels = array_map(fn (string $key): string => Str::lower(self::MEASUREMENTS[$key]), array_keys($data['values']));
+        $pieceLabels = [];
+        foreach ($pieces as $piece) {
+            $pieceLabels[Str::lower($piece['title'])] = array_map(fn (string $key): string => Str::lower(self::MEASUREMENTS[$key]), array_keys($piece['values']));
+        }
         foreach ($custom as $index => &$row) {
             $row['label'] = trim($row['label']);
             $label = Str::lower($row['label']);
-            if ($label === '' || in_array($label, $labels, true)) {
+            $group = Str::lower(trim((string) ($row['group'] ?? '')));
+            $taken = in_array($group, $pieceTitles, true) ? $pieceLabels[$group] : $labels;
+            if ($label === '' || in_array($label, $taken, true)) {
                 throw ValidationException::withMessages(["additional_measurements.$index.label" => 'Give each additional measurement a distinct label.']);
             }
-            $labels[] = $label;
+            if (in_array($group, $pieceTitles, true)) {
+                $pieceLabels[$group][] = $label;
+            } else {
+                $labels[] = $label;
+            }
         }
         unset($row);
         $files = $request->file('attachments', []);
@@ -234,9 +290,10 @@ class DemoCustomerController extends Controller
             $values[$key] = $key === 'weight' ? (float) $value : $convert($value);
         }
         $custom = array_map(fn (array $row): array => [...$row, 'value' => $convert($row['value'])], $custom);
+        $pieces = array_map(fn (array $piece): array => [...$piece, 'values' => array_map(fn ($value) => $convert($value), $piece['values'])], $pieces);
         $paths = [];
         try {
-            $id = DB::transaction(function () use ($customer, $data, $values, $custom, $unit, $files, &$paths): int {
+            $id = DB::transaction(function () use ($customer, $data, $values, $custom, $pieces, $unit, $files, &$paths): int {
                 DB::table('customers')->where('id', $customer->id)->lockForUpdate()->first();
                 $existing = DB::table('customer_measurements')->where('request_id', $data['request_id'])->first();
                 if ($existing) {
@@ -249,6 +306,7 @@ class DemoCustomerController extends Controller
                     'measured_on' => $data['measured_on'], 'values' => json_encode($values, JSON_THROW_ON_ERROR),
                     'garment_type' => $data['garment_type'] ?? null, 'recorded_unit' => $unit,
                     'additional_measurements' => json_encode($custom, JSON_THROW_ON_ERROR),
+                    'pieces' => json_encode($pieces, JSON_THROW_ON_ERROR),
                     'notes' => $data['notes'] ?? null, 'created_at' => now(), 'updated_at' => now(),
                 ]);
                 foreach ($files as $file) {
@@ -279,41 +337,9 @@ class DemoCustomerController extends Controller
         $file = DB::table('fitting_attachments')->join('customer_measurements', 'customer_measurements.id', '=', 'fitting_attachments.measurement_id')
             ->where('fitting_attachments.id', $attachment)->where('measurement_id', $measurement)
             ->where('customer_measurements.customer_id', $customer->id)->first(['fitting_attachments.path', 'mime_type']);
-        $disk = Storage::disk('fittings');
-        abort_unless($file && $disk->exists($file->path), 404);
-        $headers = ['Content-Type' => $file->mime_type, 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff', 'Content-Disposition' => 'inline'];
+        abort_unless($file, 404);
 
-        if (config('filesystems.disks.fittings.driver') !== 's3') {
-            return response()->file($disk->path($file->path), $headers);
-        }
-
-        return $this->streamFromBucket($request, $disk->temporaryUrl($file->path, now()->addMinutes(5)), $headers);
-    }
-
-    /**
-     * Relays a file from the private R2 bucket through the API, passing on byte-range requests so videos can seek
-     * (iPhone and iPad Safari require this). Staff never receive a bucket link.
-     *
-     * @param  array<string, string>  $headers
-     */
-    private function streamFromBucket(Request $request, string $signedUrl, array $headers): StreamedResponse
-    {
-        $range = $request->header('Range');
-        $upstream = Http::withHeaders($range ? ['Range' => $range] : [])->withOptions(['stream' => true])->timeout(60)->get($signedUrl);
-        abort_unless(in_array($upstream->status(), [200, 206, 416], true), $upstream->status() === 404 ? 404 : 502);
-        foreach (['Content-Length', 'Content-Range'] as $name) {
-            if ($upstream->header($name) !== '') {
-                $headers[$name] = $upstream->header($name);
-            }
-        }
-        $body = $upstream->toPsrResponse()->getBody();
-
-        return response()->stream(function () use ($body): void {
-            while (! $body->eof()) {
-                echo $body->read(65536);
-                flush();
-            }
-        }, $upstream->status(), $headers + ['Accept-Ranges' => 'bytes']);
+        return StoredMedia::respond($request, $file->path, $file->mime_type);
     }
 
     private function staffOnly(Request $request): void

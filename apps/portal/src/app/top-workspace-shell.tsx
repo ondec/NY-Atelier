@@ -8,10 +8,11 @@ import Notifications, { type PortalNotification } from "./notifications";
 import { financePages, financeHref } from "./finance-workspace";
 import { layoutComparisonLinksEnabled } from "@/lib/dev-links";
 
-type Section = "overview" | "orders" | "appointments" | "customers" | "ready-to-wear" | "atelier" | "alterations" | "inventory" | "collections" | "production-inventory" | "finances" | "team";
+type Section = "overview" | "production" | "orders" | "appointments" | "customers" | "ready-to-wear" | "atelier" | "alterations" | "inventory" | "collections" | "production-inventory" | "finances" | "team";
 type Props = { staff: StaffIdentity; current: Section; finance?: string; inventoryView?: string; notifications: PortalNotification[]; unavailable: boolean; children: React.ReactNode };
 const primary = [
   { id: "overview", label: "Overview", href: "/" },
+  { id: "production", label: "Production", href: "/?section=production" },
   { id: "orders", label: "Orders", href: "/?section=orders" },
   { id: "appointments", label: "Consultations", href: "/?section=appointments" },
   { id: "customers", label: "Customers", href: "/?section=customers" },

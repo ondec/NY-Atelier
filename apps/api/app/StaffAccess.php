@@ -8,21 +8,28 @@ use Illuminate\Http\Request;
 class StaffAccess
 {
     public const PERMISSIONS = [
-        'owner' => ['office', 'studio', 'sales', 'customers', 'consultations', 'orders.read', 'orders.manage', 'alterations.create', 'catalogue.manage', 'finances', 'team'],
-        'manager' => ['office', 'studio', 'sales', 'customers', 'consultations', 'orders.read', 'orders.manage', 'alterations.create', 'catalogue.manage', 'finances'],
+        'owner' => ['office', 'studio', 'sales', 'customers', 'consultations', 'orders.read', 'orders.manage', 'alterations.create', 'catalogue.manage', 'finances', 'team', 'production', 'production.manage'],
+        'manager' => ['office', 'studio', 'sales', 'customers', 'consultations', 'orders.read', 'orders.manage', 'alterations.create', 'catalogue.manage', 'finances', 'production', 'production.manage'],
         'receptionist' => ['office', 'studio', 'sales', 'customers', 'consultations', 'orders.read', 'alterations.create'],
         // Customer records only: names, contact details, measurements and fitting history in NY Studio.
         'records' => ['studio', 'customers'],
+        // Production manager: every custom and alteration order with its fitting and inspiration; moves orders
+        // through their stages and assigns tailors. No prices, payments, sales or customer records.
+        'production' => ['production', 'production.manage'],
+        // Tailor: only the orders assigned to them, read-only.
+        'tailor' => ['production'],
     ];
 
     /** Roles the owner may assign from NY Office → Team. Owners are never created from the web. */
-    public const INVITABLE_ROLES = ['manager', 'receptionist', 'records'];
+    public const INVITABLE_ROLES = ['manager', 'receptionist', 'records', 'production', 'tailor'];
 
-    public const ROLE_LABELS = ['owner' => 'Owner', 'manager' => 'Manager', 'receptionist' => 'Receptionist', 'records' => 'Customer records'];
+    public const ROLE_LABELS = ['owner' => 'Owner', 'manager' => 'Manager', 'receptionist' => 'Receptionist', 'records' => 'Customer records', 'production' => 'Production manager', 'tailor' => 'Tailor'];
 
     public static function homeHref(string $role): string
     {
-        return in_array('office', self::PERMISSIONS[$role] ?? [], true) ? '/office/'.$role : '/showroom?view=fittings';
+        $permissions = self::PERMISSIONS[$role] ?? [];
+
+        return in_array('office', $permissions, true) ? '/office/'.$role : (in_array('production', $permissions, true) ? '/production' : '/showroom?view=fittings');
     }
 
     public static function allows(User $user, string $permission): bool

@@ -12,7 +12,11 @@ use App\Http\Controllers\DemoStaffOrderController;
 use App\Http\Controllers\DemoStudioSaleController;
 use App\Http\Controllers\DemoTeamController;
 use App\Http\Controllers\FinanceOverviewController;
+use App\Http\Controllers\FrontDeskController;
+use App\Http\Controllers\OrderAttachmentController;
+use App\Http\Controllers\OrderProductionController;
 use App\Http\Controllers\OwnerOverviewController;
+use App\Http\Controllers\ProductionController;
 use App\Http\Controllers\PublicConsultationController;
 use App\Http\Controllers\ShopCatalogueController;
 use App\Http\Controllers\SizeChartController;
@@ -32,6 +36,7 @@ $listOrders = function (Request $request, OrderWorkflow $workflow) {
     $demoId = Customer::query()->where('name', config('demo.customer_name'))->oldest('id')->value('id');
     $orders = Order::query()
         ->when(! $staff, fn ($query) => $query->where('customer_id', $demoId))
+        ->when($staff && $request->filled('customer'), fn ($query) => $query->where('customer_id', $request->integer('customer')))
         ->with(['customer', 'items', 'events'])
         ->orderByRaw('completed_at IS NOT NULL')
         ->orderBy('reference')
@@ -99,6 +104,21 @@ Route::prefix('demo/staff/customers')->middleware(['auth:sanctum', 'can:staff.cu
         Route::post('/{customer}/measurements', [DemoCustomerController::class, 'measure'])->whereNumber('customer');
     });
 });
+// NY Production (production managers and tailors) has no NY Office access; order inspiration is shared by
+// Office, Studio and Production, and its controller decides who may view or change each order's files.
+Route::prefix('demo/staff')->middleware('auth:sanctum')->group(function () {
+    Route::post('/orders/{reference}/attachments', [OrderAttachmentController::class, 'store'])->middleware('throttle:30,1');
+    Route::get('/orders/{reference}/attachments/{attachment}', [OrderAttachmentController::class, 'show'])->whereUuid('attachment');
+    Route::delete('/orders/{reference}/attachments/{attachment}', [OrderAttachmentController::class, 'destroy'])->whereUuid('attachment')->middleware('throttle:30,1');
+    Route::prefix('production')->middleware('can:staff.production')->group(function () {
+        Route::get('/', [ProductionController::class, 'index']);
+        Route::post('/seen', [ProductionController::class, 'seen'])->middleware('throttle:60,1');
+        Route::get('/{reference}', [ProductionController::class, 'show']);
+        Route::patch('/{reference}/tailor', [ProductionController::class, 'assign'])->middleware(['can:staff.production.manage', 'throttle:60,1']);
+        Route::patch('/{reference}/workflow', [ProductionController::class, 'workflow'])->middleware(['can:staff.production.manage', 'throttle:60,1']);
+        Route::post('/{reference}/return', [ProductionController::class, 'sendBack'])->middleware(['can:staff.production.manage', 'throttle:30,1']);
+    });
+});
 Route::prefix('demo/staff')->middleware(['auth:sanctum', 'can:staff.office'])->group(function () use ($listOrders) {
     Route::get('/overview', OwnerOverviewController::class)->middleware('can:staff.owner-overview');
     Route::get('/finances/overview', FinanceOverviewController::class)->middleware('can:staff.finances');
@@ -106,6 +126,11 @@ Route::prefix('demo/staff')->middleware(['auth:sanctum', 'can:staff.office'])->g
     Route::get('/orders/options', [DemoStaffOrderController::class, 'options'])->middleware('can:staff.orders.read');
     Route::get('/orders/{reference}', [DemoOrderWorkflowController::class, 'show'])->middleware('can:staff.orders.read');
     Route::patch('/orders/{reference}/workflow', [DemoOrderWorkflowController::class, 'update'])->middleware(['can:staff.orders.manage', 'throttle:60,1']);
+    Route::patch('/orders/{reference}/brief', [OrderProductionController::class, 'brief'])->middleware(['can:staff.orders.read', 'throttle:60,1']);
+    Route::post('/orders/{reference}/send-to-production', [OrderProductionController::class, 'send'])->middleware(['can:staff.orders.read', 'throttle:30,1']);
+    Route::post('/orders/{reference}/needs-alteration', [FrontDeskController::class, 'needsAlteration'])->middleware(['can:staff.alterations.create', 'throttle:30,1']);
+    Route::get('/front-desk/alerts', [FrontDeskController::class, 'alerts'])->middleware('can:staff.orders.read');
+    Route::post('/front-desk/seen', [FrontDeskController::class, 'seen'])->middleware(['can:staff.orders.read', 'throttle:60,1']);
     Route::post('/orders', [DemoStaffOrderController::class, 'store'])->middleware('throttle:30,1');
     Route::get('/consultations', [DemoConsultationController::class, 'index'])->middleware('can:staff.consultations');
     Route::put('/size-charts', [SizeChartController::class, 'update'])->middleware(['can:staff.catalogue.manage', 'throttle:60,1']);

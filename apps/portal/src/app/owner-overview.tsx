@@ -15,7 +15,7 @@ const services = ['Ready-to-Wear', 'Custom', 'Alterations'] as const;
 const serviceLabel = (service: string) => service === 'Custom' ? 'Bespoke' : service;
 const shiftDay = (day: string, days: number) => {const date = new Date(`${day}T12:00:00Z`); date.setUTCDate(date.getUTCDate() + days); return date.toISOString().slice(0, 10);};
 const shortDate = (day: string) => new Intl.DateTimeFormat('en-GH', {day: 'numeric', month: 'short', timeZone: 'Africa/Accra'}).format(new Date(`${day}T12:00:00Z`));
-const isReady = (order: DemoOrder) => order.workflow && !order.workflow.legacy ? ['ready_collection', 'ready_delivery'].includes(order.workflow.current) : ['ready for collection', 'ready for delivery', 'ready for pickup', 'ready for handover'].includes(order.status.trim().toLowerCase());
+const isReady = (order: DemoOrder) => order.workflow && !order.workflow.legacy ? (order.workflow.current === 'ready_collection' || (order.workflow.current === 'packaged' && order.fulfilment_method === 'Delivery')) : ['ready for collection', 'ready for delivery', 'ready for pickup', 'ready for handover'].includes(order.status.trim().toLowerCase());
 type Desk = 'active' | 'due' | 'overdue' | 'ready';
 
 function SalesTrend({finance}: {finance: OwnerFinances}) {

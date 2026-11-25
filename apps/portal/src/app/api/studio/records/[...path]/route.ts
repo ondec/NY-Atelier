@@ -4,6 +4,9 @@ import {fittingRequestBody} from '@/lib/fitting-request';
 import { customerListQuery } from '@/lib/customer-search';
 export const runtime = "nodejs";
 type Context = { params: Promise<{ path: string[] }> };
+/** NY Studio works with custom and alteration orders; Ready-to-Wear orders stay in NY Office. */
+const studioOrderCategories: unknown[] = ["Custom", "Alterations"];
+function orderListQuery(params: URLSearchParams) { const customer = params.get("customer"); return customer && /^\d+$/.test(customer) ? `?customer=${customer}` : ""; }
 export async function OPTIONS(request: Request) { return new Response(null, { status: 204, headers: studioCors(request) }); }
 async function forward(request: Request, context: Context) {
   const headers = studioCors(request);
@@ -12,26 +15,26 @@ async function forward(request: Request, context: Context) {
   const { path } = await context.params;
   const route = path.join("/");
   const method = request.method;
-  const allowed = /^(customers(?:\/\d+(?:\/measurements)?)?|orders(?:\/options|\/[A-Z0-9-]+(?:\/workflow)?)?)$/.test(route);
+  const allowed = /^(customers(?:\/\d+(?:\/measurements)?)?|orders(?:\/options|\/[A-Z0-9-]+(?:\/workflow|\/brief|\/send-to-production)?)?|front-desk\/(?:alerts|seen))$/.test(route);
   if (!allowed || !["GET", "POST", "PATCH"].includes(method)) return Response.json({ message: "Unavailable in NY Studio." }, { status: 404, headers });
   try {
     const base = process.env.API_BASE_URL ?? "http://127.0.0.1:8000";
-    const target = `${base}/api/demo/staff/${route === 'orders' && method === 'POST' ? 'studio/orders' : route}${route === 'customers' && method === 'GET' ? customerListQuery(new URL(request.url).searchParams) : ''}`;
+    const target = `${base}/api/demo/staff/${route === 'orders' && method === 'POST' ? 'studio/orders' : route}${route === 'customers' && method === 'GET' ? customerListQuery(new URL(request.url).searchParams) : ''}${route === 'orders' && method === 'GET' ? orderListQuery(new URL(request.url).searchParams) : ''}`;
     const multipart = method === 'POST' && /^customers\/\d+\/measurements$/.test(route) && request.headers.get('content-type')?.startsWith('multipart/form-data;');
     const upload = multipart ? await fittingRequestBody(request) : undefined;
     let body;
     if (method !== "GET" && !multipart) {
       body = await studioJson(request);
-      if (route === "orders" && (method !== "POST" || body.category !== "Alterations")) return Response.json({ message: "Only alteration orders can be issued here." }, { status: 403, headers });
+      if (route === "orders" && (method !== "POST" || !studioOrderCategories.includes(body.category))) return Response.json({ message: "Only custom and alteration orders can be issued here." }, { status: 403, headers });
     }
-    if (/^orders\/[A-Z0-9-]+(?:\/workflow)?$/.test(route)) {
+    if (/^orders\/[A-Z0-9-]+(?:\/workflow|\/brief|\/send-to-production)?$/.test(route)) {
       const check = await fetch(`${base}/api/demo/staff/orders/${path[1]}`, { cache: "no-store", headers: await staffBackendHeaders(request) });
       const current = await check.json();
-      if (!check.ok || current.order?.category !== "Alterations") return Response.json({ message: "Choose an alteration order." }, { status: 404, headers });
+      if (!check.ok || !studioOrderCategories.includes(current.order?.category)) return Response.json({ message: "Choose a custom or alteration order." }, { status: 404, headers });
     }
     const response = await fetch(target, { method, cache: "no-store", headers: {...await staffBackendHeaders(request), ...(multipart ? {'Content-Type': request.headers.get('content-type')!} : {})}, body: upload ?? (body ? JSON.stringify(body) : undefined), signal: AbortSignal.timeout(multipart ? 120000 : 15000) });
     const payload = await response.json();
-    if (route === "orders" && method === "GET" && Array.isArray(payload.orders)) payload.orders = payload.orders.filter((row: { category: string }) => row.category === "Alterations");
+    if (route === "orders" && method === "GET" && Array.isArray(payload.orders)) payload.orders = payload.orders.filter((row: { category: string }) => studioOrderCategories.includes(row.category));
     return Response.json(payload, { status: response.status, headers });
   } catch { return Response.json({ message: "Studio records are unavailable. Check the connection and try again." }, { status: 503, headers }); }
 }

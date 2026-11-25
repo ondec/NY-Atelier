@@ -57,6 +57,33 @@ class FittingDetailsTest extends TestCase
         $this->postJson("$url/measurements", $this->input(['values' => []]))->assertUnprocessable()->assertJsonValidationErrors('values');
     }
 
+    public function test_added_pieces_keep_their_own_readings_once_each(): void
+    {
+        $customer = $this->customer();
+        $url = "/api/demo/staff/customers/$customer";
+        $this->postJson("$url/measurements", $this->input([
+            'garment_type' => 'suit', 'values' => ['neck' => 15, 'chest' => 40],
+            'pieces' => [['key' => 'shirt-long', 'title' => null, 'values' => ['neck' => 15.5, 'sleeve' => 25]], ['key' => 'custom', 'title' => ' Bow tie ', 'values' => []]],
+            'additional_measurements' => [['label' => 'Neck', 'value' => 16, 'group' => 'Bow tie'], ['label' => 'Collar point', 'value' => 3, 'group' => 'Shirt']],
+        ]))->assertCreated();
+        $this->getJson($url)->assertOk()
+            ->assertJsonPath('measurements.0.values.neck', 38.1)
+            ->assertJsonPath('measurements.0.pieces.0.title', 'Shirt')->assertJsonPath('measurements.0.pieces.0.values.neck', 39.37)
+            ->assertJsonPath('measurements.0.pieces.1.title', 'Bow tie')->assertJsonPath('measurements.0.pieces.1.values', [])
+            ->assertJsonPath('pieces', null);
+
+        $suit = ['garment_type' => 'suit', 'values' => ['chest' => 40]];
+        // Once per fitting, never a section the garment already has, always named, and never empty.
+        $this->postJson("$url/measurements", $this->input([...$suit, 'pieces' => [['key' => 'shirt-long', 'values' => ['neck' => 15]], ['key' => 'custom', 'title' => 'shirt', 'values' => []]],
+            'additional_measurements' => [['label' => 'Cuff', 'value' => 1, 'group' => 'shirt']]]))->assertUnprocessable()->assertJsonValidationErrors('pieces.1.title');
+        $this->postJson("$url/measurements", $this->input([...$suit, 'pieces' => [['key' => 'jacket', 'values' => ['neck' => 15]]]]))->assertUnprocessable()->assertJsonValidationErrors('pieces.0.title');
+        $this->postJson("$url/measurements", $this->input([...$suit, 'pieces' => [['key' => 'custom', 'title' => '', 'values' => []]]]))->assertUnprocessable()->assertJsonValidationErrors('pieces.0.title');
+        $this->postJson("$url/measurements", $this->input([...$suit, 'pieces' => [['key' => 'waistcoat', 'values' => []]]]))->assertUnprocessable()->assertJsonValidationErrors('pieces.0.values');
+        $this->postJson("$url/measurements", $this->input([...$suit, 'pieces' => [['key' => 'waistcoat', 'values' => ['inseam' => 30]]]]))->assertUnprocessable()->assertJsonValidationErrors('pieces.0.values');
+        $this->postJson("$url/measurements", $this->input([...$suit, 'pieces' => [['key' => 'shirt-long', 'values' => ['neck' => 15]]],
+            'additional_measurements' => [['label' => 'Neck', 'value' => 1, 'group' => 'Shirt']]]))->assertUnprocessable()->assertJsonValidationErrors('additional_measurements.0.label');
+    }
+
     public function test_photo_and_video_uploads_are_private_persistent_and_not_duplicated_on_retry(): void
     {
         Storage::fake('fittings');

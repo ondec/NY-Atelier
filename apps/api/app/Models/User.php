@@ -28,6 +28,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'production_seen_at' => 'datetime',
+            'front_desk_seen_at' => 'datetime',
             'staff_active' => 'boolean',
             'staff_deactivated_at' => 'datetime',
         ];

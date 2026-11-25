@@ -8,8 +8,10 @@ import {fittingMediaUrl, type FittingAttachment} from '@/lib/fitting-measurement
 import {useStudioDialogHistory} from './showroom/use-studio-dialog-history';
 import './fitting-media-viewer.css';
 
-export default function FittingMediaViewer({customerId, fittingId, attachments, start, onClose}: {
+export default function FittingMediaViewer({customerId, fittingId, attachments, start, onClose, urlFor}: {
   customerId: number; fittingId: number; attachments: FittingAttachment[];
+  /** Where each file is served from; defaults to the fitting's own media. */
+  urlFor?: (attachmentId: string) => string;
   start: number; onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -51,8 +53,8 @@ export default function FittingMediaViewer({customerId, fittingId, attachments, 
       <div className="fitting-media-viewer-viewport" ref={viewport} role="region" aria-roledescription="carousel" aria-label="Inspiration photos and videos">
         <div className="fitting-media-viewer-track">{attachments.map((file, position) => <div className="fitting-media-viewer-slide" key={file.id} role="group" aria-roledescription="slide" aria-label={`${position + 1} of ${attachments.length}`} inert={position !== index}>
           {file.mime_type.startsWith('video/')
-            ? <video controls playsInline preload="metadata" src={fittingMediaUrl(customerId, fittingId, file.id)} aria-label={file.name}/>
-            : <Image unoptimized fill sizes="100vw" draggable={false} src={fittingMediaUrl(customerId, fittingId, file.id)} alt={file.name}/>}
+            ? <video controls playsInline preload="metadata" src={(urlFor ? urlFor(file.id) : fittingMediaUrl(customerId, fittingId, file.id))} aria-label={file.name}/>
+            : <Image unoptimized fill sizes="100vw" draggable={false} src={(urlFor ? urlFor(file.id) : fittingMediaUrl(customerId, fittingId, file.id))} alt={file.name}/>}
         </div>)}</div>
       </div>
       <footer className="fitting-media-viewer-footer">

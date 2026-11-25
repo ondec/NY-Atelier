@@ -7,7 +7,7 @@ const env={NY_OFFICE_ORIGIN:'https://office.thenyatelier.com',NY_STUDIO_ORIGIN:'
 const headers=host=>new Headers({host,'x-forwarded-proto':'https'});
 test('local previews remain host-only and do not redirect to the future domains',()=>{
   for(const config of [{},env]){
-    assert.deepEqual(workspaceLinks(headers('localhost:3000'),'manager',config),{officeHref:'/office/manager',studioHref:'/showroom'});
+    assert.deepEqual(workspaceLinks(headers('localhost:3000'),'manager',config),{officeHref:'/office/manager',studioHref:'/showroom',productionHref:'/production'});
     const cookie=staffCookieSettings(new Headers({host:'localhost:3000'}),'http://localhost:3000/',config);
     assert.equal(cookie.name,'ny_staff');assert.equal(cookie.options.domain,undefined);assert.equal(cookie.options.secure,false);
   }
@@ -21,7 +21,7 @@ test('the two configured subdomains share one protected staff cookie',()=>{
 });
 test('entry and workspace switches keep the staff role and query on the correct host',()=>{
   for(const role of ['owner','manager','receptionist']){
-    assert.deepEqual(workspaceLinks(headers('studio.thenyatelier.com'),role,env),{officeHref:`https://office.thenyatelier.com/office/${role}`,studioHref:'https://studio.thenyatelier.com/showroom'});
+    assert.deepEqual(workspaceLinks(headers('studio.thenyatelier.com'),role,env),{officeHref:`https://office.thenyatelier.com/office/${role}`,studioHref:'https://studio.thenyatelier.com/showroom',productionHref:'https://office.thenyatelier.com/production'});
   }
   assert.equal(workspaceForHost(headers('studio.thenyatelier.com'),env),'studio');
   assert.equal(workspaceForHost(headers('office.thenyatelier.com'),env),'office');
@@ -55,7 +55,7 @@ test('the shared catalogue syncs from local previews and the configured Office h
   assert.equal(catalogueSyncAllowed(new Headers({host:'127.0.0.1:3100','x-forwarded-host':'evil.example'}),env),false);
 });
 test('the customer-records role lands in Studio fittings and never receives an Office link',()=>{
-  assert.deepEqual(workspaceLinks(headers('localhost:3000'),'records',{}),{officeHref:'/showroom?view=fittings',studioHref:'/showroom?view=fittings'});
-  assert.deepEqual(workspaceLinks(headers('office.thenyatelier.com'),'records',env),{officeHref:'https://studio.thenyatelier.com/showroom?view=fittings',studioHref:'https://studio.thenyatelier.com/showroom?view=fittings'});
+  assert.deepEqual(workspaceLinks(headers('localhost:3000'),'records',{}),{officeHref:'/showroom?view=fittings',studioHref:'/showroom?view=fittings',productionHref:'/production'});
+  assert.deepEqual(workspaceLinks(headers('office.thenyatelier.com'),'records',env),{officeHref:'https://studio.thenyatelier.com/showroom?view=fittings',studioHref:'https://studio.thenyatelier.com/showroom?view=fittings',productionHref:'https://office.thenyatelier.com/production'});
   assert.equal(workspaceNavigationHref('https://studio.thenyatelier.com/showroom?view=fittings',true),'/showroom?view=fittings');
 });

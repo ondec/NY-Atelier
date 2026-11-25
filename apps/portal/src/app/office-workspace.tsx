@@ -26,14 +26,15 @@ import { isCancelledStatus, isClosedStatus } from "@/lib/status";
 import CreateStaffOrder from "./create-staff-order";
 import { parseOrderType } from "@/lib/order-desk";
 import Consultations from "./consultations";
+import ProductionWorkspace from "./production-workspace";
 import CollectionsWorkspace from "./collections-workspace";
 
 export const dynamic = "force-dynamic";
 
-type Section = "overview" | "orders" | "appointments" | "customers" | "ready-to-wear" | "atelier" | "alterations" | "inventory" | "collections" | "production-inventory" | "finances" | "team";
+type Section = "overview" | "production" | "orders" | "appointments" | "customers" | "ready-to-wear" | "atelier" | "alterations" | "inventory" | "collections" | "production-inventory" | "finances" | "team";
 type NavItem = { id: Section; label: string; icon: NyIconComponent };
 const nav: { group: string; items: NavItem[] }[] = [
-  { group: "Workspace", items: [{ id: "overview", label: "Overview", icon: Grid2X2 }, { id: "orders", label: "All orders", icon: ClipboardList }, { id: "appointments", label: "Consultations", icon: CalendarDays }, { id: "customers", label: "Customers", icon: Users }] },
+  { group: "Workspace", items: [{ id: "overview", label: "Overview", icon: Grid2X2 }, { id: "production", label: "Production", icon: Scissors }, { id: "orders", label: "All orders", icon: ClipboardList }, { id: "appointments", label: "Consultations", icon: CalendarDays }, { id: "customers", label: "Customers", icon: Users }] },
   { group: "Services", items: [{ id: "ready-to-wear", label: "Ready-to-wear", icon: Shirt }, { id: "atelier", label: "Atelier · Bespoke", icon: Sparkles }] },
   { group: "Business", items: [{ id: "production-inventory", label: "Production inventory", icon: Package }, { id: "finances", label: "Finances", icon: Wallet }, { id: "team", label: "Team", icon: UserRoundCog }] },
 ];
@@ -137,14 +138,14 @@ export default async function OfficeWorkspace({ searchParams }: { searchParams: 
   if (!can(staff,'office')) return <main className="staff-access-denied"><h1>NY Office access restricted.</h1><p>{officeAccessDeniedMessage}</p>{can(staff,'studio')&&<WorkspaceLink href={staff.studioHref??'/showroom'}>Return to NY Studio</WorkspaceLink>}</main>;
   const query = await searchParams;
   const requested = query.section;
-  const current: Section = typeof requested === "string" && (requested === "inventory" || requested === "collections" || allItems.some((item) => item.id === requested)) ? requested as Section : "overview";
+  const current: Section = typeof requested === "string" && (requested === "inventory" || requested === "collections" || allItems.some((item) => item.id === requested)) ? requested as Section : sectionAllowed(staff, "overview") ? "overview" : "production";
   const financeRoute = current === "finances" ? resolveFinancePage(query.finance, query.bill) : {};
   const currentBill = financeRoute.id;
   if (!sectionAllowed(staff,current,currentBill)) return <div className="staff-access-denied"><h1>This area isn’t available for your role.</h1><p>You are signed in as {roleLabels[staff.role]}.</p><Link prefetch={false} href={staff.officeHref}>Return to your NY Office</Link></div>;
   const inventoryView: InventoryView | undefined = current === "inventory" ? query.view === "products" || query.view === "activity" ? query.view : "overview" : undefined;
   let orders: DemoOrder[] = [];
   let unavailable = false;
-  try { orders = await getDemoOrders(true); } catch { unavailable = true; }
+  if (can(staff, "orders.read")) { try { orders = await getDemoOrders(true); } catch { unavailable = true; } }
   const today = new Date().toISOString().slice(0, 10);
   const soon = new Date(`${today}T00:00:00Z`);
   soon.setUTCDate(soon.getUTCDate() + 7);
@@ -161,7 +162,7 @@ export default async function OfficeWorkspace({ searchParams }: { searchParams: 
     (current === "atelier" && order.category === "Custom") ||
     (current === "alterations" && order.category === "Alterations")
   )) : undefined;
-  const workspaceContent = orderReference ? <OrderDetails order={selectedOrder} reference={orderReference} section={current} unavailable={unavailable} /> : current === "overview" ? <Overview staff={staff} orders={orders} unavailable={unavailable} />  : currentBill === "salaries" ? <SalaryWorkspace selectedId={typeof query.salary === "string" ? query.salary : undefined} /> : currentBill ? <FinanceWorkspace id={currentBill} initialType={financeRoute.type} /> : current === "finances" ? <FinanceOverview canViewReports={staff.role === "owner"} /> : current === "team" ? <TeamWorkspace /> : current === "appointments" ? <Consultations selectedId={typeof query.consultation === "string" ? query.consultation : undefined} /> : current === "customers" ? <CustomersWorkspace key={recordId(query.customer) ?? "directory"} customerId={recordId(query.customer)} fittingId={recordId(query.fitting)} /> : current === "collections" ? <CollectionsWorkspace /> : inventoryView ? <ReadyToWearInventory key={typeof query.product === "string" ? query.product : "inventory"} view={inventoryView} canImport={can(staff, "team")} productId={typeof query.product === "string" ? query.product : undefined} /> : planned[current] ? <PlannedWorkspace section={current} /> : <OrdersWorkspace staff={staff} section={current} initialType={current === "orders" ? parseOrderType(query.type) : ""} orders={orders} unavailable={unavailable} consultationId={typeof query.consultation === "string" ? query.consultation : undefined} />;
+  const workspaceContent = current === "production" ? <ProductionWorkspace reference={typeof query.order === "string" ? query.order : undefined} /> : orderReference ? <OrderDetails order={selectedOrder} reference={orderReference} section={current} unavailable={unavailable} /> : current === "overview" ? <Overview staff={staff} orders={orders} unavailable={unavailable} />  : currentBill === "salaries" ? <SalaryWorkspace selectedId={typeof query.salary === "string" ? query.salary : undefined} /> : currentBill ? <FinanceWorkspace id={currentBill} initialType={financeRoute.type} /> : current === "finances" ? <FinanceOverview canViewReports={staff.role === "owner"} /> : current === "team" ? <TeamWorkspace /> : current === "appointments" ? <Consultations selectedId={typeof query.consultation === "string" ? query.consultation : undefined} /> : current === "customers" ? <CustomersWorkspace key={recordId(query.customer) ?? "directory"} customerId={recordId(query.customer)} fittingId={recordId(query.fitting)} /> : current === "collections" ? <CollectionsWorkspace /> : inventoryView ? <ReadyToWearInventory key={typeof query.product === "string" ? query.product : "inventory"} view={inventoryView} canImport={can(staff, "team")} productId={typeof query.product === "string" ? query.product : undefined} /> : planned[current] ? <PlannedWorkspace section={current} /> : <OrdersWorkspace staff={staff} section={current} initialType={current === "orders" ? parseOrderType(query.type) : ""} orders={orders} unavailable={unavailable} consultationId={typeof query.consultation === "string" ? query.consultation : undefined} />;
   if (process.env.NY_WORKSPACE_LAYOUT === "top" && staff.role === "owner") return <TopWorkspaceShell staff={staff} current={current} finance={currentBill} inventoryView={inventoryView} notifications={notifications} unavailable={unavailable}>{workspaceContent}</TopWorkspaceShell>;
   return <div className="portal-shell"><Sidebar staff={staff} current={current} currentBill={currentBill} inventoryView={inventoryView} /><div className="portal-main"><header className="topbar"><div className="breadcrumb"><span>NY Atelier</span><ChevronRight size={14} /><strong>{currentBill ? financePages.find((page) => page.id === currentBill)?.title : current === "collections" ? "Collections" : inventoryView ? inventoryView === "overview" ? "Garment inventory" : inventoryView === "products" ? "Products & variants" : "Stock activity" : allItems.find((item) => item.id === current)?.label}</strong></div><div className="topbar-profile"><Notifications items={notifications} unavailable={unavailable} /><StaffAccountMenu staff={staff}/></div></header><main className="workspace" key={JSON.stringify(query)} tabIndex={0}>{workspaceContent}</main></div></div>;
 }

@@ -42,18 +42,64 @@ class OrderSourceTest extends TestCase
         $this->assertDatabaseCount('orders', 1);
     }
 
-    public function test_studio_creation_requires_sign_in_and_rejects_custom_orders_with_403(): void
+    public function test_studio_custom_orders_require_order_management(): void
     {
         config(['demo.enabled' => true]);
         $url = '/api/demo/staff/studio/orders';
         $this->postJson($url, [])->assertUnauthorized();
-        $this->signInStaff();
         $customer = Customer::query()->create(['name' => 'Source test customer']);
+        $payload = ['category' => 'Custom', 'service_offering' => 'bespoke', 'customer_id' => $customer->id, 'items' => [['garment_name' => 'Suit']]];
 
-        $this->postJson($url, ['request_id' => (string) Str::uuid(), 'category' => 'Custom', 'service_offering' => 'bespoke', 'customer_id' => $customer->id,
-            'items' => [['garment_name' => 'Suit']]])->assertForbidden();
-
+        $this->signInStaff('receptionist');
+        $this->postJson($url, ['request_id' => (string) Str::uuid(), ...$payload])->assertForbidden();
         $this->assertDatabaseCount('orders', 0);
+
+        $this->signInStaff('manager');
+        $reference = $this->postJson($url, ['request_id' => (string) Str::uuid(), ...$payload])->assertCreated()->json('reference');
+
+        $this->assertStringStartsWith('NY-CUS-', $reference);
+        $this->assertDatabaseHas('orders', ['reference' => $reference, 'category' => 'Custom', 'source' => 'studio', 'customer_id' => $customer->id]);
+    }
+
+    public function test_delivery_details_are_saved_with_a_delivery_order(): void
+    {
+        config(['demo.enabled' => true]);
+        $this->signInStaff('manager');
+        $customer = Customer::query()->create(['name' => 'Delivery customer']);
+        $payload = ['category' => 'Custom', 'service_offering' => 'bespoke', 'customer_id' => $customer->id, 'items' => [['garment_name' => 'Suit']]];
+        $delivery = ['recipient_name' => 'Ama Mensah', 'phone' => '+233 24 000 0000', 'address' => '12 Oxford Street', 'area' => 'Osu, Accra',
+            'gps_code' => 'ga1234567', 'directions' => 'Blue gate opposite the pharmacy', 'latitude' => 5.556, 'longitude' => -0.1823];
+
+        $reference = $this->postJson('/api/demo/staff/studio/orders', ['request_id' => (string) Str::uuid(), ...$payload, 'fulfilment_method' => 'Delivery', 'delivery' => $delivery])
+            ->assertCreated()->json('reference');
+
+        $this->getJson('/api/demo/staff/orders/'.$reference)->assertOk()
+            ->assertJsonPath('order.delivery.address', '12 Oxford Street')
+            ->assertJsonPath('order.delivery.gps_code', 'GA-123-4567')
+            ->assertJsonPath('order.delivery.latitude', 5.556)
+            ->assertJsonPath('order.delivery.longitude', -0.1823);
+
+        $this->postJson('/api/demo/staff/studio/orders', ['request_id' => (string) Str::uuid(), ...$payload, 'fulfilment_method' => 'Collection', 'delivery' => $delivery])
+            ->assertUnprocessable()->assertJsonValidationErrors('delivery');
+        $this->postJson('/api/demo/staff/studio/orders', ['request_id' => (string) Str::uuid(), ...$payload, 'fulfilment_method' => 'Delivery', 'delivery' => [...$delivery, 'address' => '']])
+            ->assertUnprocessable()->assertJsonValidationErrors('delivery.address');
+        $this->postJson('/api/demo/staff/studio/orders', ['request_id' => (string) Str::uuid(), ...$payload, 'fulfilment_method' => 'Delivery', 'delivery' => [...$delivery, 'longitude' => null]])
+            ->assertUnprocessable()->assertJsonValidationErrors('delivery.longitude');
+        $this->assertDatabaseCount('orders', 1);
+    }
+
+    public function test_staff_order_list_can_be_limited_to_one_customer(): void
+    {
+        config(['demo.enabled' => true]);
+        $this->signInStaff('receptionist');
+        $first = Customer::query()->create(['name' => 'First customer']);
+        $second = Customer::query()->create(['name' => 'Second customer']);
+        Order::query()->create(['customer_id' => $first->id, 'reference' => 'NY-CUS-FIRST', 'category' => 'Custom', 'status' => 'Order received']);
+        Order::query()->create(['customer_id' => $second->id, 'reference' => 'NY-CUS-SECOND', 'category' => 'Custom', 'status' => 'Order received']);
+
+        $this->getJson('/api/demo/staff/orders?customer='.$first->id)->assertOk()
+            ->assertJsonCount(1, 'orders')->assertJsonPath('orders.0.reference', 'NY-CUS-FIRST');
+        $this->getJson('/api/demo/staff/orders')->assertOk()->assertJsonCount(2, 'orders');
     }
 
     public function test_read_only_staff_can_see_each_saved_source_in_the_shared_list_and_details(): void

@@ -15,6 +15,8 @@ export const roleSummaries: Partial<Record<StaffRole, string>> = {
   records: "Customer records only: names, contact details, measurements and fitting history in NY Studio. No sales, finances, orders or NY Office.",
   receptionist: "NY Office and NY Studio: customers, fittings, appointments, Ready-to-Wear sales and alterations. No finances or production management.",
   manager: "NY Office and NY Studio, including orders, production, catalogue and finances. No team management.",
+  production: "NY Office → Production: every custom and alteration order with its fitting, inspiration and specifications. Moves orders through stages and assigns tailors. No prices, payments, sales or customer records.",
+  tailor: "NY Office → Production: only the orders assigned to them, with measurements, inspiration and specifications. View only.",
 };
 
 async function teamJson<T>(url: string, init?: RequestInit): Promise<T> {

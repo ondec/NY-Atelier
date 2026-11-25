@@ -9,6 +9,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { InventoryDrawer } from "./catalogue-editor";
+import DeliveryMap, { type MapPin } from "./delivery-map";
+import { PendingMedia, uploadOrderMedia } from "./order-inspiration";
 import { customerApi, useCustomerSearch, type Profile } from "./customers-workspace";
 import { orderDate, orderHref } from "./order-table";
 
@@ -20,19 +22,21 @@ type Options = {
   consultations: { id: string; purpose: string; confirmedDate: string; confirmedTime: string }[];
 };
 
-type CreationContext = { initialGarments?: string[]; garmentContext?: string; requireNotes?: boolean };
-type CreateStaffOrderProps = CreationContext & { category: Category; consultationId?: string; preferredCustomerId?: number; onCreated?: (reference: string) => void; buttonClassName?: string; disabled?: boolean };
-export default function CreateStaffOrder({ category, consultationId, preferredCustomerId, onCreated, buttonClassName = "create-bill-button", disabled, ...context }: CreateStaffOrderProps) {
-  const [open, setOpen] = useState(Boolean(consultationId));
+type CreationContext = { initialGarments?: string[]; garmentContext?: string; requireNotes?: boolean; preferredMeasurementId?: number; buttonLabel?: string };
+type CreateStaffOrderProps = CreationContext & { category: Category; consultationId?: string; preferredCustomerId?: number; onCreated?: (reference: string) => void; buttonClassName?: string; disabled?: boolean;
+  /** Open the form straight away without showing the button (e.g. right after saving a fitting). */
+  startOpen?: boolean; onClosed?: () => void };
+export default function CreateStaffOrder({ category, consultationId, preferredCustomerId, onCreated, buttonClassName = "create-bill-button", disabled, buttonLabel, startOpen = false, onClosed, ...context }: CreateStaffOrderProps) {
+  const [open, setOpen] = useState(Boolean(consultationId) || startOpen);
   const label = category === "Custom" ? "Create custom order" : "Create alteration order";
 
   return <>
-    <button className={buttonClassName} type="button" disabled={disabled} onClick={() => setOpen(true)}>{category === "Alterations" ? <Scissors size={16} /> : <Plus size={16} />} {label}</button>
-    {open && <StaffOrderForm {...context} category={category} consultationId={consultationId} preferredCustomerId={preferredCustomerId} onCreated={onCreated} label={label} onClose={() => setOpen(false)} />}
+    {!startOpen && <button className={buttonClassName} type="button" disabled={disabled} onClick={() => setOpen(true)}>{category === "Alterations" ? <Scissors size={16} /> : <Plus size={16} />} {buttonLabel ?? label}</button>}
+    {open && <StaffOrderForm {...context} category={category} consultationId={consultationId} preferredCustomerId={preferredCustomerId} onCreated={onCreated} label={label} onClose={() => { setOpen(false); onClosed?.(); }} />}
   </>;
 }
 
-function StaffOrderForm({ category, consultationId, preferredCustomerId, onCreated, label, onClose, initialGarments, garmentContext, requireNotes }: CreationContext & { category: Category; consultationId?: string; preferredCustomerId?: number; onCreated?: (reference: string) => void; label: string; onClose: () => void }) {
+function StaffOrderForm({ category, consultationId, preferredCustomerId, onCreated, label, onClose, initialGarments, garmentContext, requireNotes, preferredMeasurementId }: CreationContext & { category: Category; consultationId?: string; preferredCustomerId?: number; onCreated?: (reference: string) => void; label: string; onClose: () => void }) {
   const [options, setOptions] = useState<Options>();
   const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
@@ -41,6 +45,12 @@ function StaffOrderForm({ category, consultationId, preferredCustomerId, onCreat
   const [picked, setPicked] = useState<{ id: number; name: string }>();
   const [profile, setProfile] = useState<Profile>();
   const [consultation, setConsultation] = useState(consultationId ?? "");
+  const [fulfilment, setFulfilment] = useState("");
+  const [deliveryPin, setDeliveryPin] = useState<MapPin>();
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryArea, setDeliveryArea] = useState("");
+  const [media, setMedia] = useState<File[]>([]);
+  const [created, setCreated] = useState<string>();
   const requestId = useRef<string | null>(null);
   const nextGarmentId = useRef(initialGarments?.length ?? 1);
   const router = useRouter();
@@ -77,8 +87,15 @@ function StaffOrderForm({ category, consultationId, preferredCustomerId, onCreat
     return () => controller.abort();
   }, [selectedId]);
 
+  function finish(reference: string) {
+    onClose();
+    if (onCreated) onCreated(reference);
+    else router.push(orderHref(reference, custom ? "atelier" : "orders"));
+  }
+
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (created) { finish(created); return; }
     if (busy) return;
     const form = new FormData(event.currentTarget);
     const notes = String(form.get("notes") ?? "").trim();
@@ -101,15 +118,29 @@ function StaffOrderForm({ category, consultationId, preferredCustomerId, onCreat
           measurement_id: form.get("measurement") ? Number(form.get("measurement")) : null,
           expected_completion_date: form.get("date") || null,
           fulfilment_method: form.get("fulfilment") || null,
+          delivery: fulfilment === "Delivery" ? {
+            recipient_name: String(form.get("delivery-recipient") ?? "").trim() || null,
+            phone: String(form.get("delivery-phone") ?? "").trim() || null,
+            address: deliveryAddress.trim(), area: deliveryArea.trim() || null,
+            gps_code: String(form.get("delivery-gps") ?? "").trim() || null,
+            directions: String(form.get("delivery-directions") ?? "").trim() || null,
+            latitude: deliveryPin?.latitude ?? null, longitude: deliveryPin?.longitude ?? null,
+          } : undefined,
           notes: [garmentContext, notes].filter(Boolean).join("\n\n"),
+          specifications: String(form.get("specifications") ?? "").trim() || null,
           items: garments.map((id) => ({ garment_name: form.get(`garment-${id}`), wearer_name: form.get(`wearer-${id}`) })),
         }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || "Could not create the order.");
-      onClose();
-      if (onCreated) onCreated(result.reference);
-      else router.push(orderHref(result.reference, custom ? "atelier" : "orders"));
+      if (media.length) {
+        try { await uploadOrderMedia(result.reference, media); } catch (failure) {
+          setCreated(result.reference);
+          setError(`Order ${result.reference} was created, but the inspiration didn’t upload (${failure instanceof Error ? failure.message : "try again"}). Add it from the order.`);
+          return;
+        }
+      }
+      finish(result.reference);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Could not create the order.");
     } finally {
@@ -132,15 +163,29 @@ function StaffOrderForm({ category, consultationId, preferredCustomerId, onCreat
             {custom && canLinkConsultation && <label className="inventory-wide-field">Confirmed consultation (optional)<select name="consultation" value={selected?.id ?? ""} onChange={(event) => setConsultation(event.target.value)}>
               <option value="">No linked consultation</option>{options.consultations.map((item) => <option key={item.id} value={item.id}>{item.purpose} · {orderDate(item.confirmedDate)} · {item.confirmedTime} Accra</option>)}
             </select></label>}
-            {measurements.length > 0 && <label className="inventory-wide-field">Fitting used (optional)<select key={selectedCustomerId} name="measurement" defaultValue="">
+            {measurements.length > 0 && <label className="inventory-wide-field">Fitting used (optional)<select key={selectedCustomerId} name="measurement" defaultValue={selectedId === preferredCustomerId && measurements.some((item) => item.id === preferredMeasurementId) ? preferredMeasurementId : ""}>
               <option value="">No fitting linked</option>{measurements.map((item, index) => <option key={item.id} value={item.id}>{orderDate(item.measured_on)} · Fitting #{item.id}{index === 0 ? " · Current" : ""}</option>)}
             </select></label>}
             <label>Expected completion<input type="date" name="date" /></label>
-            <label>Fulfilment<select name="fulfilment"><option value="">To be agreed</option><option>Collection</option><option>Delivery</option></select></label>
+            <label>Pickup or delivery<select name="fulfilment" value={fulfilment} onChange={(event) => setFulfilment(event.target.value)}><option value="">To be agreed</option><option value="Collection">Pickup (customer collects)</option><option value="Delivery">Delivery (drop-off)</option></select></label>
+            <label className="inventory-wide-field">Specifications for production (optional)<textarea name="specifications" rows={4} maxLength={3000} placeholder="Fabric, colour, cut, lining, buttons, finishing — what the tailor needs to know. Not shown to the customer." /></label>
             <label className="inventory-wide-field">{requireNotes ? "Agreed adjustments" : "Customer-facing notes (optional)"}<textarea name="notes" rows={3} required={requireNotes} maxLength={garmentContext ? Math.max(1, 998 - garmentContext.length) : 1000} placeholder={requireNotes ? "Describe the adjustments agreed during the try-on." : "Record any agreed details the client should see."} /></label>
           </div>
           {consultationId && !selected && consultation === consultationId && <p role="status" className="consultation-muted">The original consultation is unavailable or already linked. Choose another or create a standalone order.</p>}
           {selected && <label className="collection-check"><input key={selected.id} name="held" type="checkbox" required /> This consultation has taken place.</label>}
+          {fulfilment === "Delivery" && <fieldset className="inventory-size-entries delivery-details">
+            <legend>Delivery details</legend>
+            <div className="inventory-form-grid">
+              <label>Recipient name<input name="delivery-recipient" maxLength={100} placeholder={selectedName ?? "Who receives it"} autoComplete="off" /></label>
+              <label>Recipient phone<input name="delivery-phone" type="tel" inputMode="tel" maxLength={30} pattern="[0-9+()\-\s]{7,30}" placeholder="e.g. 024 000 0000" autoComplete="off" /></label>
+              <label className="inventory-wide-field">Delivery address<input name="delivery-address" required maxLength={255} value={deliveryAddress} onChange={(event) => setDeliveryAddress(event.target.value)} placeholder="House number, street or building" autoComplete="off" /></label>
+              <label>Area / city<input name="delivery-area" maxLength={100} value={deliveryArea} onChange={(event) => setDeliveryArea(event.target.value)} placeholder="e.g. East Legon, Accra" autoComplete="off" /></label>
+              <label>GhanaPost GPS (optional)<input name="delivery-gps" maxLength={20} pattern="[A-Za-z]{2}-?[0-9]{3,4}-?[0-9]{4}" title="For example GA-123-4567" placeholder="e.g. GA-123-4567" autoComplete="off" /></label>
+              <label className="inventory-wide-field">Directions for the rider (optional)<textarea name="delivery-directions" rows={2} maxLength={1000} placeholder="Landmarks, gate colour, who to call on arrival" /></label>
+            </div>
+            <div className="delivery-map-field"><span className="client-picker-label">Pin the spot on the map (optional)</span>
+              <DeliveryMap pin={deliveryPin} onChange={setDeliveryPin} searchHint={[deliveryAddress, deliveryArea].filter((part) => part.trim()).join(", ")} /></div>
+          </fieldset>}
           <fieldset className="inventory-size-entries">
             <legend>Garments</legend>
             {garments.map((id, index) => <div className="consultation-slot" key={id}>
@@ -152,8 +197,9 @@ function StaffOrderForm({ category, consultationId, preferredCustomerId, onCreat
             </div>)}
             {garments.length < 20 && <button className="inventory-quiet-button" type="button" onClick={() => { const id = nextGarmentId.current++; setGarments([...garments, id]); }}>Add another garment</button>}
           </fieldset>
+          <PendingMedia onChange={setMedia} disabled={busy || Boolean(created)} />
           {error && <p role="alert" className="collection-error">{error}</p>}
-          <div className="inventory-form-footer"><button type="submit" disabled={busy || !selectedId}>{busy ? "Creating…" : label}</button></div>
+          <div className="inventory-form-footer"><button type="submit" disabled={busy || !selectedId}>{created ? "Done" : busy ? (media.length ? "Creating and uploading…" : "Creating…") : label}</button></div>
         </form>
       )}
     </section>

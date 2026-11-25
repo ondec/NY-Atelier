@@ -83,6 +83,12 @@ services:
         sync: false
       - key: MICROSOFT_GRAPH_SENDER
         value: noreply@thenyatelier.com
+      # Order emails (docs/ORDER_FLOWS.md): customers on main stages, the production manager when an order is sent to
+      # production, and the shared order mailbox when production hands an order back or an online order arrives.
+      - key: ORDER_UPDATE_EMAIL_ENABLED
+        value: "true"
+      - key: NY_FRONT_DESK_EMAIL
+        value: ny@thenyatelier.com
       # Fitting photos/videos in a private Cloudflare R2 bucket (Render Free wipes this server's disk on restart).
       # All five are entered in the Render dashboard. Leave FITTINGS_STORAGE unset to keep files on the server disk.
       - key: FITTINGS_STORAGE

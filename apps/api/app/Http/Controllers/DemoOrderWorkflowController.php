@@ -17,13 +17,24 @@ class DemoOrderWorkflowController extends Controller
         StaffAccess::requireStaffToken($request);
         $order = Order::query()->where('reference', $reference)->with(['customer', 'items', 'events'])->firstOrFail();
 
-        return response()->json(['order' => $workflow->serialize($order, $request->user()->can('staff.orders.manage'))]);
+        return response()->json(['order' => $workflow->serialize($order, true, $request->user()->can('staff.orders.manage'))]);
     }
 
     public function update(Request $request, string $reference, OrderWorkflow $workflow, OrderCustomerNotice $notices): JsonResponse
     {
         StaffAccess::requireStaffToken($request);
-        $data = $request->validate([
+        $data = $request->validate(self::rules());
+        $event = $workflow->update($reference, $data);
+        $notices->send($event);
+        $order = Order::query()->where('reference', $reference)->with(['customer', 'items', 'events'])->firstOrFail();
+
+        return response()->json(['order' => $workflow->serialize($order, true, $request->user()->can('staff.orders.manage')), 'notification' => $event->notified_at ? $workflow->notice($event->fresh()) : null]);
+    }
+
+    /** @return array<string, mixed> */
+    public static function rules(): array
+    {
+        return [
             'request_id' => ['required', 'uuid'], 'version' => ['required', 'integer', 'min:1'],
             'action' => ['required', Rule::in(['advance', 'skip', 'item_ready', 'handover', 'cancel', 'notify', 'note'])],
             'stage' => ['required_if:action,advance,skip', 'nullable', 'string', Rule::in(array_keys(config('order_workflows.stages')))],
@@ -31,11 +42,6 @@ class DemoOrderWorkflowController extends Controller
             'item_id' => ['required_if:action,item_ready', 'integer'], 'ready' => ['sometimes', 'boolean'],
             'fulfilment_method' => ['required_if:action,handover', 'nullable', Rule::in(['Collection', 'Delivery'])],
             'handover_instructions' => ['nullable', 'string', 'max:1000'], 'courier_name' => ['nullable', 'string', 'max:150'], 'tracking_reference' => ['nullable', 'string', 'max:150'],
-        ]);
-        $event = $workflow->update($reference, $data);
-        $notices->send($event);
-        $order = Order::query()->where('reference', $reference)->with(['customer', 'items', 'events'])->firstOrFail();
-
-        return response()->json(['order' => $workflow->serialize($order, $request->user()->can('staff.orders.manage')), 'notification' => $event->notified_at ? $workflow->notice($event->fresh()) : null]);
+        ];
     }
 }

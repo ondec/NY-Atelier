@@ -49,7 +49,7 @@ class RestorePreviewCustomers extends Command
                 DB::table('customers')->insert(Arr::only($row, ['id', 'name', 'email', 'phone', 'account_reference', 'created_at', 'updated_at']));
             }
             foreach ($data['measurements'] as $row) {
-                DB::table('customer_measurements')->insert(Arr::only($row, ['id', 'request_id', 'customer_id', 'measured_on', 'values', 'notes', 'garment_type', 'recorded_unit', 'additional_measurements', 'created_at', 'updated_at']));
+                DB::table('customer_measurements')->insert(Arr::only($row, ['id', 'request_id', 'customer_id', 'measured_on', 'values', 'notes', 'garment_type', 'recorded_unit', 'additional_measurements', 'pieces', 'created_at', 'updated_at']));
             }
             foreach ($data['attachments'] as $row) {
                 DB::table('fitting_attachments')->insert(Arr::only($row, ['id', 'measurement_id', 'path', 'name', 'mime_type', 'size', 'created_at', 'updated_at']));

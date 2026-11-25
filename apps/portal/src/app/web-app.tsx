@@ -32,7 +32,7 @@ export function WebAppProvider({children}: {children: React.ReactNode}) {
   return <InstallContext.Provider value={{installed, prompt, installedNow: () => setPrompt(undefined)}}>{children}</InstallContext.Provider>;
 }
 
-export function InstallWebApp({app = 'NY Office', compact = false, menuItem = false, settingsRow = false}: {app?: 'NY Office' | 'NY Studio'; compact?: boolean; menuItem?: boolean; settingsRow?: boolean}) {
+export function InstallWebApp({app = 'NY Office', compact = false, menuItem = false, settingsRow = false}: {app?: 'NY Office' | 'NY Studio' | 'NY Production'; compact?: boolean; menuItem?: boolean; settingsRow?: boolean}) {
   const {installed, prompt, installedNow} = useContext(InstallContext);
   const [open, setOpen] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);

@@ -37,11 +37,13 @@ export function workspaceForHost(headers: HeaderSource, env: Environment = proce
   return hosts && publicHost(headers) === hosts.studio.host ? 'studio' : 'office';
 }
 
-export function workspaceLinks(headers: HeaderSource, role: 'owner' | 'manager' | 'receptionist' | 'records', env: Environment = process.env) {
+export function workspaceLinks(headers: HeaderSource, role: 'owner' | 'manager' | 'receptionist' | 'records' | 'production' | 'tailor', env: Environment = process.env) {
   const hosts = activeHosts(headers, env);
   const studioHref = `${hosts?.studio.origin ?? ''}/showroom${role === 'records' ? '?view=fittings' : ''}`;
   // The customer-records role has no NY Office; its home is the Studio customer directory.
-  return { officeHref: role === 'records' ? studioHref : `${hosts?.office.origin ?? ''}/office/${role}`, studioHref };
+  // Production managers and tailors work in NY Production, served from the Office host.
+  const officeHref = role === 'records' ? studioHref : role === 'production' || role === 'tailor' ? `${hosts?.office.origin ?? ''}/production` : `${hosts?.office.origin ?? ''}/office/${role}`;
+  return { officeHref, studioHref, productionHref: `${hosts?.office.origin ?? ''}/production` };
 }
 
 export function staffCookieSettings(headers: HeaderSource, requestUrl: string, env: Environment = process.env) {

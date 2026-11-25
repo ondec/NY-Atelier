@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowLeft, ArrowRight, Check, ChevronRight, History, Ruler, Search, Shirt, UserRound, Plus, ShoppingBag, X } from "@/components/icons";
+import { ArrowLeft, ArrowRight, Check, ChevronRight, ClipboardList, History, Ruler, Search, Shirt, UserRound, Plus, ShoppingBag, X } from "@/components/icons";
 import { useEffect, useRef, useState } from "react";
 import { emptyInventory, isLowStock, stockKnown, productTypes, variantKey, variantLabel, type Variant } from "@/lib/inventory";
 import { demoStock } from "../../../../mobile/src/data/demo-stock";
@@ -20,8 +20,10 @@ import StudioSalesRegister from "../studio-sales-register";
 import { can, type StaffIdentity } from "@/lib/staff-permissions";
 import type { Receipt } from "@/lib/studio-sales";
 import GarmentGallery from "./garment-gallery";
+import CustomerOrders from "./customer-orders";
 import WelcomeCarousel from "./welcome-carousel";
 import StudioTools from "./studio-tools";
+import FrontDeskBell from "./front-desk-bell";
 import {openSavedCustomerFitting, readStudioLocation, type StudioLocation} from "@/lib/studio-location";
 import {leaveStudioDialog} from "@/lib/studio-dialog-history";
 import {readSaleDraft, saleDraftKey} from "@/lib/studio-sale-draft";
@@ -40,6 +42,8 @@ const date = (value: string) => new Date(value.slice(0, 10) + "T12:00:00").toLoc
 export default function Showroom({ staff, initialLocation: requestedLocation = readStudioLocation('') }: { staff: StaffIdentity; initialLocation?: StudioLocation }) {
   // Staff without the sales permission (customer records only) never open Ready-to-Wear, even from a typed URL or Back.
   const canSell = can(staff, "sales");
+  const canReadOrders = can(staff, "orders.read");
+  const canCreateOrders = can(staff, "orders.manage");
   const initialLocation = canSell ? requestedLocation : salesFreeLocation(requestedLocation);
   const [module, setModule] = useState<"welcome" | "collection" | "measurements">(initialLocation.module);
   const [inventory, setInventory] = useState(emptyInventory);
@@ -73,6 +77,10 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
   const [saleNotice, setSaleNotice] = useState("");
   const [templateId, setTemplateId] = useState<string>(initialLocation.templateId ?? "kaftan");
   const [fittingPage, setFittingPage] = useState<'customers' | 'profile'>(initialLocation.customerId ? 'profile' : 'customers');
+  const [profileTab, setProfileTab] = useState<'fittings' | 'orders'>('fittings');
+  const [orderRevision, setOrderRevision] = useState(0);
+  const [orderNotice, setOrderNotice] = useState('');
+  const [orderFromFitting, setOrderFromFitting] = useState<{ customerId: number; fittingId: number }>();
   const fittingRecordRef = useRef<HTMLElement>(null);
   const fittingSearchRef = useRef<HTMLInputElement>(null);
   const pendingFittingFocus = useRef(false);
@@ -136,6 +144,7 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
   }
 
   function openFittingCustomer(id: number) {
+    setProfileTab('fittings'); setOrderNotice('');
     setModule('measurements'); setFittingPage('profile'); setSaleDesk(false);
     if (id !== customerId) {setCustomerId(id); setProfile(undefined);}
     setError(''); pendingFittingFocus.current = true;
@@ -150,6 +159,10 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
       url.searchParams.set('customer', String(id));
       window.history.pushState({studioFittingProfile: true}, '', url);
     }
+  }
+
+  function customOrderCreated(reference: string) {
+    setOrderNotice(`Custom order ${reference} created.`); setOrderRevision(value => value + 1); setProfileTab('orders');
   }
 
   function showFittingCustomers() {
@@ -370,7 +383,7 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
             {saleCount > 0 && <button type="button" className="studio-sale-trigger" aria-label={`Open Sales Desk, ${saleCount} ${saleCount === 1 ? 'item' : 'items'}`} aria-haspopup="dialog" onClick={openSaleDesk}><ShoppingBag size={23}/><span className="studio-sale-badge" aria-hidden="true">{saleCount > 99 ? '99+' : saleCount}</span></button>}
           </div>
         </div>
-        <div className="showroom-header-actions"><StudioTools staff={staff} onSalesHistory={canSell ? ()=>setSalesHistory(true) : undefined}/></div>
+        <div className="showroom-header-actions">{can(staff, "orders.read") && <FrontDeskBell onOpen={(id) => { openFittingCustomer(id); setProfileTab('orders'); }} />}<StudioTools staff={staff} onSalesHistory={canSell ? ()=>setSalesHistory(true) : undefined}/></div>
       </header>
       {module === "collection" && canSell ? <>
         <div className="showroom-intro"><div>{viewingProduct && <button type="button" className="showroom-home-button" onClick={backToGarments}><ArrowLeft size={18} />Back to garments</button>}<h1>Ready-to-Wear</h1></div></div>
@@ -441,6 +454,8 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
             {error && <p className="collection-error" role="alert">{error} <button className="showroom-secondary" onClick={() => { setError(""); setRevision(revision + 1); }}>Retry</button></p>}
             {profileReady ? <>
               <div className="showroom-record-heading"><div><p className="showroom-kicker">CUSTOMER PROFILE</p><h2>{profile.customer.name}</h2><p>{profile.customer.email ?? profile.customer.phone}</p></div></div>
+              {canReadOrders && <div className="showroom-profile-tabs" role="tablist" aria-label="Customer profile sections"><button type="button" role="tab" aria-selected={profileTab === "fittings"} onClick={() => setProfileTab("fittings")}><Ruler size={17} />Fittings</button><button type="button" role="tab" aria-selected={profileTab === "orders"} onClick={() => setProfileTab("orders")}><ClipboardList size={17} />Orders</button></div>}
+              {profileTab === "orders" && canReadOrders ? <>{orderNotice && <p className="inventory-message" role="status">{orderNotice}</p>}<CustomerOrders customerId={profile.customer.id} customerName={profile.customer.name} fittingId={profile.measurements[0]?.id} canCreate={canCreateOrders} revision={orderRevision} onCreated={customOrderCreated} /></> : <>
               {directory?.templates && <section className="showroom-template-section" aria-label="Garment measurement template">
                 <div className="showroom-template-controls">
                   <label htmlFor="showroom-garment-type">What are we making?
@@ -453,7 +468,8 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
                 {template && <p className="showroom-template-info" id="showroom-template-info">{template.groups.map((group) => group.title).join(" · ")}<span>{template.groups.reduce((count, group) => count + group.fields.length, 0)} measurements · in</span></p>}
               </section>}
               <div className="showroom-history"><History size={18} /><label>Fitting record<select aria-label="Choose fitting record" value={fitting?.id ?? ""} onChange={(event) => setHistoryId(Number(event.target.value))}>{!profile.measurements.length && <option>No fittings recorded</option>}{profile.measurements.map((item, index) => <option key={item.id} value={item.id}>{item.garment_type ? `${directory?.templates?.[item.garment_type]?.name ?? item.garment_type} · ` : "General measurements · "}{date(item.measured_on)}{index === 0 ? " · Current" : " · Previous"}</option>)}</select></label></div>
-              {fitting ? <><h3 className="showroom-fitting-name">{fitting.garment_type ? directory?.templates?.[fitting.garment_type]?.name ?? fitting.garment_type : "General measurements"}</h3><FittingReadings fitting={fitting} fields={directory?.fields ?? {}} template={fitting.garment_type ? directory?.templates?.[fitting.garment_type] : undefined} unit="in"/><FittingMedia customerId={profile.customer.id} fittingId={fitting.id} attachments={fitting.attachments ?? []}/>{fitting.notes && <div className="showroom-notes"><h3>Fitting notes</h3><p>{fitting.notes}</p></div>}</> : <div className="showroom-empty"><Ruler size={44} /><h3>The first fitting starts here.</h3><p>Record measurements and fit preferences for this customer. Each saved fitting keeps its own date and history.</p></div>}
+              {fitting ? <><h3 className="showroom-fitting-name">{fitting.garment_type ? directory?.templates?.[fitting.garment_type]?.name ?? fitting.garment_type : "General measurements"}</h3><FittingReadings fitting={fitting} fields={directory?.fields ?? {}} template={fitting.garment_type ? directory?.templates?.[fitting.garment_type] : undefined} unit="in"/><FittingMedia customerId={profile.customer.id} fittingId={fitting.id} attachments={fitting.attachments ?? []}/>{fitting.notes && <div className="showroom-notes"><h3>Fitting notes</h3><p>{fitting.notes}</p></div>}{canCreateOrders && <div className="showroom-fitting-order"><div><h3>Ready to make it?</h3><p>Create a custom order with this fitting linked.</p></div><CreateStaffOrder category="Custom" preferredCustomerId={profile.customer.id} preferredMeasurementId={fitting.id} buttonClassName="showroom-primary" buttonLabel="Create order" onCreated={customOrderCreated} /></div>}</> : <div className="showroom-empty"><Ruler size={44} /><h3>The first fitting starts here.</h3><p>Record measurements and fit preferences for this customer. Each saved fitting keeps its own date and history.</p></div>}
+              </>}
             </> : <div className="showroom-empty"><UserRound size={48} /><h2>{customerId && !error ? "Opening customer…" : "Every detail begins with you."}</h2><p>Select a customer to see measurements, review previous fittings, or start a new fitting.</p></div>}
           </section>
         </div>
@@ -479,6 +495,7 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
         {directory && !customerSearch.searching && !customers.length && <p>No customers match your search.</p>}
       </section>
     </InventoryDrawer>}
-    {editor && directory && (editor === "customer" || profileReady) && <CustomerEditor fullScreen unit="in" mode={editor} profile={editor === "fitting" ? profile : undefined} fields={directory.fields} templateId={editor === "fitting" ? templateId : undefined} template={editor === "fitting" ? template : undefined} onBusyChange={busy => {fittingBusy.current = busy;}} onClose={closeFittingEditor} onSaved={finishFittingEditor} onSaveAndMeasure={saveCustomerAndMeasure} />}
+    {editor && directory && (editor === "customer" || profileReady) && <CustomerEditor fullScreen unit="in" mode={editor} profile={editor === "fitting" ? profile : undefined} fields={directory.fields} pieceOptions={directory.pieces} templateId={editor === "fitting" ? templateId : undefined} template={editor === "fitting" ? template : undefined} onBusyChange={busy => {fittingBusy.current = busy;}} onClose={closeFittingEditor} onSaved={finishFittingEditor} onSaveAndMeasure={saveCustomerAndMeasure} onSaveAndOrder={canCreateOrders ? (savedCustomerId, fittingId) => { finishFittingEditor(savedCustomerId); setOrderFromFitting({ customerId: savedCustomerId, fittingId }); } : undefined} />}
+    {orderFromFitting && <CreateStaffOrder key={orderFromFitting.fittingId} category="Custom" startOpen preferredCustomerId={orderFromFitting.customerId} preferredMeasurementId={orderFromFitting.fittingId} onCreated={customOrderCreated} onClosed={() => setOrderFromFitting(undefined)} />}
   </main>;
 }

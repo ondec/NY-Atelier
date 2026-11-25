@@ -15,12 +15,12 @@ import { InventoryDrawer } from "./catalogue-editor";
 import { orderDate, orderHref } from "./order-table";
 import FittingReadings from './fitting-readings';
 import FittingFields, {FittingMedia} from './fitting-fields';
-import {fittingFormValues, type AdditionalMeasurement, type FittingAttachment, type MeasurementUnit} from '@/lib/fitting-measurements';
+import {fittingFormValues, type AdditionalMeasurement, type FittingAttachment, type FittingPiece, type MeasurementUnit, type PieceOption} from '@/lib/fitting-measurements';
 
 export type Customer = { id: number; name: string; email: string | null; phone: string | null; account_reference: string | null };
 export type MeasurementTemplate = { name: string; description: string; groups: { title: string; fields: string[] }[] };
-export type Fitting = { garment_type?: string | null; id: number; measured_on: string; values: Record<string, number>; notes: string | null; unit?: 'cm'; recorded_unit?: MeasurementUnit; additional_measurements?: AdditionalMeasurement[]; attachments?: FittingAttachment[] };
-export type Directory = { customers: Customer[]; fields: Record<string, string>; templates?: Record<string, MeasurementTemplate> };
+export type Fitting = { garment_type?: string | null; id: number; measured_on: string; values: Record<string, number>; notes: string | null; unit?: 'cm'; recorded_unit?: MeasurementUnit; additional_measurements?: AdditionalMeasurement[]; pieces?: FittingPiece[]; attachments?: FittingAttachment[] };
+export type Directory = { customers: Customer[]; fields: Record<string, string>; templates?: Record<string, MeasurementTemplate>; pieces?: Record<string, PieceOption> };
 export type Profile = {
   customer: Customer;
   measurements: Fitting[];
@@ -165,7 +165,7 @@ export default function CustomersWorkspace({ customerId, fittingId }: { customer
         </div>)}</div> : <p className="consultation-muted">No orders linked to this customer yet.</p>}
       </section>
     </>}
-    {editor && directory && <CustomerEditor mode={editor} profile={profile} fields={directory.fields}
+    {editor && directory && <CustomerEditor mode={editor} profile={profile} fields={directory.fields} pieceOptions={directory.pieces}
       onClose={() => setEditor(undefined)} onSaved={(id) => {
         setEditor(undefined);
         setRevision((value) => value + 1);
@@ -183,13 +183,17 @@ export function MeasurementSet({ fitting, fields, templateName, template, custom
   </>;
 }
 
-export function CustomerEditor({ mode, profile, fields, templateId, template, unit = 'cm', fullScreen = false, onClose, onSaved, onSaveAndMeasure, onBusyChange }: {
+export function CustomerEditor({ mode, profile, fields, pieceOptions, templateId, template, unit = 'cm', fullScreen = false, onClose, onSaved, onSaveAndMeasure, onSaveAndOrder, onBusyChange }: {
   mode: "customer" | "fitting"; profile?: Profile; fields: Record<string, string>;
+  /** Pieces that can be added to a fitting ("Add a piece"). */
+  pieceOptions?: Record<string, PieceOption>;
   templateId?: string; template?: MeasurementTemplate;
   unit?: MeasurementUnit;
   fullScreen?: boolean;
   onClose: () => void; onSaved: (id: number) => void;
   onSaveAndMeasure?: (id: number) => void;
+  /** Fitting mode: also offer "Save and create order", called with the saved fitting. */
+  onSaveAndOrder?: (customerId: number, fittingId: number) => void;
   onBusyChange?: (busy: boolean) => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -215,10 +219,11 @@ export function CustomerEditor({ mode, profile, fields, templateId, template, un
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const submitter = (event.nativeEvent as SubmitEvent).submitter;
-    await submit(event.currentTarget, Boolean(!fitting && !customer && onSaveAndMeasure && submitter instanceof HTMLButtonElement && submitter.value === 'measurements'), false);
+    const action = submitter instanceof HTMLButtonElement ? submitter.value : '';
+    await submit(event.currentTarget, Boolean(!fitting && !customer && onSaveAndMeasure && action === 'measurements'), false, Boolean(fitting && onSaveAndOrder && action === 'order'));
   }
 
-  async function submit(form: HTMLFormElement, addMeasurements: boolean, allowDuplicate: boolean) {
+  async function submit(form: HTMLFormElement, addMeasurements: boolean, allowDuplicate: boolean, createOrder = false) {
     if (busy || (fitting && !customer)) return;
     const data = new FormData(form);
     setBusy(true);
@@ -229,16 +234,17 @@ export function CustomerEditor({ mode, profile, fields, templateId, template, un
         requestId.current ??= createRequestId();
         const measurements = fittingFormValues(data, fields);
         const payload = {request_id: requestId.current, measured_on: data.get('measured_on'), garment_type: templateId, unit, ...measurements, notes: data.get('notes')};
-        if (!Object.keys(measurements.values).length && !measurements.additional_measurements.length) throw new Error('Enter at least one measurement.');
+        if (!Object.keys(measurements.values).length && !measurements.additional_measurements.length && !measurements.pieces.length) throw new Error('Enter at least one measurement.');
         let body: BodyInit = JSON.stringify(payload);
         if (attachments.length) {
           const upload = new FormData(); upload.append('payload', JSON.stringify(payload));
           attachments.forEach(file => upload.append('attachments[]', file)); body = upload;
         }
-        await customerApi(`?id=${customer.id}&mode=measurements`, {
+        const saved = await customerApi<{ id: number }>(`?id=${customer.id}&mode=measurements`, {
           method: "POST", body,
         });
-        onSaved(customer.id);
+        if (createOrder && onSaveAndOrder) onSaveAndOrder(customer.id, saved.id);
+        else onSaved(customer.id);
       } else {
         const result = await customerApi<{ id: number }>(customer ? `?id=${customer.id}` : "", {
           method: customer ? "PATCH" : "POST",
@@ -264,7 +270,7 @@ export function CustomerEditor({ mode, profile, fields, templateId, template, un
           <div className="inventory-form-grid">
             <label className="inventory-wide-field">Fitting date<input type="date" name="measured_on" defaultValue={today} max={today} required /></label>
           </div>
-          <FittingFields fields={fields} template={template} previous={previous} unit={unit} busy={busy} onAttachmentsChange={setAttachments} onPreparingChange={setPreparingMedia}/>
+          <FittingFields fields={fields} pieceOptions={pieceOptions} template={template} previous={previous} unit={unit} busy={busy} onAttachmentsChange={setAttachments} onPreparingChange={setPreparingMedia} allowMedia={false}/>
           <div className="inventory-form-grid">
             <label className="inventory-wide-field">Fitting notes (optional)<textarea name="notes" rows={3} maxLength={1000} /></label>
           </div>
@@ -287,9 +293,10 @@ export function CustomerEditor({ mode, profile, fields, templateId, template, un
             {duplicate.canSaveAnyway && <button type="button" className="inventory-quiet-button" disabled={busy} onClick={() => { if (formRef.current) void submit(formRef.current, duplicate.addMeasurements, true); }}>No, save as a new customer</button>}
           </div>
         </div>}
-        <div className={`inventory-form-footer${!fitting && !customer && onSaveAndMeasure ? ' customer-save-actions' : ''}`}>
-          <button className={!fitting && !customer && onSaveAndMeasure ? 'customer-save-only' : undefined} type="submit" disabled={busy || preparingMedia}>{busy ? "Saving…" : preparingMedia ? "Preparing photos…" : fitting ? "Save fitting" : "Save customer"}</button>
+        <div className={`inventory-form-footer${(!fitting && !customer && onSaveAndMeasure) || (fitting && onSaveAndOrder) ? ' customer-save-actions' : ''}`}>
+          <button className={(!fitting && !customer && onSaveAndMeasure) || (fitting && onSaveAndOrder) ? 'customer-save-only' : undefined} type="submit" disabled={busy || preparingMedia}>{busy ? "Saving…" : preparingMedia ? "Preparing photos…" : fitting ? "Save fitting" : "Save customer"}</button>
           {!fitting && !customer && onSaveAndMeasure && <button type="submit" value="measurements" disabled={busy}>{busy ? "Saving…" : "Save & add measurement"}</button>}
+          {fitting && onSaveAndOrder && <button type="submit" value="order" disabled={busy || preparingMedia}>{busy ? "Saving…" : "Save and create order"}</button>}
         </div>
       </form>
     </section>

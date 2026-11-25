@@ -77,7 +77,7 @@ class StudioSales
             $orderReference = 'NY-RTW-'.mb_strtoupper(str_replace('-', '', $data['request_id']));
             $order = Order::query()->create([
                 'reference' => $orderReference, 'customer_id' => $customer->id, 'category' => 'Ready-to-Wear', 'source' => 'studio',
-                'status' => $collected ? 'Collected' : 'Order received', 'workflow_stage' => $collected ? 'collected' : 'received',
+                'status' => $collected ? 'Collected' : 'Order created', 'workflow_stage' => $collected ? 'collected' : 'received',
                 'workflow_version' => 1, 'payment_status' => 'Paid',
                 'fulfilment_method' => $data['handover'] === 'delivery' ? 'Delivery' : 'Collection',
                 'fulfilment_status' => $collected ? 'Collected' : 'To be arranged',
@@ -85,9 +85,9 @@ class StudioSales
             ]);
             $order->items()->createMany(array_map(fn (array $line, int $index): array => [
                 'garment_name' => mb_substr(implode(' · ', array_filter([$line['name'], $line['colour'], $line['fabric'], 'Size '.$line['size'], 'Qty '.$line['quantity']])), 0, 255),
-                'status' => $collected ? 'Collected' : 'Order received', 'sort_order' => $index, 'completed_at' => $collected ? now() : null,
+                'status' => $collected ? 'Collected' : 'Order created', 'sort_order' => $index, 'completed_at' => $collected ? now() : null,
             ], $quote['lines'], array_keys($quote['lines'])));
-            $order->events()->create(['title' => 'Order received', 'stage_key' => 'received', 'action_type' => 'created', 'occurred_at' => now(), 'explanation' => 'Purchased at NY Studio.']);
+            $order->events()->create(['title' => 'Order created', 'stage_key' => 'received', 'action_type' => 'created', 'occurred_at' => now(), 'explanation' => 'Purchased at NY Studio.']);
             $order->events()->create(['title' => 'Payment recorded', 'action_type' => 'payment', 'occurred_at' => now(), 'explanation' => 'Paid GHS '.number_format($quote['total_minor'] / 100, 2).' by '.str_replace('-', ' ', $data['payment_method']).'.']);
             if ($collected) {
                 $order->events()->create(['title' => 'Collected', 'stage_key' => 'collected', 'action_type' => 'advance', 'occurred_at' => now(), 'explanation' => 'Staff confirmed the garments were checked and handed to '.$customer->name.' at NY Studio.']);

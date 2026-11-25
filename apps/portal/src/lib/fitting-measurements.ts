@@ -1,10 +1,14 @@
 export type MeasurementUnit = 'cm' | 'in';
 export type AdditionalMeasurement = {label: string; value: number; group?: string | null};
+/** An extra garment piece measured in the same fitting, e.g. a shirt with a suit. Values are in centimetres. */
+export type FittingPiece = {key: string; title: string; values: Record<string, number>};
+/** Pieces staff can add: a fixed title and its usual fields, or `custom` (named by staff, own readings only). */
+export type PieceOption = {title: string | null; fields: string[]};
 export type FittingAttachment = {id: string; name: string; mime_type: string; size: number};
 type ReadingGroup = {title: string; readings: {id: string; label: string; value: number; key?: string}[]};
 
 export function groupFittingReadings(
-  fitting: {garment_type?: string | null; values: Record<string, number>; additional_measurements?: AdditionalMeasurement[]},
+  fitting: {garment_type?: string | null; values: Record<string, number>; additional_measurements?: AdditionalMeasurement[]; pieces?: FittingPiece[]},
   fields: Record<string, string>,
   template?: {groups: {title: string; fields: string[]}[]},
 ) {
@@ -22,6 +26,10 @@ export function groupFittingReadings(
       ?? (template ? 'Other measurements' : 'Measurements');
     groupFor(title).readings.push({id: key, key, label: fields[key] ?? key, value});
   }
+  fitting.pieces?.forEach((piece, pieceIndex) => {
+    const group = groupFor(piece.title);
+    for (const [key, value] of Object.entries(piece.values)) group.readings.push({id: `piece-${pieceIndex}-${key}`, key, label: fields[key] ?? key, value});
+  });
   fitting.additional_measurements?.forEach((reading, index) => {
     groupFor(reading.group?.trim() || 'Other measurements').readings.push({
       id: `additional-${index}`, label: reading.label, value: reading.value,
@@ -48,7 +56,16 @@ export function fittingFormValues(form: FormData, fields: Record<string, string>
   const labels = form.getAll('additional_label');
   const readings = form.getAll('additional_value');
   const groups = form.getAll('additional_group');
-  return {values, additional_measurements: labels.map((label, index) => ({
+  const keys = form.getAll('piece_key');
+  const titles = form.getAll('piece_title');
+  const pieces = form.getAll('piece_id').map((id, index) => ({
+    key: String(keys[index]), title: String(titles[index] ?? '').trim(),
+    values: Object.fromEntries(Object.keys(fields).flatMap(key => {
+      const value = form.get(`piece-${id}-${key}`);
+      return typeof value === 'string' && value.trim() !== '' ? [[key, Number(value)]] : [];
+    })),
+  }));
+  return {values, pieces, additional_measurements: labels.map((label, index) => ({
     label: String(label).trim(), value: Number(readings[index]), group: String(groups[index] ?? ''),
   }))};
 }

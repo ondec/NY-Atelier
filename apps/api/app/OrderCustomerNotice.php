@@ -21,7 +21,8 @@ class OrderCustomerNotice
                 return false;
             }
             $event->load('order.customer');
-            if ($event->stage_key && $event->stage_key !== $this->workflow->stage($event->order)) {
+            // A newer customer update replaces this one (e.g. the order moved on before this was sent).
+            if (OrderEvent::query()->where('order_id', $event->order_id)->where('id', '>', $event->id)->whereNotNull('notified_at')->exists()) {
                 $event->update(['external_status' => 'superseded']);
 
                 return false;

@@ -47,7 +47,6 @@ class DemoOrderWorkflowTest extends TestCase
 
     private function packaged(Order $order): void
     {
-        $order->update(['workflow_stage' => 'quality_check', 'status' => 'Final quality check']);
         foreach ($order->items as $item) {
             $this->update($order, ['action' => 'item_ready', 'item_id' => $item->id, 'ready' => true])->assertOk();
         }
@@ -57,65 +56,69 @@ class DemoOrderWorkflowTest extends TestCase
     public function test_collection_requires_ready_garments_and_handover_confirmation_before_completion(): void
     {
         $order = $this->order();
-        $this->advance($order, 'picking');
-        $this->advance($order, 'quality_check');
         $this->update($order, ['action' => 'advance', 'stage' => 'packaged'])->assertUnprocessable()->assertJsonValidationErrors('stage');
         $this->assertDatabaseMissing('order_events', ['order_id' => $order->id, 'stage_key' => 'packaged']);
         $this->update($order, ['action' => 'item_ready', 'item_id' => $order->items->first()->id])->assertOk()->assertJsonPath('order.completed_item_count', 1);
         $this->advance($order, 'packaged');
-        $this->advance($order, 'ready_collection', ['notify' => true]);
+        $this->advance($order, 'ready_collection');
         $this->assertNull($order->fresh()->completed_at);
         $this->update($order, ['action' => 'advance', 'stage' => 'collected'])->assertUnprocessable()->assertJsonValidationErrors('note');
         $this->advance($order, 'collected', ['note' => 'Collected by the customer at the front desk.']);
         $this->assertNotNull($order->fresh()->completed_at);
         $this->getJson('/api/demo/orders')->assertOk()->assertJsonPath('orders.0.status', 'Collected')->assertJsonPath('orders.0.is_complete', true);
-        $this->update($order, ['action' => 'advance', 'stage' => 'picking'])->assertUnprocessable();
+        $this->update($order, ['action' => 'advance', 'stage' => 'packaged'])->assertUnprocessable();
     }
 
-    public function test_delivery_tracks_courier_pickup_transit_and_recipient_and_rejects_in_transit_cancellation(): void
+    public function test_delivery_goes_out_for_delivery_with_an_address_and_rejects_in_transit_cancellation(): void
     {
         $order = $this->order(method: 'Delivery');
         $this->packaged($order);
-        $this->update($order, ['action' => 'advance', 'stage' => 'ready_delivery'])->assertUnprocessable()->assertJsonValidationErrors('handover_instructions');
-        $this->update($order, ['action' => 'handover', 'fulfilment_method' => 'Delivery', 'handover_instructions' => 'Sample address; call on arrival.'])->assertOk();
-        $this->advance($order, 'ready_delivery');
-        $this->update($order, ['action' => 'advance', 'stage' => 'courier_booked'])->assertUnprocessable()->assertJsonValidationErrors('courier_name');
-        $this->update($order, ['action' => 'handover', 'fulfilment_method' => 'Delivery', 'courier_name' => 'Sample Courier', 'tracking_reference' => 'TRACK-100', 'handover_instructions' => 'Call on arrival.'])->assertOk();
-        $this->advance($order, 'courier_booked');
-        $this->advance($order, 'courier_en_route');
-        $this->advance($order, 'courier_collected');
+        $this->assertSame(['received', 'packaged', 'out_for_delivery', 'delivered'], array_column($this->getJson('/api/demo/staff/orders/NY-TEST-1')->json('order.workflow.steps'), 'key'));
+        $this->update($order, ['action' => 'advance', 'stage' => 'out_for_delivery'])->assertUnprocessable()->assertJsonValidationErrors('handover_instructions');
+        $this->update($order, ['action' => 'handover', 'fulfilment_method' => 'Delivery', 'tracking_reference' => 'TRACK-100', 'handover_instructions' => 'Sample address; call on arrival.'])->assertOk();
+        $this->advance($order, 'out_for_delivery');
         $this->update($order, ['action' => 'handover', 'fulfilment_method' => 'Delivery'])->assertUnprocessable()->assertJsonValidationErrors('handover_instructions');
         $this->update($order, ['action' => 'cancel', 'note' => 'No longer needed'])->assertUnprocessable();
         $this->update($order, ['action' => 'handover', 'fulfilment_method' => 'Collection', 'note' => 'Change method'])->assertUnprocessable();
-        $this->advance($order, 'out_for_delivery');
-        $this->advance($order, 'delivered', ['note' => 'Received by the customer. Courier proof confirmed.']);
+        $this->advance($order, 'delivered', ['note' => 'Received by the customer.']);
         $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'Delivered', 'fulfilment_status' => 'Delivered', 'tracking_reference' => 'TRACK-100']);
         $this->assertDatabaseHas('order_items', ['order_id' => $order->id, 'status' => 'Delivered']);
     }
 
-    public function test_bespoke_steps_cannot_be_jumped_and_only_optional_fittings_can_be_skipped_with_a_reason(): void
+    public function test_bespoke_front_desk_steps_move_on_their_own_and_production_steps_wait_for_production(): void
     {
         $order = $this->order('Custom');
-        $this->update($order, ['action' => 'advance', 'stage' => 'sewing'])->assertUnprocessable()->assertJsonValidationErrors('stage');
-        $this->update($order, ['action' => 'skip', 'stage' => 'design', 'note' => 'Skip design'])->assertUnprocessable();
-        foreach (['design', 'measurements', 'cutting', 'sewing'] as $stage) {
-            $this->advance($order, $stage);
-        }
-        $this->update($order, ['action' => 'skip', 'stage' => 'fitting'])->assertUnprocessable()->assertJsonValidationErrors('note');
-        $this->update($order, ['action' => 'skip', 'stage' => 'fitting', 'note' => 'Customer approved the existing fit.'])->assertOk()->assertJsonPath('order.status', 'Fitting not required');
-        $this->advance($order, 'finishing');
-        $this->assertDatabaseHas('order_events', ['order_id' => $order->id, 'stage_key' => 'fitting', 'action_type' => 'skip']);
+        $this->update($order, ['action' => 'advance', 'stage' => 'in_production'])->assertUnprocessable()->assertJsonValidationErrors('stage');
+        $this->getJson('/api/demo/staff/orders/NY-TEST-1')->assertOk()->assertJsonPath('order.workflow.can_advance', false)
+            ->assertJsonPath('order.workflow.advance_blocked', 'This step moves on its own when the customer’s fitting is linked to the order.');
+        $this->update($order, ['action' => 'advance', 'stage' => 'measurements'])->assertForbidden();
+        $this->assertSame(['received', 'measurements', 'design', 'in_production', 'production_done', 'packaged', 'ready_collection', 'collected'],
+            array_column($this->getJson('/api/demo/staff/orders/NY-TEST-1')->json('order.workflow.steps'), 'key'));
+
+        $order->update(['workflow_stage' => 'in_production', 'status' => 'In production', 'sent_to_production_at' => now()]);
+        // The customer sees In production and Production done as one step.
+        $customer = $this->getJson('/api/demo/orders')->assertOk()->json('orders.0.workflow');
+        $this->assertSame(['received', 'measurements', 'design', 'production', 'packaged', 'ready_collection', 'collected'], array_column($customer['steps'], 'key'));
+        $this->assertSame('production', $customer['current']);
+
+        $this->advance($order, 'production_done');
+        $this->update($order, ['action' => 'advance', 'stage' => 'packaged'])->assertUnprocessable()->assertJsonValidationErrors('stage');
+        $this->update($order, ['action' => 'item_ready', 'item_id' => $order->items->first()->id, 'ready' => true])->assertOk();
+        $this->advance($order, 'packaged');
+        $this->advance($order, 'ready_collection');
     }
 
-    public function test_alterations_have_assessment_adjustments_and_a_fitting_without_fabric_cutting(): void
+    public function test_alterations_are_assessed_on_send_then_go_straight_into_production(): void
     {
         $order = $this->order('Alterations', null);
-        $this->advance($order, 'assessment');
-        $this->advance($order, 'alterations');
-        $this->advance($order, 'fitting');
-        $this->advance($order, 'quality_check');
-        $this->packaged($order);
-        $this->update($order, ['action' => 'advance', 'stage' => 'ready_delivery'])->assertUnprocessable();
+        $this->update($order, ['action' => 'advance', 'stage' => 'assessment'])->assertForbidden();
+        $this->assertSame(['received', 'assessment', 'in_production', 'production_done', 'packaged'],
+            array_column($this->getJson('/api/demo/staff/orders/NY-TEST-1')->json('order.workflow.steps'), 'key'));
+        $order->update(['workflow_stage' => 'in_production', 'status' => 'In production', 'sent_to_production_at' => now()]);
+        $this->update($order, ['action' => 'item_ready', 'item_id' => $order->items->first()->id, 'ready' => true])->assertOk();
+        $this->advance($order, 'production_done');
+        $this->advance($order, 'packaged');
+        $this->update($order, ['action' => 'advance', 'stage' => 'out_for_delivery'])->assertUnprocessable();
         $this->update($order, ['action' => 'handover', 'fulfilment_method' => 'Collection'])->assertOk();
         $this->advance($order, 'ready_collection');
         $this->getJson('/api/demo/staff/orders')->assertOk()->assertJsonMissing(['key' => 'cutting']);
@@ -124,14 +127,15 @@ class DemoOrderWorkflowTest extends TestCase
     public function test_retries_are_idempotent_but_stale_updates_and_reused_identifiers_are_rejected(): void
     {
         $order = $this->order();
-        $payload = $this->payload($order, ['action' => 'advance', 'stage' => 'picking']);
+        $this->update($order, ['action' => 'item_ready', 'item_id' => $order->items->first()->id, 'ready' => true])->assertOk();
+        $payload = $this->payload($order, ['action' => 'advance', 'stage' => 'packaged']);
         $url = '/api/demo/staff/orders/'.$order->reference.'/workflow';
         $this->patchJson($url, $payload)->assertOk();
         $this->patchJson($url, $payload)->assertOk();
-        $this->assertDatabaseCount('order_events', 2);
+        $this->assertDatabaseCount('order_events', 3);
         $this->patchJson($url, [...$payload, 'note' => 'Different request'])->assertConflict();
-        $this->patchJson($url, [...$payload, 'request_id' => (string) Str::uuid(), 'stage' => 'quality_check'])->assertConflict();
-        $this->assertDatabaseHas('orders', ['id' => $order->id, 'workflow_version' => 2, 'workflow_stage' => 'picking']);
+        $this->patchJson($url, [...$payload, 'request_id' => (string) Str::uuid(), 'stage' => 'ready_collection'])->assertConflict();
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'workflow_version' => 3, 'workflow_stage' => 'packaged']);
     }
 
     public function test_garment_readiness_is_scoped_and_cannot_change_after_packaging(): void
@@ -213,7 +217,9 @@ class DemoOrderWorkflowTest extends TestCase
         $payload = $this->payload($order, ['action' => 'notify']);
         $url = '/api/demo/staff/orders/'.$order->reference.'/workflow';
         $this->patchJson($url, $payload)->assertOk()->assertJsonPath('notification.status', 'no_contact');
-        $this->advance($order, 'picking');
+        // Ready for collection is a main stage, so it sends a newer customer update.
+        $this->packaged($order);
+        $this->advance($order, 'ready_collection');
         $order->customer->update(['email' => 'sample@example.test']);
         config(['order_workflows.email_enabled' => true, 'mail.default' => 'smtp']);
         $this->patchJson($url, $payload)->assertOk()->assertJsonPath('notification.status', 'superseded');
@@ -241,9 +247,9 @@ class DemoOrderWorkflowTest extends TestCase
     public function test_order_details_load_the_latest_record_and_refuse_unknown_reads(): void
     {
         $order = $this->order();
-        $this->advance($order, 'picking');
+        $this->packaged($order);
         $url = '/api/demo/staff/orders/'.$order->reference;
-        $this->getJson($url)->assertOk()->assertJsonPath('order.workflow.current', 'picking');
+        $this->getJson($url)->assertOk()->assertJsonPath('order.workflow.current', 'packaged');
         $this->getJson('/api/demo/staff/orders/UNKNOWN')->assertNotFound();
         $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.1'])->getJson($url)->assertOk();
     }
@@ -254,8 +260,8 @@ class DemoOrderWorkflowTest extends TestCase
         $order->update(['workflow_stage' => null, 'status' => 'Your outfit is being made']);
         $state = (new OrderWorkflow)->describe($order->load('events', 'customer'), true);
         $this->assertTrue($state['legacy']);
-        $this->assertSame('sewing', $state['current']);
-        $this->assertNull(collect($state['steps'])->firstWhere('key', 'cutting')['recorded_at']);
+        $this->assertSame('in_production', $state['current']);
+        $this->assertNull(collect($state['steps'])->firstWhere('key', 'in_production')['recorded_at']);
         (new OrderUpdateMail('NY-TEST-1', '<script>test</script>', 'Front desk'))->assertSeeInHtml('&lt;script&gt;test&lt;/script&gt;', false);
     }
 }
