@@ -21,8 +21,8 @@ class OrderAlerts
     {
         $managers = User::query()->where('staff_role', 'production')->where('staff_active', true)->whereNotNull('email')->pluck('email')->all();
         self::send($managers, $order, 'New in production', 'A new order is in production.',
-            'The front desk has sent this order to production. Assign a tailor and get it started.',
-            config('staff.office_url').'/production?order='.rawurlencode($order->reference), 'Open in NY Production');
+            'The front desk has sent this order to production. Everything production needs is below; assign a tailor and get it started.',
+            config('staff.office_url').'/production?order='.rawurlencode($order->reference), 'Open in NY Production', ProductionBrief::sections($order));
     }
 
     public static function backToFrontDesk(Order $order): void
@@ -39,8 +39,11 @@ class OrderAlerts
             config('staff.portal_url').'/showroom?view=fittings&customer='.$order->customer_id, 'Open in NY Studio');
     }
 
-    /** @param  list<string>  $to */
-    private static function send(array $to, Order $order, string $kicker, string $heading, string $body, string $url, string $button): void
+    /**
+     * @param  list<string>  $to
+     * @param  list<array{title: string, rows?: array<string, string>, text?: string}>  $sections
+     */
+    private static function send(array $to, Order $order, string $kicker, string $heading, string $body, string $url, string $button, array $sections = []): void
     {
         if ($to === [] || ! StaffInvitations::delivers()) {
             return;
@@ -55,7 +58,7 @@ class OrderAlerts
             'Handover' => $order->fulfilment_method,
         ]);
         try {
-            Mail::to($to)->send(new StaffOrderAlertMail("NY Atelier · {$kicker} · {$order->reference}", $kicker, $heading, $body, $details, $url, $button));
+            Mail::to($to)->send(new StaffOrderAlertMail("NY Atelier · {$kicker} · {$order->reference}", $kicker, $heading, $body, $details, $url, $button, $sections));
         } catch (Throwable $failure) {
             Log::warning('Order alert email could not be sent.', ['order' => $order->reference, 'error' => $failure::class, 'reason' => Str::limit($failure->getMessage(), 400)]);
         }

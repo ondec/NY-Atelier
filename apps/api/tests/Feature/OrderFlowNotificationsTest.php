@@ -60,6 +60,15 @@ class OrderFlowNotificationsTest extends TestCase
         $this->postJson("/api/demo/staff/orders/$reference/send-to-production")->assertOk();
         Mail::assertSent(StaffOrderAlertMail::class, fn (StaffOrderAlertMail $mail): bool => $mail->hasTo('production@example.test') && ! $mail->hasTo('inactive@example.test')
             && str_contains($mail->url, "/production?order=$reference") && $mail->details['Order'] === $reference);
+        // The production manager's email carries the full brief: customer, garments, specifications and measurements.
+        Mail::assertSent(StaffOrderAlertMail::class, function (StaffOrderAlertMail $mail): bool {
+            $sections = collect($mail->sections)->keyBy('title');
+            $html = $mail->render();
+
+            return $sections['Customer']['rows']['Email'] === 'customer@example.test' && $sections['Garments']['rows']['1.'] === 'Suit'
+                && $sections['Specifications']['text'] === 'Navy suit' && $sections['Measurements']['rows']['Chest / bust'] === '100 cm'
+                && str_contains($html, 'Navy suit') && str_contains($html, 'Chest / bust') && ! str_contains($html, 'GHS');
+        });
         Mail::assertSent(OrderUpdateMail::class, fn (OrderUpdateMail $mail): bool => str_contains($mail->update, 'In production'));
         Mail::assertNotSent(OrderUpdateMail::class, fn (OrderUpdateMail $mail): bool => str_contains($mail->update, 'Design'));
 

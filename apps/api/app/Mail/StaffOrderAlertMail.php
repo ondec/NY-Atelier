@@ -11,8 +11,9 @@ class StaffOrderAlertMail extends Mailable
 {
     /**
      * @param  array<string, string>  $details
+     * @param  list<array{title: string, rows?: array<string, string>, text?: string}>  $sections  further titled blocks (customer, garments, fitting…)
      */
-    public function __construct(public string $subjectLine, public string $kicker, public string $heading, public string $body, public array $details, public string $url, public string $buttonLabel) {}
+    public function __construct(public string $subjectLine, public string $kicker, public string $heading, public string $body, public array $details, public string $url, public string $buttonLabel, public array $sections = []) {}
 
     public function envelope(): Envelope
     {
