@@ -857,3 +857,4 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 @media(max-width:340px){.fitting-custom-value{flex-wrap:wrap}.fitting-custom-save{width:100%}}
 /* Staff without a workspace rail (delivery couriers) get the full width. */
 .workspace-frame:not(:has(> .workspace-rail)){display:block}
+.password-field{position:relative;display:block;width:100%}.password-field input{width:100%;padding-right:52px!important}.staff-sign-in .password-field .password-toggle,.password-field .password-toggle{position:absolute;top:50%;right:5px;transform:translateY(-50%);display:grid;place-items:center;width:42px;height:42px;min-height:0;margin:0;padding:0;border:0;border-radius:999px;background:transparent;color:#72817c;cursor:pointer}.password-field .password-toggle:hover{color:#123c45;background:#123c450d}.password-field .password-toggle[aria-pressed=true]{color:#123c45}.password-field .password-toggle:focus-visible{outline:2px solid #a85c32;outline-offset:1px}

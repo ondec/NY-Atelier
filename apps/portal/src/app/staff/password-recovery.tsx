@@ -7,6 +7,7 @@ import {ArrowLeft, ArrowRight, LockKeyhole} from '@/components/icons';
 import {readStaffResetLink} from '@/lib/staff-password-reset';
 import {signalStaffSessionChange} from '@/lib/staff-session-change';
 import './password-recovery.css';
+import PasswordInput from "../password-input";
 
 export default function StaffPasswordRecovery({mode, destination}: {mode: 'forgot' | 'reset'; destination: 'office' | 'studio'}) {
   const [link, setLink] = useState<ReturnType<typeof readStaffResetLink>>();
@@ -54,9 +55,9 @@ export default function StaffPasswordRecovery({mode, destination}: {mode: 'forgo
     {!complete && (mode === 'forgot' || link) && <form method="post" onSubmit={submit}>
       {mode === 'forgot' ? <label>Staff email<input name="email" type="email" autoComplete="username" maxLength={255} required disabled={busy}/></label> : <>
         <p>{link?.email}</p>
-        <label>New password<input name="password" type="password" autoComplete="new-password" minLength={12} maxLength={255} required disabled={busy} aria-describedby="staff-password-guidance"/></label>
+        <label>New password<PasswordInput name="password" autoComplete="new-password" minLength={12} maxLength={255} required disabled={busy} aria-describedby="staff-password-guidance"/></label>
         <p id="staff-password-guidance">Use at least 12 characters, including letters and numbers.</p>
-        <label>Confirm new password<input name="password_confirmation" type="password" autoComplete="new-password" minLength={12} maxLength={255} required disabled={busy}/></label>
+        <label>Confirm new password<PasswordInput name="password_confirmation" autoComplete="new-password" minLength={12} maxLength={255} required disabled={busy}/></label>
       </>}
       {error && <p role="alert" className="collection-error">{error}</p>}
       <button type="submit" disabled={busy}>{busy ? (mode === 'forgot' ? 'Sending…' : 'Resetting…') : mode === 'forgot' ? (message ? 'Send another link' : 'Send reset link') : 'Reset password'}<ArrowRight size={18}/></button>

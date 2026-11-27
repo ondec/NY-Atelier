@@ -264,8 +264,8 @@ export default function AccountScreen() {
             </View>
             {passwordForm ? <View style={styles.formCard}>
               <Text style={[styles.cardTitle, styles.formTitle]}>{customer?.hasPassword ? 'Change password' : 'Add a password'}</Text>
-              {customer?.hasPassword ? <Field label="Current password" value={passwordForm.current} onChangeText={current => setPasswordForm(form => form && { ...form, current })} secureTextEntry autoCapitalize="none" autoCorrect={false} autoComplete="current-password" textContentType="password" maxLength={128} /> : null}
-              <Field label="New password" value={passwordForm.next} onChangeText={next => setPasswordForm(form => form && { ...form, next })} secureTextEntry autoCapitalize="none" autoCorrect={false} autoComplete="new-password" textContentType="newPassword" passwordRules="minlength: 8; required: lower; required: digit;" maxLength={128} />
+              {customer?.hasPassword ? <PasswordField label="Current password" value={passwordForm.current} onChangeText={current => setPasswordForm(form => form && { ...form, current })} secureTextEntry autoCapitalize="none" autoCorrect={false} autoComplete="current-password" textContentType="password" maxLength={128} /> : null}
+              <PasswordField label="New password" value={passwordForm.next} onChangeText={next => setPasswordForm(form => form && { ...form, next })} secureTextEntry autoCapitalize="none" autoCorrect={false} autoComplete="new-password" textContentType="newPassword" passwordRules="minlength: 8; required: lower; required: digit;" maxLength={128} />
               <Text style={styles.hint}>At least 8 characters, with letters and numbers.{customer?.hasPassword ? ' Other phones will be signed out.' : ''}</Text>
               <Pressable accessibilityRole="button" onPress={() => { void savePassword(); }} disabled={saving} style={[styles.primary, saving && styles.disabled]}><Text style={styles.primaryText}>{saving ? 'SAVING…' : 'SAVE PASSWORD'}</Text></Pressable>
               <SmallAction label="Cancel" disabled={saving} onPress={() => { setPasswordForm(null); setError(''); }} />
@@ -292,6 +292,13 @@ export default function AccountScreen() {
 function Field({ label, multiline, ...props }: { label: string } & React.ComponentProps<typeof TextInput>) {
   return <View style={styles.field}><Text style={styles.fieldLabel}>{label}</Text><TextInput accessibilityLabel={label} maxLength={multiline ? 600 : 254} autoCapitalize={props.keyboardType === 'email-address' ? 'none' : 'sentences'} autoCorrect={props.keyboardType === 'email-address' ? false : undefined} multiline={multiline} {...props} style={[styles.input, multiline && styles.longInput]} /></View>;
 }
+function PasswordField({ label, ...props }: { label: string } & React.ComponentProps<typeof TextInput>) {
+  const [shown, setShown] = useState(false);
+  return <View style={styles.field}><Text style={styles.fieldLabel}>{label}</Text><View style={styles.passwordWrap}>
+    <TextInput accessibilityLabel={label} {...props} secureTextEntry={!shown} style={[styles.input, styles.passwordInput]} />
+    <Pressable accessibilityRole="button" accessibilityLabel={shown ? 'Hide password' : 'Show password'} onPress={() => setShown(value => !value)} style={styles.showButton}><Text style={styles.showText}>{shown ? 'Hide' : 'Show'}</Text></Pressable>
+  </View></View>;
+}
 function SmallAction({ label, icon, onPress, disabled }: { label: string; icon?: IconName; onPress: () => void; disabled?: boolean }) {
   return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={styles.smallAction}>{icon ? <NyIcon name={icon} color={atelier.petrol} size={17} /> : null}<Text style={styles.smallActionText}>{label}</Text></Pressable>;
 }
@@ -309,6 +316,10 @@ function MeasurementSummary({ fitting, unit }: { fitting: Fitting; unit: LengthU
 }
 
 const styles = StyleSheet.create({
+  passwordWrap: { justifyContent: 'center' },
+  passwordInput: { paddingRight: 72 },
+  showButton: { position: 'absolute', right: 6, minHeight: 40, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', borderRadius: atelier.buttonRadius },
+  showText: { color: atelier.petrol, fontFamily: atelier.body, fontWeight: '700', fontSize: 13 },
   safe: { flex: 1, backgroundColor: atelier.alabaster },
   content: { width: '100%', maxWidth: 680, alignSelf: 'center', paddingBottom: 125, paddingHorizontal: 24 },
   header: { height: 70, justifyContent: 'center' }, brand: { flexDirection: 'row', alignItems: 'center', gap: 9 },
