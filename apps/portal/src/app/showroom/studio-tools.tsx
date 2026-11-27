@@ -2,7 +2,8 @@
 import {useEffect,useRef,useState} from 'react';
 import Image from 'next/image';
 import {NyIcon,X,WifiOff,ChevronRight,History} from '@/components/icons';
-import {can,officeAccessDeniedMessage,roleLabels,type StaffIdentity} from '@/lib/staff-permissions';
+import {roleLabels,type StaffIdentity} from '@/lib/staff-permissions';
+import {staffWorkspaces} from '../workspace-list';
 import StaffSignOut from '../staff-sign-out';
 import {InstallWebApp,WorkspaceLink} from '../web-app';
 import {useStudioDialogHistory} from './use-studio-dialog-history';
@@ -12,7 +13,7 @@ export default function StudioTools({staff,welcome=false,onSalesHistory,workspac
   workspace?:'studio'|'production'}){
   const appName=workspace==='production'?'NY Production':'NY Studio';const shortName=workspace==='production'?'Production':'Studio';
   const [open,setOpen]=useState(false);const [offline,setOffline]=useState(false);const dialog=useRef<HTMLDialogElement>(null);
-  const [officeDenied,setOfficeDenied]=useState(false);
+  const workspaces=staffWorkspaces(staff).filter(item=>item.key!==workspace);
   const initials=staff.name.trim().split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase();
   useStudioDialogHistory(dialog,()=>setOpen(false),open);
   useEffect(()=>{if(open)dialog.current?.showModal();},[open]);
@@ -27,11 +28,10 @@ export default function StudioTools({staff,welcome=false,onSalesHistory,workspac
       <section className="studio-settings-section" aria-labelledby="studio-settings-workspace"><h3 id="studio-settings-workspace">{shortName}</h3><div className="studio-settings-group">
         <InstallWebApp app={appName} settingsRow/>
         {onSalesHistory&&<button type="button" className="studio-settings-row" onClick={()=>leaveStudioDialog(window,onSalesHistory)}><History size={22}/><span>Sales history</span><ChevronRight size={18}/></button>}
-        {workspace==='production'&&can(staff,'studio')&&<WorkspaceLink className="studio-settings-row" href={staff.studioHref??'/showroom'}><NyIcon name="grid" size={22}/><span>Open NY Studio</span><ChevronRight size={18}/></WorkspaceLink>}
-        {workspace==='studio'&&can(staff,'production')&&<WorkspaceLink className="studio-settings-row" href={staff.productionHref??'/production'}><NyIcon name="grid" size={22}/><span>Open NY Production</span><ChevronRight size={18}/></WorkspaceLink>}
-        {workspace==='production'&&!can(staff,'office') ? null : can(staff,'office') ? <WorkspaceLink className="studio-settings-row" href={staff.officeHref}><NyIcon name="grid" size={22}/><span>Open NY Office</span><ChevronRight size={18}/></WorkspaceLink> : <button type="button" className="studio-settings-row" aria-describedby={officeDenied?'studio-office-denied':undefined} onClick={()=>setOfficeDenied(true)}><NyIcon name="grid" size={22}/><span>Open NY Office</span><ChevronRight size={18}/></button>}
-        {officeDenied&&<p className="studio-settings-access-message" id="studio-office-denied" role="alert">{officeAccessDeniedMessage}</p>}
       </div></section>
+      {workspaces.length>0&&<section className="studio-settings-section" aria-labelledby="studio-settings-workspaces"><h3 id="studio-settings-workspaces">Workspaces</h3><div className="studio-settings-group">
+        {workspaces.map(({key,label,href,Icon})=><WorkspaceLink key={key} className="studio-settings-row" href={href}><Icon size={22} aria-hidden="true"/><span>Open {label}</span><ChevronRight size={18}/></WorkspaceLink>)}
+      </div></section>}
       <section className="studio-settings-section" aria-labelledby="studio-settings-session"><h3 id="studio-settings-session">Account</h3><div className="studio-settings-group"><StaffSignOut studio/></div></section>
     </dialog>}
   </>;
