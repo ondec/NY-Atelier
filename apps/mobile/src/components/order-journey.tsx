@@ -24,7 +24,7 @@ export function OrderJourney({ order }: { order: DemoOrder }) {
           <View style={styles.markerColumn}><View style={[styles.marker, { backgroundColor: colours.background, borderColor: colours.border }]}><NyIcon name={recorded ? 'check' : skipped ? 'minus' : step.is_current ? 'progress' : 'dot'} color={colours.ink} size={15} /></View>{index < group.length - 1 ? <View style={styles.connector} /> : null}</View>
           <View style={[styles.stepBody, step.is_current && styles.currentStep]}>
             <View style={styles.stepTitleRow}><Text style={[styles.stepTitle, !recorded && !step.is_current && styles.upcoming]}>{step.label}</Text>{step.is_current ? <Text style={styles.currentLabel}>{order.workflow?.closed ? 'FINAL STAGE' : 'CURRENT'}</Text> : null}</View>
-            <Text style={styles.note}>{step.recorded_at ? `${skipped ? 'Skipped · ' : ''}${dateTime(step.recorded_at)}` : step.is_current ? 'Current stage · time not recorded' : step.state === 'unrecorded' ? 'Time not recorded' : order.workflow?.current === 'cancelled' ? 'Not reached' : order.workflow?.closed ? 'Not recorded' : 'Upcoming'}</Text>
+            <Text style={styles.note}>{step.note ? step.note : step.recorded_at ? `${skipped ? 'Skipped · ' : ''}${dateTime(step.recorded_at)}` : step.is_current ? 'Current stage · time not recorded' : step.state === 'unrecorded' ? 'Time not recorded' : order.workflow?.current === 'cancelled' ? 'Not reached' : order.workflow?.closed ? 'Not recorded' : 'Upcoming'}</Text>
             {step.is_current && !order.workflow?.closed ? <Text style={styles.stepHelp}>{step.help}</Text> : null}
           </View>
         </View>;

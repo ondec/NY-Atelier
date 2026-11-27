@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Mail\OrderUpdateMail;
 use App\Models\Customer;
 use App\Models\DeliveryStartPoint;
 use App\Models\Order;
 use App\Models\User;
+use App\OrderCustomerNotice;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -185,5 +187,15 @@ class DeliveryTest extends TestCase
             'explanation' => 'Your delivery has been moved to '.$date->format('l j F').'. We’ll let you know when it’s on the way.']);
         $this->getJson('/api/demo/staff/deliveries')->assertJsonPath('deliveries.0.ready', true);
         $this->postJson("/api/demo/staff/deliveries/{$order->reference}/postpone", ['reason' => 'Again'])->assertUnprocessable();
+
+        // The customer's timeline: Out for delivery is no longer ticked and shows the new day; the email carries every stage.
+        $timeline = collect(app(OrderCustomerNotice::class)->timeline($order->fresh()))->keyBy('label');
+        $this->assertSame('done', $timeline['Order created']['state']);
+        $this->assertSame('current', $timeline['Packaged']['state']);
+        $this->assertSame('upcoming', $timeline['Out for delivery']['state']);
+        $this->assertSame('Moved to '.$date->format('D j M'), $timeline['Out for delivery']['note']);
+        $html = (new OrderUpdateMail($order->reference, 'Delivery moved', null, $timeline->values()->all()))->render();
+        $this->assertStringContainsString('Your order so far', $html);
+        $this->assertStringContainsString('Moved to '.$date->format('D j M'), $html);
     }
 }

@@ -4,7 +4,7 @@ export type DemoOrder = {
   workflow?: {
     version: number; current: string; closed: boolean; legacy: boolean;
     next: { key: string; label: string; help: string } | null;
-    steps: { key: string; label: string; help: string; phase?: string; is_current: boolean; recorded_at: string | null; state: string }[];
+    steps: { key: string; label: string; help: string; phase?: string; is_current: boolean; recorded_at: string | null; state: string; note?: string | null }[];
   };
   handover_instructions?: string | null;
   courier_name?: string | null;

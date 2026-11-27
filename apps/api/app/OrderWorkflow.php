@@ -87,8 +87,14 @@ class OrderWorkflow
             'steps' => array_map(function (array $step, int $position) use ($order, $index, $current): array {
                 $event = $order->events->first(fn (OrderEvent $event): bool => ($event->stage_key === $step['key'] && in_array($event->action_type, ['advance', 'skip', 'created'], true)) || ($event->stage_key === null && $event->title === $step['label']));
 
-                return [...$step, 'is_current' => $step['key'] === $current, 'recorded_at' => $event?->occurred_at->toIso8601String(),
-                    'state' => $event ? ($event->action_type === 'skip' ? 'skipped' : 'recorded') : ($index !== false && $position <= $index ? 'unrecorded' : 'upcoming')];
+                // A stage after the current one is upcoming even if it was recorded before (e.g. a delivery moved to another day).
+                $reached = $index === false || $position <= $index;
+                $moved = $step['key'] === 'out_for_delivery' && ! $reached && $order->delivery_due_by
+                    && $order->events->contains(fn (OrderEvent $event): bool => $event->title === 'Delivery moved');
+
+                return [...$step, 'is_current' => $step['key'] === $current, 'recorded_at' => $reached ? $event?->occurred_at->toIso8601String() : null,
+                    'state' => $event && $reached ? ($event->action_type === 'skip' ? 'skipped' : 'recorded') : ($reached ? 'unrecorded' : 'upcoming'),
+                    'note' => $moved ? 'Moved to '.$order->delivery_due_by->format('D j M') : null];
             }, $steps, array_keys($steps)),
             'next' => $next,
             'can_manage' => $manage,

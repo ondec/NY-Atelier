@@ -13,7 +13,11 @@
 </x-mail::panel>
 @endif
 
-<x-mail::note>Open the NY Atelier app to see your order, its progress and the full timeline.</x-mail::note>
+@if ($timeline)
+<x-mail::timeline :steps="$timeline" />
+@endif
+
+<x-mail::note>Open the NY Atelier app to see your order and its progress at any time.</x-mail::note>
 
 <x-mail::signature />
 </x-mail::message>

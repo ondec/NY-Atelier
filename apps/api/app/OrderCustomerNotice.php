@@ -3,7 +3,9 @@
 namespace App;
 
 use App\Mail\OrderUpdateMail;
+use App\Models\Order;
 use App\Models\OrderEvent;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -46,7 +48,7 @@ class OrderCustomerNotice
             $order = $event->order;
             $message = $event->action_type === 'notify' ? $event->explanation : $event->title.($event->explanation ? ' · '.$event->explanation : '');
             if ($event->external_channel === 'email') {
-                Mail::to($order->customer->email)->send(new OrderUpdateMail($order->reference, $message, $order->handover_instructions));
+                Mail::to($order->customer->email)->send(new OrderUpdateMail($order->reference, $message, $order->handover_instructions, $this->timeline($order)));
             } else {
                 Http::withToken(config('order_workflows.sms_token'))->withHeaders(['Idempotency-Key' => 'order-event-'.$event->id])
                     ->connectTimeout(2)->timeout(4)->post(config('order_workflows.sms_endpoint'), [
@@ -58,5 +60,25 @@ class OrderCustomerNotice
         } catch (Throwable) {
             $event->update(['external_status' => 'failed']);
         }
+    }
+
+    /**
+     * The order's progress for the email: every customer stage, ticked when done, the current one marked, the rest to come.
+     *
+     * @return list<array{label: string, state: string, date: ?string, note: ?string}>
+     */
+    public function timeline(Order $order): array
+    {
+        $order->load('events');
+        $described = $this->workflow->describe($order, false);
+
+        return array_map(fn (array $step): array => [
+            'label' => $step['label'],
+            'state' => $step['is_current'] ? 'current' : match ($step['state']) {
+                'recorded', 'unrecorded' => 'done', 'skipped' => 'skipped', default => 'upcoming'
+            },
+            'date' => $step['recorded_at'] ? Carbon::parse($step['recorded_at'])->format('j M') : null,
+            'note' => $step['note'] ?? null,
+        ], $described['steps']);
     }
 }
