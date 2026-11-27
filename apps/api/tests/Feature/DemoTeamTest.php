@@ -36,7 +36,7 @@ class DemoTeamTest extends TestCase
         config(['demo.enabled' => false]);
         $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.1'])->getJson('/api/demo/staff/team')->assertOk();
         $this->app['auth']->forgetGuards();
-        $this->signInStaff('manager');
+        $this->signInStaff('receptionist');
         $this->getJson('/api/demo/staff/team')->assertForbidden();
     }
 }

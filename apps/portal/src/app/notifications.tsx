@@ -59,7 +59,7 @@ export default function Notifications({ items, unavailable }: { items: PortalNot
             title: row.quantity === 0 ? "Ready-to-wear out of stock" : "Ready-to-wear low stock",
             tone: row.quantity === 0 ? "danger" as const : "warning" as const,
             detail: `${product.name} · ${variantLabel(row)} / ${row.size} · ${row.quantity} left`,
-            href: `/?section=inventory&view=products&product=${encodeURIComponent(product.id)}`,
+            href: `/ready-to-wear?view=products&product=${encodeURIComponent(product.id)}`,
           }];
         });
       setStockAlerts(alerts);

@@ -97,6 +97,40 @@ class DemoStudioSaleTest extends TestCase
         $this->assertDatabaseHas('order_events', ['order_id' => $order->id, 'title' => 'Collected']);
     }
 
+    public function test_a_piece_that_needs_altering_turns_the_paid_sale_into_an_alteration_for_production(): void
+    {
+        $data = $this->prepare();
+        $data['lines'][0]['alteration'] = 'Shorten sleeves 2cm';
+        $this->postJson('/api/demo/staff/studio/sales', [...$data, 'handover' => 'take-away', 'handover_confirmed' => true])
+            ->assertUnprocessable()->assertJsonValidationErrors('handover');
+
+        $response = $this->postJson('/api/demo/staff/studio/sales', $data)->assertCreated()
+            ->assertJsonPath('receipt.alteration', 'Red Clover Set · Olive · Cotton · Size M: Shorten sleeves 2cm');
+        $order = Order::query()->where('reference', $response->json('receipt.reference'))->firstOrFail();
+        $this->assertSame('Alterations', $order->category);
+        $this->assertSame('Ready-to-Wear', $order->original_category);
+        $this->assertSame('Paid', $order->payment_status);
+        $this->assertNull($order->completed_at);
+        $this->assertSame('received', $order->workflow_stage);
+        $this->assertStringContainsString('Shorten sleeves 2cm', (string) $order->specifications);
+        $this->assertDatabaseHas('order_events', ['order_id' => $order->id, 'title' => 'Needs alteration', 'client_visible' => false]);
+        // The sale and its stock deduction are still recorded.
+        $this->assertDatabaseHas('studio_sales', ['id' => $data['request_id'], 'order_id' => $order->id]);
+        // The front desk can send it straight to production: the alteration is already described.
+        $this->postJson("/api/demo/staff/orders/{$order->reference}/send-to-production")->assertOk();
+        $this->assertSame('in_production', $order->refresh()->workflow_stage);
+    }
+
+    public function test_a_blank_alteration_note_keeps_an_ordinary_sale(): void
+    {
+        $data = $this->prepare();
+        $data['lines'][0]['alteration'] = '  ';
+        $data['handover'] = 'take-away';
+        $data['handover_confirmed'] = true;
+        $response = $this->postJson('/api/demo/staff/studio/sales', $data)->assertCreated()->assertJsonPath('receipt.alteration', null);
+        $this->assertSame('Ready-to-Wear', Order::query()->where('reference', $response->json('receipt.reference'))->value('category'));
+    }
+
     public function test_delivery_stays_active_and_saved_receipt_does_not_change_with_catalogue_edits(): void
     {
         $data = [...$this->prepare(), 'handover' => 'delivery', 'instructions' => 'Deliver to the reception desk.'];

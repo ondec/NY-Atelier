@@ -7,14 +7,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 
 /**
- * Owner-only changes to existing staff accounts from NY Office → Team.
- * Owner accounts (including the signed-in owner's own) are never changed here.
+ * Changes to existing staff accounts from NY Office → Team, by anyone with Team access. Owner accounts and the
+ * signed-in person's own account are never changed here, and only roles within the actor's own access can be touched.
  */
 class StaffTeam
 {
     public function changeRole(User $owner, int $memberId, string $role): User
     {
         abort_unless(in_array($role, StaffAccess::INVITABLE_ROLES, true), 422, 'Choose a role that can be assigned.');
+        abort_unless(StaffAccess::canAssign($owner, $role), 403, 'You can only assign roles with no more access than your own.');
 
         return DB::transaction(function () use ($owner, $memberId, $role): User {
             $user = $this->manageable($owner, $memberId);
@@ -68,6 +69,7 @@ class StaffTeam
         abort_unless($user, 404, 'This team member has no staff account.');
         abort_if($user->id === $owner->id, 409, 'You can’t change your own access.');
         abort_unless(in_array($user->staff_role, StaffAccess::INVITABLE_ROLES, true), 409, 'Owner accounts can’t be changed from NY Office.');
+        abort_unless(StaffAccess::canAssign($owner, (string) $user->staff_role), 403, 'You can’t change an account with more access than your own.');
 
         return $user;
     }

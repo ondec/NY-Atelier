@@ -8,7 +8,7 @@ async function mediaAccessError(request: Request) {
   if (!sameOrigin(request)) return Response.json({ message: "Open this page to save changes." }, { status: 403 });
   const staff = await readStaff(request);
   if (!staff) return Response.json({ message: "Sign in with your staff account." }, { status: 401, headers: { "Cache-Control": "no-store" } });
-  return can(staff, "office") || can(staff, "production") ? null : Response.json({ message: "This action is not available for your staff role." }, { status: 403 });
+  return can(staff, "orders.read") || can(staff, "production") ? null : Response.json({ message: "This action is not available for your staff role." }, { status: 403 });
 }
 
 export const runtime = "nodejs";

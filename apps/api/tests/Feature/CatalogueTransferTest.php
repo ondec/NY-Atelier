@@ -130,10 +130,10 @@ class CatalogueTransferTest extends TestCase
         $this->assertDatabaseCount('studio_catalogue_backups', 0);
     }
 
-    public function test_only_owners_can_import_and_photos_must_come_from_the_wordpress_site(): void
+    public function test_only_team_managers_can_import_and_photos_must_come_from_the_wordpress_site(): void
     {
         $this->setUpHosted();
-        $this->signInStaff('manager');
+        $this->signInStaff('receptionist');
         $this->postJson(self::URL, ['transfer' => $this->transfer(), 'apply' => false])->assertForbidden();
 
         $this->signInStaff('owner');

@@ -281,12 +281,8 @@ body:has(.studio-photo-viewer[open]){overflow:hidden}
 
 .showroom .inventory-drawer{padding-top:max(24px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom))}
 
-.showroom-alteration-button { margin-top: 12px; width: 100%; justify-content: center; }
-.showroom-sale-alteration { display: inline-flex; align-items: center; gap: 7px; min-height: 42px; margin-top: 10px; border: 0; padding: 5px 0; background: transparent; color: #123c45; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-.showroom-sale-alteration:hover { color: #a85c32; }
 .showroom-alteration-context { padding: 14px 16px; margin: 16px 0; border-radius: 12px; background: #eef1eb; color: #123c45; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 
-.showroom-alteration-button:disabled{opacity:.45;cursor:not-allowed}
 
 /* Six-second editorial backdrop, with a quiet dissolve and story progress. */
 .showroom.showroom-welcome{background:#321e23}
@@ -597,3 +593,12 @@ body:has(.showroom dialog[open]){overflow:hidden}
 .production-bell-panel ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}.production-bell-panel li button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;padding:10px 12px;border-radius:14px;border:0;background:var(--surface,#f6f1e8);cursor:pointer;color:var(--slate)}
 .production-bell-panel li span{display:grid;gap:2px}.production-bell-panel small{color:var(--muted);font-size:12px}
 .production-bell-panel strong{letter-spacing:normal;text-transform:none;font-size:14px;line-height:1.3}
+
+/* A basket line that needs adjusting: the tick, then the note for production. */
+.showroom-sale-alteration{display:grid;gap:8px;margin-top:10px}
+.showroom-sale-alteration-toggle{display:inline-flex;align-items:center;gap:8px;min-height:42px;color:#123c45;font-size:13px;cursor:pointer}
+.showroom-sale-alteration-toggle input{width:18px;height:18px;accent-color:#123c45}
+.showroom-sale-alteration-note textarea{width:100%;min-height:64px;padding:10px 12px;border:1px solid #dedbd2;border-radius:12px;background:#fff;color:#123c45;font:inherit;font-size:16px;line-height:1.45;resize:vertical}
+.studio-checkout-alteration{display:block;margin-top:4px;color:#a85c32}
+.studio-receipt-alteration{margin:14px 0;padding:12px 14px;border-radius:12px;background:#eef1eb;color:#123c45;font-size:13px;line-height:1.5}
+.studio-receipt-alteration p{margin:4px 0 0;white-space:pre-line}

@@ -1,3 +1,4 @@
+import type { StaffRole } from './staff-permissions';
 type Environment = Record<string, string | undefined>;
 type HeaderSource = Pick<Headers, 'get'>;
 type Workspace = 'office' | 'studio';
@@ -37,12 +38,14 @@ export function workspaceForHost(headers: HeaderSource, env: Environment = proce
   return hosts && publicHost(headers) === hosts.studio.host ? 'studio' : 'office';
 }
 
-export function workspaceLinks(headers: HeaderSource, role: 'owner' | 'manager' | 'receptionist' | 'records' | 'production' | 'tailor', env: Environment = process.env) {
+export function workspaceLinks(headers: HeaderSource, role: StaffRole, env: Environment = process.env) {
   const hosts = activeHosts(headers, env);
   const studioHref = `${hosts?.studio.origin ?? ''}/showroom${role === 'records' ? '?view=fittings' : ''}`;
-  // The customer-records role has no NY Office; its home is the Studio customer directory.
-  // Production managers and tailors work in NY Production, served from the Office host.
-  const officeHref = role === 'records' ? studioHref : role === 'production' || role === 'tailor' ? `${hosts?.office.origin ?? ''}/production` : `${hosts?.office.origin ?? ''}/office/${role}`;
+  // Only owner, general manager and operations manager have NY Office. Front desk and customer records work in NY Studio;
+  // production managers and tailors in NY Production, and couriers in Deliveries, both served from the Office host.
+  const office = hosts?.office.origin ?? '';
+  const officeHref = role === 'records' || role === 'receptionist' ? studioHref : role === 'production' || role === 'tailor' ? `${office}/production`
+    : role === 'courier' ? `${office}/deliveries` : role === 'catalogue' ? `${office}/ready-to-wear` : `${office}/office/${role}`;
   return { officeHref, studioHref, productionHref: `${hosts?.office.origin ?? ''}/production` };
 }
 

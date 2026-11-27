@@ -27,6 +27,7 @@ export type DemoOrder = {
   /** Custom and alteration orders only: the handover to NY Production. */
   production?: { sent_at: string | null; sent_by: string | null; returned_at: string | null; return_reason: string | null; finished?: boolean; missing: string[]; can_prepare: boolean; can_send: boolean } | null;
   assigned_tailor?: { id: number; name: string } | null;
+  assigned_courier?: { id: number; name: string } | null;
   assigned_at?: string | null;
   attachments?: { id: string; name: string; mime_type: string; size: number }[];
   delivery?: { recipient_name: string | null; phone: string | null; address: string; area: string | null; gps_code: string | null; directions: string | null; latitude: number | null; longitude: number | null } | null;

@@ -75,8 +75,12 @@ class StudioSales
             $customer = Customer::query()->findOrFail($data['customer_id']);
             $collected = $data['handover'] === 'take-away';
             $orderReference = 'NY-RTW-'.mb_strtoupper(str_replace('-', '', $data['request_id']));
+            $alterations = self::alterations($data['lines'], $quote['lines']);
             $order = Order::query()->create([
-                'reference' => $orderReference, 'customer_id' => $customer->id, 'category' => 'Ready-to-Wear', 'source' => 'studio',
+                'reference' => $orderReference, 'customer_id' => $customer->id, 'source' => 'studio',
+                // A piece that needs adjusting turns the whole sale into an alteration; the sale stays recorded as Ready-to-Wear.
+                'category' => $alterations ? 'Alterations' : 'Ready-to-Wear', 'original_category' => $alterations ? 'Ready-to-Wear' : null,
+                'specifications' => $alterations, 'created_by_id' => $actor->id,
                 'status' => $collected ? 'Collected' : 'Order created', 'workflow_stage' => $collected ? 'collected' : 'received',
                 'workflow_version' => 1, 'payment_status' => 'Paid',
                 'fulfilment_method' => $data['handover'] === 'delivery' ? 'Delivery' : 'Collection',
@@ -89,6 +93,10 @@ class StudioSales
             ], $quote['lines'], array_keys($quote['lines'])));
             $order->events()->create(['title' => 'Order created', 'stage_key' => 'received', 'action_type' => 'created', 'occurred_at' => now(), 'explanation' => 'Purchased at NY Studio.']);
             $order->events()->create(['title' => 'Payment recorded', 'action_type' => 'payment', 'occurred_at' => now(), 'explanation' => 'Paid GHS '.number_format($quote['total_minor'] / 100, 2).' by '.str_replace('-', ' ', $data['payment_method']).'.']);
+            if ($alterations) {
+                $order->events()->create(['title' => 'Needs alteration', 'action_type' => 'note', 'client_visible' => false, 'occurred_at' => now(),
+                    'explanation' => "{$alterations} ({$actor->name})"]);
+            }
             if ($collected) {
                 $order->events()->create(['title' => 'Collected', 'stage_key' => 'collected', 'action_type' => 'advance', 'occurred_at' => now(), 'explanation' => 'Staff confirmed the garments were checked and handed to '.$customer->name.' at NY Studio.']);
             }
@@ -96,6 +104,7 @@ class StudioSales
             $receipt = [...$quote, 'staff' => ['id' => $actor->id, 'name' => $actor->name, 'role' => $actor->staff_role], 'id' => $data['request_id'], 'reference' => $orderReference, 'customer' => ['id' => $customer->id, 'name' => $customer->name],
                 'payment_method' => $data['payment_method'], 'payment_reference' => $reference, 'tendered_minor' => $tendered, 'change_minor' => $tendered - $quote['total_minor'],
                 'handover' => $data['handover'], 'instructions' => $data['instructions'] ?? null, 'paid_at' => now()->toIso8601String(), 'status' => 'Paid',
+                'alteration' => $alterations,
             ];
             DB::table('studio_sales')->insert([
                 'id' => $data['request_id'], 'order_id' => $order->id, 'recorded_by' => $actor->id, 'request_hash' => $hash, 'payment_method' => $data['payment_method'], 'payment_reference' => $reference,
@@ -115,5 +124,21 @@ class StudioSales
 
             return ['receipt' => $receipt, 'replayed' => false];
         }, 3);
+    }
+
+    /**
+     * The alteration brief for production, one line per basket item that needs adjusting.
+     *
+     * @param  list<array{variantId: string, quantity: int, alteration?: string|null}>  $requested
+     * @param  list<array<string, mixed>>  $lines
+     */
+    private static function alterations(array $requested, array $lines): ?string
+    {
+        $notes = collect($requested)->filter(fn (array $line): bool => filled($line['alteration'] ?? null))
+            ->mapWithKeys(fn (array $line): array => [$line['variantId'] => trim((string) $line['alteration'])]);
+        $brief = collect($lines)->filter(fn (array $line): bool => $notes->has($line['variantId']))
+            ->map(fn (array $line): string => implode(' · ', array_filter([$line['name'], $line['colour'], $line['fabric'], 'Size '.$line['size']])).': '.$notes[$line['variantId']]);
+
+        return $brief->isEmpty() ? null : $brief->join("\n");
     }
 }

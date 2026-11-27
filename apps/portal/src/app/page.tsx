@@ -8,7 +8,7 @@ export default async function Home({searchParams}:{searchParams:Promise<Record<s
   const query = await searchParams;
   const workspace = query.section ? 'office' : workspaceForHost(await headers());
   const staff = await requireStaff(workspace);
-  if (!can(staff, 'office') && !can(staff, 'studio') && can(staff, 'production')) redirect(staff.productionHref ?? '/production');
+  if (!can(staff, 'office') && !can(staff, 'studio')) redirect(staff.officeHref);
   if (workspace === 'studio') redirect(staff.studioHref ?? '/showroom');
   const params = new URLSearchParams();
   for (const [key,value] of Object.entries(query)) for (const item of Array.isArray(value)?value:value===undefined?[]:[value]) params.append(key,item);

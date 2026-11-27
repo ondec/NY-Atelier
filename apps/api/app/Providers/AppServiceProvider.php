@@ -43,7 +43,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Customer tokens are also Sanctum tokens; only staff users can pass staff gates.
-        Gate::define('staff.owner-overview', fn ($user): bool => $user instanceof User && StaffAccess::allows($user, 'office') && $user->staff_role === 'owner');
+        // The owner overview (takings, salaries and business totals) is for the owner and general manager.
+        Gate::define('staff.owner-overview', fn ($user): bool => $user instanceof User && StaffAccess::allows($user, 'office') && in_array($user->staff_role, ['owner', 'manager'], true));
+        // The staff API that NY Office and NY Studio share; each route also checks its own permission.
+        Gate::define('staff.catalogue', fn ($user): bool => $user instanceof User && (StaffAccess::allows($user, 'sales') || StaffAccess::allows($user, 'catalogue.manage')));
+        Gate::define('staff.desk', fn ($user): bool => $user instanceof User && (StaffAccess::allows($user, 'office') || StaffAccess::allows($user, 'studio')));
         foreach (array_unique(array_merge(...array_values(StaffAccess::PERMISSIONS))) as $permission) {
             Gate::define('staff.'.$permission, fn ($user): bool => $user instanceof User && StaffAccess::allows($user, $permission));
         }

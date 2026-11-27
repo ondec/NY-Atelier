@@ -162,10 +162,15 @@ class OrderWorkflow
                 'specifications' => $order->specifications,
                 'assigned_tailor' => $order->assignedTailor ? ['id' => $order->assignedTailor->id, 'name' => $order->assignedTailor->name] : null,
                 'assigned_at' => $order->assigned_at?->toIso8601String(),
+                'assigned_courier' => $order->assignedCourier ? ['id' => $order->assignedCourier->id, 'name' => $order->assignedCourier->name] : null,
                 'production' => OrderProduction::state($order, request()->user()),
                 'attachments' => DB::table('order_attachments')->where('order_id', $order->id)->orderBy('created_at')->orderBy('name')
                     ->get(['id', 'name', 'mime_type', 'size'])->map(fn (object $file): array => (array) $file)->values(),
             ] : []),
+            'delivery_promise' => $order->fulfilment_method === 'Delivery' && $order->delivery_due_by ? [
+                'zone_id' => $order->delivery_zone_id, 'area' => $order->deliveryZone?->name,
+                'from' => $order->delivery_due_from?->toDateString(), 'by' => $order->delivery_due_by->toDateString(),
+            ] : null,
             'reference' => $order->reference, 'category' => $order->category, 'original_category' => $order->original_category, 'customer_name' => $order->customer->name,
             'source' => $order->source,
             'status' => $order->status, 'service_offering' => config('demo.offerings')[$order->service_offering] ?? null,

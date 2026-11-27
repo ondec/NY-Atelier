@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    // Road routing for courier routes (OpenStreetMap OSRM). The public demo server has no uptime promise;
+    // point OSRM_URL at a self-hosted or paid OSRM-compatible server for production use.
+    'osrm' => [
+        'url' => env('OSRM_URL', 'https://router.project-osrm.org'),
+    ],
+
 ];

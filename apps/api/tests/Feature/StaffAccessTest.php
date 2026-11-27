@@ -28,14 +28,14 @@ class StaffAccessTest extends TestCase
 
     public static function roles(): array
     {
-        return [['owner'], ['manager'], ['receptionist']];
+        return [['owner', '/office/owner'], ['manager', '/office/manager'], ['operations', '/office/operations'], ['receptionist', '/showroom'], ['courier', '/deliveries']];
     }
 
     #[DataProvider('roles')]
-    public function test_named_staff_sign_in_returns_only_their_own_role_and_office(string $role): void
+    public function test_named_staff_sign_in_returns_only_their_own_role_and_office(string $role, string $home): void
     {
         $user = $this->account($role);
-        $response = $this->postJson('/api/staff/auth/login', ['email' => $user->email, 'password' => 'PreviewAccount2468!', 'role' => 'owner'])->assertOk()->assertJsonPath('staff.role', $role)->assertJsonPath('staff.officeHref', '/office/'.$role);
+        $response = $this->postJson('/api/staff/auth/login', ['email' => $user->email, 'password' => 'PreviewAccount2468!', 'role' => 'owner'])->assertOk()->assertJsonPath('staff.role', $role)->assertJsonPath('staff.officeHref', $home);
         $token = $response->json('token');
         $this->assertDatabaseCount('personal_access_tokens', 1);
         $this->assertFalse(str_contains(DB::table('personal_access_tokens')->value('token'), $token));
@@ -110,19 +110,39 @@ class StaffAccessTest extends TestCase
         $this->patchJson('/api/demo/staff/orders/NY-RTW-000001/workflow', [])->assertForbidden();
         $this->getJson('/api/demo/staff/orders')->assertOk()->assertJsonPath('orders.0.workflow.can_manage', false);
         $customer = DB::table('customers')->first();
-        $this->postJson('/api/demo/staff/orders', ['request_id' => (string) Str::uuid(), 'category' => 'Custom', 'customer_id' => $customer->id, 'service_offering' => 'bespoke', 'items' => [['garment_name' => 'Suit']]])->assertForbidden();
-        $this->postJson('/api/demo/staff/orders', ['request_id' => (string) Str::uuid(), 'category' => 'Alterations', 'customer_id' => $customer->id, 'items' => [['garment_name' => 'Trouser adjustment']]])->assertCreated();
+        // Reception works in NY Studio only: the Office order form is closed, Studio creates their alterations.
+        $this->postJson('/api/demo/staff/orders', ['request_id' => (string) Str::uuid(), 'category' => 'Alterations', 'customer_id' => $customer->id, 'items' => [['garment_name' => 'Trouser adjustment']]])->assertForbidden();
+        $this->postJson('/api/demo/staff/studio/orders', ['request_id' => (string) Str::uuid(), 'category' => 'Custom', 'customer_id' => $customer->id, 'service_offering' => 'bespoke', 'items' => [['garment_name' => 'Suit']]])->assertForbidden();
+        $this->postJson('/api/demo/staff/studio/orders', ['request_id' => (string) Str::uuid(), 'category' => 'Alterations', 'customer_id' => $customer->id, 'items' => [['garment_name' => 'Trouser adjustment']]])->assertCreated();
         $this->getJson('/api/demo/staff/customers')->assertOk();
         $this->getJson('/api/demo/staff/studio/catalogue')->assertOk();
     }
 
-    public function test_manager_can_manage_operations_but_not_owner_team(): void
+    public function test_general_manager_has_the_same_access_as_the_owner(): void
     {
         config(['demo.enabled' => true]);
         $this->signInStaff('manager');
         $this->getJson('/api/demo/staff/salaries')->assertOk();
-        $this->getJson('/api/demo/staff/team')->assertForbidden();
+        $this->getJson('/api/demo/staff/team')->assertOk();
+        $this->getJson('/api/demo/staff/overview')->assertOk();
         $this->getJson('/api/demo/staff/studio/catalogue')->assertOk();
+        $this->getJson('/api/demo/staff/production')->assertOk();
+    }
+
+    public function test_operations_manager_has_everything_except_finances_and_payroll(): void
+    {
+        config(['demo.enabled' => true]);
+        $this->signInStaff('operations');
+        $this->getJson('/api/demo/staff/salaries')->assertForbidden();
+        $this->getJson('/api/demo/staff/finances/overview')->assertForbidden();
+        $this->getJson('/api/demo/staff/overview')->assertForbidden();
+        $this->getJson('/api/demo/staff/team')->assertOk()->assertJsonMissing(['id' => 'manager']);
+        $this->getJson('/api/demo/staff/orders')->assertOk();
+        $this->getJson('/api/demo/staff/studio/catalogue')->assertOk();
+        $this->getJson('/api/demo/staff/production')->assertOk();
+        // Team access can't be used to create someone with finance access.
+        $this->postJson('/api/demo/staff/team/invitations', ['name' => 'New GM', 'email' => 'gm@example.test', 'role' => 'manager'])->assertForbidden();
+        $this->postJson('/api/demo/staff/team/invitations', ['name' => 'Front desk', 'email' => 'desk@example.test', 'role' => 'receptionist'])->assertCreated();
     }
 
     public function test_account_setup_links_are_one_use_and_role_cannot_be_changed_in_the_form(): void
@@ -136,5 +156,16 @@ class StaffAccessTest extends TestCase
         $this->assertTrue(Hash::check('NewPreviewAccount2468!', $user->fresh()->password));
         $this->assertDatabaseMissing('staff_activation_tokens', ['user_id' => $user->id]);
         $this->postJson('/api/staff/auth/activate', $payload)->assertUnprocessable();
+    }
+
+    public function test_the_catalogue_manager_manages_the_catalogue_in_office_but_cannot_sell_or_see_orders_customers_or_money(): void
+    {
+        $this->signInStaff('catalogue');
+        $this->getJson('/api/staff/auth/me')->assertOk()->assertJsonPath('staff.officeHref', '/ready-to-wear');
+        $this->getJson('/api/demo/staff/studio/catalogue')->assertOk();
+        foreach (['/api/demo/staff/orders', '/api/demo/staff/customers', '/api/demo/staff/studio/sales', '/api/demo/staff/salaries', '/api/demo/staff/finances/overview', '/api/demo/staff/team', '/api/demo/staff/production'] as $url) {
+            $this->getJson($url)->assertForbidden();
+        }
+        $this->postJson('/api/demo/staff/studio/sales/quote', ['lines' => []])->assertForbidden();
     }
 }

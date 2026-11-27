@@ -114,7 +114,7 @@ class StaffTeamManagementTest extends TestCase
 
     public static function nonOwners(): array
     {
-        return [['manager'], ['receptionist'], ['records']];
+        return [['production'], ['receptionist'], ['records']];
     }
 
     #[DataProvider('nonOwners')]

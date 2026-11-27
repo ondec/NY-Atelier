@@ -9,7 +9,6 @@ import { sampleCollections, type Collection } from "../collections-workspace";
 import { customerApi, CustomerEditor, useCustomerSearch, type Directory, type Profile } from "../customers-workspace";
 import { customerSearchQuery } from "@/lib/customer-search";
 import CreateStaffOrder from "../create-staff-order";
-import { alterationContext } from "@/lib/alteration-context";
 import StatusBadge from "../status-badge";
 import SaleBasket, { type SaleLine } from "./sale-basket";
 import { InventoryDrawer } from "../catalogue-editor";
@@ -325,6 +324,14 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
     window.history.replaceState(null, '', url);
   }
 
+  function updateAlteration(variantId: string, alteration: string | undefined) {
+    setSale((current) => current.map((item) => {
+      if (item.variantId !== variantId) return item;
+      const line = { variantId: item.variantId, quantity: item.quantity };
+      return alteration === undefined ? line : { ...line, alteration };
+    }));
+  }
+
   function updateSale(variantId: string, quantity: number) {
     const row = inventory.variants.find((item) => item.id === variantId);
     if (quantity > 0 && (!row || !stockKnown(row) || quantity > row.quantity)) return;
@@ -407,7 +414,6 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
               <p className="showroom-availability">{selectedStock && <><StatusBadge status={!stockKnown(selectedStock) ? "Not counted" : selectedStock.quantity === 0 ? "Out of stock" : isLowStock(selectedStock) ? "Low stock" : "In stock"} /> </>}{selectedStock ? stockKnown(selectedStock) ? `${selectedStock.quantity} available in ${selectedStock.size}` : "Enter a stock count in NY Office before selling this size." : stock.some(row => !stockKnown(row)) ? "Stock has not been counted. Enter counts in NY Office before selling these sizes." : stock.length ? "Choose an available size to check stock." : "Stock has not been set up for this piece."}</p>
             </div>
             <button className="showroom-primary showroom-add-sale" disabled={!selectedStock || !stockKnown(selectedStock) || selectedStock.quantity <= (sale.find((line) => line.variantId === selectedStock.id)?.quantity ?? 0)} onClick={addToSale}><ShoppingBag size={19} />{!size ? "Choose a size to add" : "Add to sale"}<Plus size={18} /></button>
-            <CreateStaffOrder disabled={!selectedStock} category="Alterations" preferredCustomerId={profileReady ? profile.customer.id : undefined} initialGarments={alterationContext(product, selectedStock).garments} garmentContext={alterationContext(product, selectedStock).notes} requireNotes buttonClassName="showroom-secondary showroom-alteration-button" onCreated={reference => setSaleNotice(`Alteration order ${reference} created.`)} />
             <button className="showroom-secondary" onClick={() => customerId ? openFittingCustomer(customerId) : showFittingCustomers()}><Ruler size={19} /> Measurements & fit notes<ArrowRight size={18} /></button>
             <p className="showroom-hint">Review a previous fitting or record measurements with your customer.</p>
           </section>
@@ -435,7 +441,7 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
           })}</div>
           {!catalogue.length && <div className="showroom-empty"><Search size={32} /><h3>No matching garments</h3><p>Try another name, colour or clothing type.</p><button className="showroom-secondary" onClick={clearProductFilters}>Clear filters</button></div>}
         </>}
-        </div><div className="showroom-desktop-sale"><SaleBasket inventory={inventory} lines={sale} customer={profileReady ? profile.customer.name : undefined} customerId={profileReady ? profile.customer.id : undefined} onCheckout={() => setCheckout(true)} onCustomer={() => setPickingCustomer(true)} onQuantity={updateSale} onAlterationCreated={reference => setSaleNotice(`Alteration order ${reference} created.`)} /></div></div>
+        </div><div className="showroom-desktop-sale"><SaleBasket inventory={inventory} lines={sale} customer={profileReady ? profile.customer.name : undefined} customerId={profileReady ? profile.customer.id : undefined} onCheckout={() => setCheckout(true)} onCustomer={() => setPickingCustomer(true)} onQuantity={updateSale} onAlteration={updateAlteration} /></div></div>
       </> : <>
         <div className="showroom-intro showroom-fitting-intro"><div><h1>A fit of your own.</h1></div><button className="showroom-secondary" onClick={() => openFittingEditor("customer")}><Plus size={18} /> New customer</button></div>
         <div className={`showroom-fitting-layout is-${fittingPage}`}>
@@ -475,7 +481,7 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
         </div>
       </>}
     </div>
-    {canSell && saleDesk && <InventoryDrawer fullScreen label="Sales Desk" onClose={closeSaleDesk}><section className="inventory-form-panel studio-sale-screen"><header className="inventory-form-title"><button type="button" className="fitting-screen-back" aria-label="Back from Sales Desk" onClick={closeSaleDesk}><ArrowLeft size={20}/></button><h2>Sales Desk</h2></header><SaleBasket inventory={inventory} lines={sale} customer={profileReady ? profile.customer.name : undefined} customerId={profileReady ? profile.customer.id : undefined} onCheckout={() => setCheckout(true)} onCustomer={() => setPickingCustomer(true)} onQuantity={updateSale} onAlterationCreated={reference => setSaleNotice(`Alteration order ${reference} created.`)}/></section></InventoryDrawer>}
+    {canSell && saleDesk && <InventoryDrawer fullScreen label="Sales Desk" onClose={closeSaleDesk}><section className="inventory-form-panel studio-sale-screen"><header className="inventory-form-title"><button type="button" className="fitting-screen-back" aria-label="Back from Sales Desk" onClick={closeSaleDesk}><ArrowLeft size={20}/></button><h2>Sales Desk</h2></header><SaleBasket inventory={inventory} lines={sale} customer={profileReady ? profile.customer.name : undefined} customerId={profileReady ? profile.customer.id : undefined} onCheckout={() => setCheckout(true)} onCustomer={() => setPickingCustomer(true)} onQuantity={updateSale} onAlteration={updateAlteration}/></section></InventoryDrawer>}
     {canSell && checkout && <StudioCheckout staffId={staff.id} lines={sale} customerId={customerId ?? 0} customer={profileReady ? profile.customer.name : undefined} onClose={() => setCheckout(false)} onComplete={value => {
       setReceipt(value); setCheckout(false); setSale([]); setSize(""); setSaleDesk(false);
       if (new URLSearchParams(window.location.search).get('screen') === 'sale') {const url = new URL(window.location.href); url.searchParams.delete('screen'); window.history.replaceState(null, '', url);}

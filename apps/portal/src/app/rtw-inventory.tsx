@@ -45,7 +45,7 @@ function ProductGallery({ photos, label }: { photos: string[]; label: string }) 
   </div>;
 }
 
-const catalogueHref = "/?section=inventory&view=products";
+const catalogueHref = "/ready-to-wear?view=products";
 const distinctLabels = (labels: readonly string[]) => [...new Map(labels.filter(Boolean).map((label) => [normalize(label), label])).values()];
 
 function ColourDetails({ visual }: { visual?: VariantVisual }) {

@@ -855,3 +855,5 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 }
 @media(max-width:400px){.fitting-edit-group .inventory-form-grid{grid-template-columns:minmax(0,1fr)!important}}
 @media(max-width:340px){.fitting-custom-value{flex-wrap:wrap}.fitting-custom-save{width:100%}}
+/* Staff without a workspace rail (delivery couriers) get the full width. */
+.workspace-frame:not(:has(> .workspace-rail)){display:block}

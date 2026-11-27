@@ -20,9 +20,11 @@ test('the two configured subdomains share one protected staff cookie',()=>{
   assert.equal(tokenFromCookie(`ny_staff=old; __Secure-ny_staff=${Buffer.from(token).toString('base64url')}`),token);
 });
 test('entry and workspace switches keep the staff role and query on the correct host',()=>{
-  for(const role of ['owner','manager','receptionist']){
+  for(const role of ['owner','manager','operations']){
     assert.deepEqual(workspaceLinks(headers('studio.thenyatelier.com'),role,env),{officeHref:`https://office.thenyatelier.com/office/${role}`,studioHref:'https://studio.thenyatelier.com/showroom',productionHref:'https://office.thenyatelier.com/production'});
   }
+  assert.equal(workspaceLinks(headers('studio.thenyatelier.com'),'receptionist',env).officeHref,'https://studio.thenyatelier.com/showroom');
+  assert.equal(workspaceLinks(headers('studio.thenyatelier.com'),'courier',env).officeHref,'https://office.thenyatelier.com/deliveries');
   assert.equal(workspaceForHost(headers('studio.thenyatelier.com'),env),'studio');
   assert.equal(workspaceForHost(headers('office.thenyatelier.com'),env),'office');
 });

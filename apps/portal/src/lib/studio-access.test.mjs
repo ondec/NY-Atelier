@@ -19,10 +19,12 @@ test('receptionist Office has shared customer operations without management-only
   for(const area of ['team','finances','inventory','collections','atelier','production-inventory'])assert.equal(sectionAllowed(receptionist,area),false);
   assert.equal(can(receptionist,'studio'),true);assert.equal(can(receptionist,'orders.manage'),false);assert.equal(can(null,'studio'),false);
 });
-test('Office routes derive from the signed-in role and manager reports remain owner-only',()=>{
+test('Office routes derive from the signed-in role and finance reports are for the owner and general manager only',()=>{
   assert.equal(officeHref('manager'),'/office/manager');assert.equal(officeHref('receptionist'),'/office/receptionist');
   const manager={...receptionist,role:'manager',permissions:[...receptionist.permissions,'orders.manage','catalogue.manage','finances']};
-  assert.equal(sectionAllowed(manager,'finances','sales'),true);assert.equal(sectionAllowed(manager,'finances','reports'),false);assert.equal(sectionAllowed(manager,'team'),false);
+  assert.equal(sectionAllowed(manager,'finances','sales'),true);assert.equal(sectionAllowed(manager,'finances','reports'),true);assert.equal(sectionAllowed(manager,'team'),false);
+  const operations={...manager,role:'operations',permissions:manager.permissions.filter((p)=>p!=='finances').concat('team')};
+  assert.equal(sectionAllowed(operations,'finances','sales'),false);assert.equal(sectionAllowed({...operations,permissions:[...operations.permissions,'finances']},'finances','reports'),false);assert.equal(sectionAllowed(operations,'team'),true);
 });
 test('Office access requires its own permission for every role, including Studio staff',()=>{
   for(const role of ['owner','manager','receptionist']){

@@ -4,6 +4,8 @@ use App\Http\Controllers\CatalogueTransferController;
 use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\CustomerConsultationController;
 use App\Http\Controllers\CustomerPasskeyController;
+use App\Http\Controllers\DeliveryController;
+use App\Http\Controllers\DeliverySettingsController;
 use App\Http\Controllers\DemoConsultationController;
 use App\Http\Controllers\DemoCustomerController;
 use App\Http\Controllers\DemoOrderWorkflowController;
@@ -119,19 +121,37 @@ Route::prefix('demo/staff')->middleware('auth:sanctum')->group(function () {
         Route::post('/{reference}/return', [ProductionController::class, 'sendBack'])->middleware(['can:staff.production.manage', 'throttle:30,1']);
     });
 });
-Route::prefix('demo/staff')->middleware(['auth:sanctum', 'can:staff.office'])->group(function () use ($listOrders) {
+// Delivery couriers have neither NY Office nor NY Studio: only their own deliveries.
+Route::prefix('demo/staff/deliveries')->middleware(['auth:sanctum', 'can:staff.deliveries'])->group(function () {
+    Route::get('/', [DeliveryController::class, 'index']);
+    Route::post('/{reference}/delivered', [DeliveryController::class, 'delivered'])->middleware('throttle:30,1');
+    Route::post('/route', [DeliveryController::class, 'route'])->middleware('throttle:30,1');
+    Route::post('/start', [DeliveryController::class, 'start'])->middleware('throttle:20,1');
+    Route::post('/{reference}/postpone', [DeliveryController::class, 'postpone'])->middleware('throttle:30,1');
+});
+Route::prefix('demo/staff')->middleware(['auth:sanctum', 'can:staff.desk'])->group(function () use ($listOrders) {
     Route::get('/overview', OwnerOverviewController::class)->middleware('can:staff.owner-overview');
     Route::get('/finances/overview', FinanceOverviewController::class)->middleware('can:staff.finances');
     Route::get('/orders', $listOrders)->name('demo.staff.order-list')->middleware('can:staff.orders.read');
     Route::get('/orders/options', [DemoStaffOrderController::class, 'options'])->middleware('can:staff.orders.read');
     Route::get('/orders/{reference}', [DemoOrderWorkflowController::class, 'show'])->middleware('can:staff.orders.read');
     Route::patch('/orders/{reference}/workflow', [DemoOrderWorkflowController::class, 'update'])->middleware(['can:staff.orders.manage', 'throttle:60,1']);
+    Route::get('/couriers', [DeliveryController::class, 'couriers'])->middleware('can:staff.orders.manage');
+    Route::patch('/orders/{reference}/courier', [DeliveryController::class, 'assign'])->middleware(['can:staff.orders.manage', 'throttle:60,1']);
+    Route::patch('/orders/{reference}/delivery-zone', [DeliverySettingsController::class, 'setOrderZone'])->middleware(['can:staff.orders.manage', 'throttle:60,1']);
+    Route::prefix('delivery-settings')->middleware('can:staff.orders.manage')->group(function () {
+        Route::get('/', [DeliverySettingsController::class, 'index']);
+        Route::post('/zones', [DeliverySettingsController::class, 'saveZone'])->middleware('throttle:30,1');
+        Route::patch('/zones/{zone}', [DeliverySettingsController::class, 'saveZone'])->whereNumber('zone')->middleware('throttle:30,1');
+        Route::post('/start-points', [DeliverySettingsController::class, 'saveStartPoint'])->middleware('throttle:30,1');
+        Route::patch('/start-points/{point}', [DeliverySettingsController::class, 'saveStartPoint'])->whereNumber('point')->middleware('throttle:30,1');
+    });
     Route::patch('/orders/{reference}/brief', [OrderProductionController::class, 'brief'])->middleware(['can:staff.orders.read', 'throttle:60,1']);
     Route::post('/orders/{reference}/send-to-production', [OrderProductionController::class, 'send'])->middleware(['can:staff.orders.read', 'throttle:30,1']);
     Route::post('/orders/{reference}/needs-alteration', [FrontDeskController::class, 'needsAlteration'])->middleware(['can:staff.alterations.create', 'throttle:30,1']);
     Route::get('/front-desk/alerts', [FrontDeskController::class, 'alerts'])->middleware('can:staff.orders.read');
     Route::post('/front-desk/seen', [FrontDeskController::class, 'seen'])->middleware(['can:staff.orders.read', 'throttle:60,1']);
-    Route::post('/orders', [DemoStaffOrderController::class, 'store'])->middleware('throttle:30,1');
+    Route::post('/orders', [DemoStaffOrderController::class, 'store'])->middleware(['can:staff.office', 'throttle:30,1']);
     Route::get('/consultations', [DemoConsultationController::class, 'index'])->middleware('can:staff.consultations');
     Route::put('/size-charts', [SizeChartController::class, 'update'])->middleware(['can:staff.catalogue.manage', 'throttle:60,1']);
     Route::prefix('salaries')->middleware('can:staff.finances')->group(function () {
@@ -148,11 +168,14 @@ Route::prefix('demo/staff')->middleware(['auth:sanctum', 'can:staff.office'])->g
         Route::post('/{member}/deactivate', [DemoTeamController::class, 'deactivate'])->whereNumber('member')->middleware('throttle:30,1');
         Route::post('/{member}/reactivate', [DemoTeamController::class, 'reactivate'])->whereNumber('member')->middleware('throttle:30,1');
     });
+    // The shared catalogue: read by anyone who sells or manages it; changed only by catalogue managers.
+    Route::prefix('studio/catalogue')->middleware('can:staff.catalogue')->group(function () {
+        Route::get('/', [DemoStudioSaleController::class, 'catalogue']);
+        Route::post('/initialize', [DemoStudioSaleController::class, 'initialize'])->middleware('can:staff.catalogue.manage');
+        Route::post('/', [DemoStudioSaleController::class, 'saveCatalogue'])->middleware('can:staff.catalogue.manage');
+    });
     Route::prefix('studio')->middleware(['can:staff.studio', 'can:staff.sales'])->group(function () {
         Route::post('/orders', [DemoStaffOrderController::class, 'store'])->name('demo.staff.studio.order-create')->middleware('throttle:30,1');
-        Route::get('/catalogue', [DemoStudioSaleController::class, 'catalogue']);
-        Route::post('/catalogue/initialize', [DemoStudioSaleController::class, 'initialize'])->middleware('can:staff.catalogue.manage');
-        Route::post('/catalogue', [DemoStudioSaleController::class, 'saveCatalogue'])->middleware('can:staff.catalogue.manage');
         Route::post('/catalogue/transfer', [CatalogueTransferController::class, 'store'])->middleware(['can:staff.catalogue.manage', 'can:staff.team', 'throttle:20,1']);
         Route::post('/catalogue/transfer/{backup}/undo', [CatalogueTransferController::class, 'undo'])->whereNumber('backup')->middleware(['can:staff.catalogue.manage', 'can:staff.team', 'throttle:20,1']);
         Route::get('/sales', [DemoStudioSaleController::class, 'index']);

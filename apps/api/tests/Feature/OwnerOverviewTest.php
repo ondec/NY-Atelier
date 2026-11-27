@@ -42,7 +42,7 @@ class OwnerOverviewTest extends TestCase
 
     public static function otherRoles(): array
     {
-        return ['manager' => ['manager'], 'receptionist' => ['receptionist']];
+        return ['operations' => ['operations'], 'receptionist' => ['receptionist']];
     }
 
     #[DataProvider('otherRoles')]

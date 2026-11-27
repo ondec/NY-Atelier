@@ -68,6 +68,10 @@ class DemoStudioSaleController extends Controller
             'handover_confirmed' => ['nullable', 'boolean'],
             'instructions' => ['nullable', 'required_if:handover,delivery', 'string', 'max:1000'],
         ]);
+        $altering = collect($data['lines'])->contains(fn (array $line): bool => filled($line['alteration'] ?? null));
+        if ($altering && $data['handover'] === 'take-away') {
+            throw ValidationException::withMessages(['handover' => 'A piece that needs altering can’t be taken away today. Choose collection or delivery.']);
+        }
         if ($data['handover'] === 'take-away' && ! ($data['handover_confirmed'] ?? false)) {
             throw ValidationException::withMessages(['handover_confirmed' => 'Confirm the garments were checked and handed to the customer.']);
         }
@@ -108,7 +112,8 @@ class DemoStudioSaleController extends Controller
         return [
             'customer_id' => ['required', 'integer', Rule::exists('customers', 'id')],
             'lines' => ['required', 'array', 'list', 'min:1', 'max:50'],
-            'lines.*' => ['required', 'array:variantId,quantity'],
+            'lines.*' => ['required', 'array:variantId,quantity,alteration'],
+            'lines.*.alteration' => ['nullable', 'string', 'max:1000'],
             'lines.*.variantId' => ['required', 'string', 'max:150', 'distinct'],
             'lines.*.quantity' => ['required', 'integer', 'min:1', 'max:100'],
         ];

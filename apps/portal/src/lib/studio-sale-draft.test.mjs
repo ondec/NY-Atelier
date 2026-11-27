@@ -13,3 +13,9 @@ test('expired, future, invalid and duplicate drafts are rejected', () => {
   for (const raw of [null, '{', 'null', JSON.stringify({...draft, lines: []}), JSON.stringify({...draft, lines: [draft.lines[0], draft.lines[0]]})]) assert.equal(readSaleDraft(raw, now), undefined);
   for (const quantity of [-1, 0, 1.5, '2', Number.MAX_SAFE_INTEGER + 1]) assert.equal(readSaleDraft(JSON.stringify({...draft, lines: [{variantId: 'olive-M', quantity}]}), now), undefined);
 });
+
+test('a draft keeps each line alteration note, including a just-ticked empty one', () => {
+  const now = Date.now();
+  const draft = readSaleDraft(JSON.stringify({updatedAt: now, lines: [{variantId: 'a', quantity: 1, alteration: 'Shorten sleeves 2cm'}, {variantId: 'b', quantity: 2, alteration: ''}, {variantId: 'c', quantity: 1, alteration: 7}]}), now);
+  assert.deepEqual(draft.lines, [{variantId: 'a', quantity: 1, alteration: 'Shorten sleeves 2cm'}, {variantId: 'b', quantity: 2, alteration: ''}, {variantId: 'c', quantity: 1}]);
+});

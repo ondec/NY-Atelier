@@ -9,6 +9,7 @@ import DeliveryMap, { googleMapsLink } from "./delivery-map";
 import OrderInspiration from "./order-inspiration";
 import OrderProductionHandover from "./order-production-handover";
 import OrderAlterationSwitch from "./order-alteration-switch";
+import OrderCourier from "./order-courier";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { DemoOrder, OrderNotice } from "@/lib/orders";
 import { createRequestId } from "@/lib/request-id";
@@ -111,6 +112,7 @@ export default function OrderDetailsContent({ order: source, showWorkspaceLinks 
     {error && <p ref={errorRef} className="collection-error" role="alert">{error}</p>}
     {!endpoints && order.category === "Ready-to-Wear" && !order.is_complete && <OrderAlterationSwitch order={order} onChange={(next) => { setLatest(next); onUpdated?.(next); router.refresh(); }} />}
     {!endpoints && order.production && <OrderProductionHandover order={order} onChange={(next) => { setLatest(next); onUpdated?.(next); router.refresh(); }} />}
+    {!endpoints && <OrderCourier order={order} onChange={(next) => { setLatest(next); onUpdated?.(next); router.refresh(); }} />}
     <section className="panel order-detail-section order-summary-section">
       <h2>Order details</h2>
       {attention && <p className="order-detail-note"><StatusBadge status={attention.label} tone={attention.tone} /> {attention.label === "Overdue" ? "Review the expected completion date and update the customer." : order.client_action ?? "This order is expected today."}</p>}

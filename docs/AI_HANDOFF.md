@@ -200,16 +200,7 @@ Staff sign-in is Laravel Sanctum backed. The Next.js server keeps the opaque tok
 
 **Staff self-service password recovery (23 November, local-only/uncommitted):** Forgot password? on staff login leads to an email reset request and new-password page. API `StaffPasswordReset` uses Laravel's `staff` password broker and existing reset-token table: one-use, hashed, 60-minute links, 60-second resend throttle and separate request/reset rate limits. Only active recognized staff qualify; generic anonymous responses never disclose accounts or links. Branded mail goes through the configured delivering mailer (Graph on Render); log/array never expose links. Tokens are held in an email fragment and cleared from the browser address bar after reading. A successful reset preserves access, revokes all staff sessions and requires sign-in; deactivation invalidates outstanding recovery links. No new migrations or provider settings. New portal routes are `/staff/forgot-password` and `/staff/reset-password`. Tests passed locally; deploy plus an authorized real-mailbox test remain outstanding. Read the newest work log for exact checks.
 
-| Capability | Owner | Manager | Receptionist | Customer records |
-| --- | --- | --- | --- | --- |
-| NY Office | Yes | Yes | Yes | No (redirected to Studio fittings) |
-| NY Studio fittings: customers, contacts, measurements, fitting history | Yes | Yes | Yes | Yes |
-| Studio Ready-to-Wear catalogue and sales (`sales`) | Yes | Yes | Yes | No |
-| Consultations, order read, create alterations | Yes | Yes | Yes | No |
-| Production/order management | Yes | Yes | No | No |
-| Catalogue management | Yes | Yes | No | No |
-| Finances | Yes | Yes, with role limits | No | No |
-| Team / invitations / owner-only reporting | Yes | No | No | No |
+**Roles (27 November, local/uncommitted):** Owner and General manager (`manager`) are identical, including Team, NY Production and the owner overview. Operations manager (`operations`) has everything except `finances` (no Finances or Payroll). Receptionist (`receptionist`) works only in NY Studio (`studio, sales, customers, consultations, orders.read, alterations.create`); the staff Studio API group now uses gate `staff.desk` (office or studio). Customer records, Production manager and Tailor are unchanged. Delivery courier (`courier`, permission `deliveries`) sees only their own deliveries at `/deliveries` (no prices or measurements) and confirms each delivered; the order desk (`orders.manage`) picks a courier on a Delivery order (`orders.assigned_courier_id`, `DeliveryController`, portal proxy `/api/staff-deliveries`). Catalogue manager (`catalogue`: `office, catalogue.manage`) manages Ready-to-Wear stock, collections and size charts in NY Office only. Team can only invite/change roles whose permissions are a subset of the actor's (`StaffAccess::canAssign`). Finance reports: owner and general manager.
 
 API role id for customer records is `records` (`['studio','customers']`). Its home is `/showroom?view=fittings`; `officeHref` points there too, so sign-in/activation land correctly. `/api/demo/staff/customers*` is the only staff API group outside `can:staff.office`; Studio catalogue/sales routes require `can:staff.sales`; `/api/staff/auth/me` requires `can:staff.studio`. In Studio the role never fetches the catalogue, sees no Ready-to-Wear/Sales Desk/Sales history, and typed `view=collection` URLs are rewritten to fittings.
 

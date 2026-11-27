@@ -10,7 +10,9 @@ export function readSaleDraft(raw: string | null, now = Date.now()): SaleDraft |
     const lines: SaleLine[] = [];
     for (const line of draft.lines) {
       if (typeof line.variantId !== 'string' || !line.variantId.trim() || line.variantId.length > 150 || ids.has(line.variantId) || !Number.isSafeInteger(line.quantity) || line.quantity < 1) return;
-      ids.add(line.variantId); lines.push({variantId: line.variantId, quantity: line.quantity});
+      ids.add(line.variantId);
+      const alteration = typeof line.alteration === 'string' && line.alteration.length <= 1000 ? line.alteration : undefined;
+      lines.push({variantId: line.variantId, quantity: line.quantity, ...(alteration !== undefined ? {alteration} : {})});
     }
     const customerId = Number.isSafeInteger(draft.customerId) && draft.customerId > 0 ? draft.customerId : undefined;
     return {lines, customerId, updatedAt: draft.updatedAt};

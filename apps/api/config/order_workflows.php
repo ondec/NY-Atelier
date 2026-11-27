@@ -44,7 +44,7 @@ return [
         'packaged' => 'Your garments will be packed for collection or delivery.',
         'ready_collection' => 'We will let you know when your order is ready to collect.',
         'collected' => 'Collect your order at the agreed location. The team will confirm the handover.',
-        'out_for_delivery' => 'The courier will bring your parcel to the agreed delivery address.',
+        'out_for_delivery' => 'Your delivery is coming today. The courier will bring it to the agreed delivery address.',
         'delivered' => 'Delivery will be confirmed once your parcel has been received.',
     ],
     /** The shared front-desk (NY Studio) mailbox: told when production sends an order back and when an online order arrives. */

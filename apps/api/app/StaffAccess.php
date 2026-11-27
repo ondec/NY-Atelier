@@ -8,9 +8,13 @@ use Illuminate\Http\Request;
 class StaffAccess
 {
     public const PERMISSIONS = [
-        'owner' => ['office', 'studio', 'sales', 'customers', 'consultations', 'orders.read', 'orders.manage', 'alterations.create', 'catalogue.manage', 'finances', 'team', 'production', 'production.manage'],
-        'manager' => ['office', 'studio', 'sales', 'customers', 'consultations', 'orders.read', 'orders.manage', 'alterations.create', 'catalogue.manage', 'finances', 'production', 'production.manage'],
-        'receptionist' => ['office', 'studio', 'sales', 'customers', 'consultations', 'orders.read', 'alterations.create'],
+        // Owner and general manager: everything, including Team, finances, payroll and NY Production.
+        'owner' => ['office', 'studio', 'sales', 'customers', 'consultations', 'orders.read', 'orders.manage', 'alterations.create', 'catalogue.manage', 'finances', 'team', 'production', 'production.manage', 'deliveries'],
+        'manager' => ['office', 'studio', 'sales', 'customers', 'consultations', 'orders.read', 'orders.manage', 'alterations.create', 'catalogue.manage', 'finances', 'team', 'production', 'production.manage', 'deliveries'],
+        // Operations manager: everything except finances and payroll.
+        'operations' => ['office', 'studio', 'sales', 'customers', 'consultations', 'orders.read', 'orders.manage', 'alterations.create', 'catalogue.manage', 'team', 'production', 'production.manage', 'deliveries'],
+        // Receptionist (front desk): NY Studio only — sales, customers, consultations, orders and alterations.
+        'receptionist' => ['studio', 'sales', 'customers', 'consultations', 'orders.read', 'alterations.create'],
         // Customer records only: names, contact details, measurements and fitting history in NY Studio.
         'records' => ['studio', 'customers'],
         // Production manager: every custom and alteration order with its fitting and inspiration; moves orders
@@ -18,18 +22,41 @@ class StaffAccess
         'production' => ['production', 'production.manage'],
         // Tailor: only the orders assigned to them, read-only.
         'tailor' => ['production'],
+        // Catalogue manager: Ready-to-Wear products, stock, collections and size charts in NY Office. No sales,
+        // orders, customers, finances, payroll, Team or production.
+        'catalogue' => ['office', 'catalogue.manage'],
+        // Delivery courier: only the deliveries assigned to them; marks each one delivered.
+        'courier' => ['deliveries'],
     ];
 
-    /** Roles the owner may assign from NY Office → Team. Owners are never created from the web. */
-    public const INVITABLE_ROLES = ['manager', 'receptionist', 'records', 'production', 'tailor'];
+    /** Roles that may be assigned from NY Office → Team. Owners are never created from the web. */
+    public const INVITABLE_ROLES = ['manager', 'operations', 'receptionist', 'records', 'production', 'tailor', 'courier', 'catalogue'];
 
-    public const ROLE_LABELS = ['owner' => 'Owner', 'manager' => 'Manager', 'receptionist' => 'Receptionist', 'records' => 'Customer records', 'production' => 'Production manager', 'tailor' => 'Tailor'];
+    public const ROLE_LABELS = ['owner' => 'Owner', 'manager' => 'General manager', 'operations' => 'Operations manager', 'receptionist' => 'Receptionist',
+        'records' => 'Customer records', 'production' => 'Production manager', 'tailor' => 'Tailor', 'courier' => 'Delivery courier', 'catalogue' => 'Catalogue manager'];
+
+    /**
+     * Team access never grants more than the person already has: a role can be assigned or managed only when
+     * all of its permissions are the actor's own (so an operations manager can't create a general manager).
+     */
+    public static function canAssign(User $actor, string $role): bool
+    {
+        return in_array($role, self::INVITABLE_ROLES, true)
+            && array_diff(self::PERMISSIONS[$role] ?? ['?'], self::PERMISSIONS[$actor->staff_role] ?? []) === [];
+    }
 
     public static function homeHref(string $role): string
     {
         $permissions = self::PERMISSIONS[$role] ?? [];
 
-        return in_array('office', $permissions, true) ? '/office/'.$role : (in_array('production', $permissions, true) ? '/production' : '/showroom?view=fittings');
+        return match (true) {
+            in_array('catalogue.manage', $permissions, true) && ! in_array('orders.read', $permissions, true) => '/ready-to-wear',
+            in_array('office', $permissions, true) => '/office/'.$role,
+            in_array('production', $permissions, true) => '/production',
+            in_array('deliveries', $permissions, true) => '/deliveries',
+            in_array('sales', $permissions, true) => '/showroom',
+            default => '/showroom?view=fittings',
+        };
     }
 
     public static function allows(User $user, string $permission): bool
