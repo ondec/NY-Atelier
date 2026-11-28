@@ -61,6 +61,10 @@ export function siteRoute(site: PublicSite, pathname: string, method: string): S
     const allowed = method === api.method || (api.method === 'GET' && method === 'HEAD');
     return allowed ? { kind: 'rewrite', path: api.path } : { kind: 'block', status: 405 };
   }
+  // Search engines: robots.txt and the sitemap come from the portal (it knows the address and the catalogue).
+  if (site === 'website' && (pathname === '/robots.txt' || pathname === '/sitemap.xml')) {
+    return method === 'GET' || method === 'HEAD' ? { kind: 'rewrite', path: `/api/public/site/${pathname === '/robots.txt' ? 'robots' : 'sitemap'}` } : { kind: 'block', status: 405 };
+  }
   if (pathname.split('/').some(part => part === '..' || part.startsWith('.'))) return { kind: 'block', status: 404 };
   // Files (anything with an extension) come from the site's build; every other path is a page of the app.
   const file = /\.[a-z0-9]+$/i.test(pathname);

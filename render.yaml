@@ -39,11 +39,12 @@ services:
         value: https://workspace.thenyatelier.com
       # The public website, with the RTW shop inside it at /shop (portal src/proxy.ts), on its own address:
       # Cloudflare CNAME site -> ny-atelier-preview.onrender.com, Render's second custom domain.
-      # At launch: change this to https://thenyatelier.com and remove NY_PUBLIC_SITES_NOINDEX.
+      # At launch on the main domain: change this to https://thenyatelier.com.
       - key: NY_WEBSITE_ORIGIN
         value: https://site.thenyatelier.com
+      # "0": search engines may list the website (robots.txt + sitemap.xml). "1" hides it again.
       - key: NY_PUBLIC_SITES_NOINDEX
-        value: "1"
+        value: "0"
       # "1" serves the website under /home on the onrender.com address instead (old preview).
       - key: NY_PUBLIC_SITES_PREVIEW_PATHS
         value: "0"

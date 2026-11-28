@@ -46,3 +46,10 @@ test('without its own address the website is a preview under /home, the shop und
   assert.equal(siteForPath('/store/x'), null);
   assert.equal(siteForPath('/office/owner'), null);
 });
+
+test('robots.txt and the sitemap come from the portal, for the website only', () => {
+  assert.deepEqual(siteRoute('website', '/robots.txt', 'GET'), { kind: 'rewrite', path: '/api/public/site/robots' });
+  assert.deepEqual(siteRoute('website', '/sitemap.xml', 'HEAD'), { kind: 'rewrite', path: '/api/public/site/sitemap' });
+  assert.deepEqual(siteRoute('website', '/sitemap.xml', 'POST'), { kind: 'block', status: 405 });
+  assert.deepEqual(siteRoute('store', '/robots.txt', 'GET'), { kind: 'rewrite', path: '/_sites/store/robots.txt' });
+});
