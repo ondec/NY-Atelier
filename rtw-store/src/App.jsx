@@ -6,9 +6,11 @@ import { SocialIcons } from './SocialSection.jsx';
 import { SizeGuide } from './SizeGuide.jsx';
 import { publishedCharts, usePublishedSizing } from './published-sizing.js';
 import { chartsFor } from './sizing.js';
-import { COLLECTIONS, COLOUR_GROUPS, PRODUCTS, PROMOTIONS, SECTIONS, availabilityOf, badgeOf, coverOf, findProduct, formatGHS, isSoldOut, loadLiveCatalogue, percentOff, photosOf, productsIn, unitsOf } from './live-catalogue.js';
+import { COLLECTIONS, COLOUR_GROUPS, PRODUCTS, PROMOTIONS, SECTIONS, availabilityOf, badgeOf, coverOf, findProduct, formatGHS, isSoldOut, LIVE, loadLiveCatalogue, percentOff, photosOf, productsIn, unitsOf } from './live-catalogue.js';
 import { MAX_QTY, bagCount, bagTotal, readBag, sameLine, watchBag, writeBag } from './shared-bag.js';
 import { mainSite } from './sites.js';
+import SearchPanel, { catalogueItems } from './SearchPanel.jsx';
+import { buildIndex, searchIndex } from './search.js';
 
 const StoreContext = createContext(null);
 const fallbackImage = '/images/editorial-fallback.svg';
@@ -381,6 +383,7 @@ function ShopPage() {
   const type = params.get('type') ?? 'all';
   const colour = params.get('colour') ?? 'all';
   const price = params.get('price') ?? 'all';
+  const query = (params.get('q') ?? '').trim();
   useEffect(() => {
     if (!filterOpen) return undefined;
     const outside = event => { if (!filterRef.current?.contains(event.target)) setFilterOpen(false); };
@@ -391,7 +394,9 @@ function ShopPage() {
   }, [filterOpen]);
   useEffect(() => { setFilterOpen(false); }, [section]);
   if (section !== 'all' && !info) return <NotFound/>;
-  const base = productsIn(section);
+  const inSection = productsIn(section);
+  // ?q= (from the search window's "See all"): only matching pieces, best match first.
+  const base = query ? searchIndex(buildIndex(inSection.map(product => ({ title: product.name, product, fields: [[product.name, 10], [product.type, 5], [product.gender ?? '', 5], [product.colours.map(colour => colour.name).join(' '), 4], [product.description, 1.2]] }))), query).map(match => match.product) : inSection;
   const types = ['all', ...new Set(base.map(product => product.type))];
   const groups = COLOUR_GROUPS.filter(group => base.some(product => product.groups?.includes(group.id)));
   const prices = base.map(product => product.price).sort((a, b) => a - b);
@@ -403,15 +408,16 @@ function ShopPage() {
     .filter(product => price === 'all' || (price === 'under' ? product.price < threshold : product.price >= threshold))
     .sort((a, b) => sort === 'low' ? a.price - b.price : sort === 'high' ? b.price - a.price : 0);
   const activeCount = [type, colour, price].filter(value => value !== 'all').length;
-  const clearFilters = () => { setParams({}, { replace: true }); };
+  const clearFilters = () => { setParams(query ? { q: query } : {}, { replace: true }); };
+  const clearQuery = () => { setParams(current => { const next = new URLSearchParams(current); next.delete('q'); return next; }, { replace: true }); };
   const PRICES = [{ id: 'all', label: 'All prices' }, { id: 'under', label: `Under ${formatGHS(threshold)}` }, { id: 'plus', label: `${formatGHS(threshold)} & above` }];
   const typeLabel = value => ({ all: 'All', sets: 'Sets', tops: 'Shirts & tops', trousers: 'Trousers', dresses: 'Dresses', accessories: 'Accessories' })[value] ?? value;
 
   return <main id="main">
     <section className="page-intro container rtw-intro">
       <Eyebrow>{info ? info.label.toUpperCase() : 'THE RTW EDIT'}</Eyebrow>
-      <h1>{info ? <>{info.title} <em>{info.accent}</em></> : <>Every <em>piece.</em></>}</h1>
-      <p>{info ? info.copy : 'The full ready-to-wear edit from NY Atelier.'}</p>
+      <h1>{query ? <>Results for <em>“{query}”.</em></> : info ? <>{info.title} <em>{info.accent}</em></> : <>Every <em>piece.</em></>}</h1>
+      <p>{query ? <>{base.length} {base.length === 1 ? 'piece matches' : 'pieces match'} your search. <button type="button" className="rtw-inline-link" onClick={clearQuery}>See every piece</button></> : info ? info.copy : 'The full ready-to-wear edit from NY Atelier.'}</p>
     </section>
     <section className="container store-section">
       <div className="shop-toolbar">
@@ -438,7 +444,7 @@ function ShopPage() {
         </div>
       </div>
       <div className="product-results"><span>{products.length} {products.length === 1 ? 'PIECE' : 'PIECES'}</span><p>Prices and stock status from the NY Atelier catalogue. Checkout remains a preview.</p></div>
-      <ProductGrid products={products} empty={base.length ? <p className="empty-results">No pieces match these filters. <button type="button" className="rtw-inline-link" onClick={clearFilters}>Clear filters</button>.</p> : <EmptySection section={section}/>}/>
+      <ProductGrid products={products} empty={query && !base.length ? <p className="empty-results">Nothing matches “{query}”. Try a type (sets, shirts, trousers) or a colour. <button type="button" className="rtw-inline-link" onClick={clearQuery}>See every piece</button>.</p> : base.length ? <p className="empty-results">No pieces match these filters. <button type="button" className="rtw-inline-link" onClick={clearFilters}>Clear filters</button>.</p> : <EmptySection section={section}/>}/>
     </section>
   </main>;
 }
@@ -554,21 +560,24 @@ function NotFound() {
   return <main className="container not-found" id="main"><Eyebrow>404 / NOT FOUND</Eyebrow><h1>This page has <em>moved.</em></h1><p>Find your way back to the ready-to-wear store.</p><Link className="button button-solid" to="/">STORE HOME <ArrowRight size={17}/></Link></main>;
 }
 
-function SearchPanel() {
+/** Pages for the search window: the shop's sections and the main website. */
+const SEARCH_PAGES = [
+  ...SECTIONS.map(section => ({ id: `section-${section.id}`, kind: 'page', title: section.label, subtitle: 'Shop section', to: `/${section.id}`, fields: [[section.label, 10], [`${section.title ?? ''} ${section.accent ?? ''}`, 2]] })),
+  { id: 'all', kind: 'page', title: 'All pieces', subtitle: 'Shop section', to: '/all', fields: [['All pieces', 10], ['everything shop', 2]] },
+  { id: 'collections', kind: 'page', title: 'Collections', subtitle: 'Shop section', to: '/collections', fields: [['Collections', 10]] },
+  { id: 'services', kind: 'page', title: 'Services', subtitle: 'Bespoke and made-to-measure at the atelier', href: mainSite('/services'), fields: [['Services', 10], ['bespoke custom couture occasion styling alteration tailoring', 3]] },
+  { id: 'appointment', kind: 'page', title: 'Book an appointment', subtitle: 'Consultations and fittings', href: mainSite('/appointment'), fields: [['Book an appointment', 10], ['booking consultation fitting measurement visit', 4]] },
+  { id: 'contact', kind: 'page', title: 'Contact', subtitle: 'Phone, email, WhatsApp and directions', href: mainSite('/contact'), fields: [['Contact', 10], ['phone email whatsapp location address directions store haatso', 4]] },
+  { id: 'account', kind: 'page', title: 'Your account', subtitle: 'Orders and appointments', href: mainSite('/account'), fields: [['Your account', 10], ['sign in login orders track order delivery', 4]] },
+];
+const SEARCH_POPULAR = ['Sets', 'Shirts', 'Trousers', 'Women', 'Men'];
+const loadSearchItems = () => Promise.resolve(catalogueItems(LIVE.raw ?? {}, { productLink: id => ({ to: `/product/${id}` }), collectionLink: id => ({ to: `/collections/${id}` }) }));
+function ShopSearch() {
   const { searchOpen, setSearchOpen } = useStore();
-  const [query, setQuery] = useState('');
   const navigate = useNavigate();
-  useEffect(() => { if (!searchOpen) setQuery(''); }, [searchOpen]);
-  if (!searchOpen) return null;
-  const q = query.trim().toLowerCase();
-  const results = PRODUCTS.filter(product => `${product.name} ${product.gender} ${product.type} ${product.colours.map(c => c.name).join(' ')}`.toLowerCase().includes(q)).slice(0, 6);
-  return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setSearchOpen(false); }}>
-    <div className="search-modal" role="dialog" aria-modal="true" aria-label="Search the store">
-      <div className="search-modal-header"><Eyebrow>FIND YOUR NEXT PIECE</Eyebrow><button type="button" className="icon-btn" aria-label="Close search" onClick={() => { setSearchOpen(false); }}><X/></button></div>
-      <label className="search-box"><Search size={19}/><input aria-label="Search the store" autoFocus type="search" placeholder="Search sets, shirts, colours…" value={query} onChange={event => { setQuery(event.target.value); }}/></label>
-      <div className="search-hits">{results.length ? results.map(product => <button key={product.id} type="button" onClick={() => { setSearchOpen(false); navigate(`/product/${product.id}`); }}><ProductImage src={coverOf(product)} alt=""/><span>{product.name}<small>{product.gender ? product.gender[0].toUpperCase() + product.gender.slice(1) : 'Ready-to-wear'}</small></span><strong>{formatGHS(product.price)}</strong></button>) : <p>No matching pieces.</p>}</div>
-    </div>
-  </div>;
+  return <SearchPanel open={searchOpen} onClose={() => { setSearchOpen(false); }} load={loadSearchItems} pages={SEARCH_PAGES} popular={SEARCH_POPULAR} formatPrice={formatGHS}
+    seeAll={query => `${import.meta.env.BASE_URL.replace(/\/$/, '')}/all?q=${encodeURIComponent(query)}`} onSeeAll={query => { setSearchOpen(false); navigate(`/all?q=${encodeURIComponent(query)}`); }}
+    label="Search the shop" placeholder="Search sets, shirts, colours…"/>;
 }
 
 const DELIVERY = ['Collect from the Haatso store', 'Delivery in Accra', 'Delivery elsewhere in Ghana (quote confirmed by the atelier)'];
@@ -672,7 +681,7 @@ function AppContent() {
       <Route path="*" element={<NotFound/>}/>
     </Routes>
     <Footer/>
-    <SearchPanel/>
+    <ShopSearch/>
     <BagDrawer/>
     <div className="live-toast" role="status" aria-live="polite">{toast}</div>
   </>;

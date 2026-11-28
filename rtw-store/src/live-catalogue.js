@@ -6,6 +6,8 @@ export { COLOUR_GROUPS, SECTIONS, formatGHS };
 export const PRODUCTS = [];
 export const COLLECTIONS = [];
 export const PROMOTIONS = [];
+/** The last catalogue response as sent, for search. */
+export const LIVE = { raw: null };
 
 const fallbackImage = '/images/editorial-fallback.svg';
 const photoList = list => (Array.isArray(list) ? list : []).filter(photo => typeof photo?.src === 'string').map((photo, index) => ({ label: index === 0 ? 'Front' : `View ${index + 1}`, src: photo.src }));
@@ -31,6 +33,7 @@ export function setLiveCatalogue(data) {
       sizing: item.sizing ?? [], photos, colours: colours.length ? colours : [{ id: 'unlisted', name: 'Edition', swatch: '#a9aaa5', group: null, photos: [], availability: {} }],
     };
   });
+  LIVE.raw = data;
   PRODUCTS.splice(0, PRODUCTS.length, ...products);
   COLLECTIONS.splice(0, COLLECTIONS.length, ...data.collections.map(item => ({
     id: item.id, title: item.title, eyebrow: 'THE COLLECTION', copy: item.copy ?? '',
