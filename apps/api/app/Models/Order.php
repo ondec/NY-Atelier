@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Order extends Model
 {
     protected $fillable = [
-        'customer_id', 'reference', 'category', 'original_category', 'status', 'source',
+        'customer_id', 'reference', 'request_id', 'category', 'original_category', 'status', 'source',
         'expected_completion_date', 'date_change_explanation',
         'fulfilment_method', 'fulfilment_status', 'payment_status',
         'workflow_stage', 'workflow_version', 'handover_instructions', 'courier_name', 'tracking_reference',

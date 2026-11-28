@@ -8,6 +8,7 @@ use App\OrderCustomerNotice;
 use App\OrderInspiration;
 use App\OrderLocation;
 use App\OrderWorkflow;
+use App\ShortReference;
 use App\StaffAccess;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -79,13 +80,13 @@ class DemoStaffOrderController extends Controller
             throw ValidationException::withMessages(['consultation_id' => 'Choose the consultation’s customer.']);
         }
 
-        $prefix = $data['category'] === 'Custom' ? 'NY-CUS-' : 'NY-ALT-';
-        $reference = $prefix.strtoupper(substr(str_replace('-', '', $data['request_id']), 0, 16));
+        // Orders made before short codes used this long code, so a repeated request still finds them.
+        $legacyReference = ($data['category'] === 'Custom' ? 'NY-CUS-' : 'NY-ALT-').strtoupper(substr(str_replace('-', '', $data['request_id']), 0, 16));
 
         try {
             $creator = $request->user()->id;
-            $order = DB::transaction(function () use ($data, $reference, $source, $creator): Order {
-                $existing = Order::query()->where('reference', $reference)->first();
+            $order = DB::transaction(function () use ($data, $legacyReference, $source, $creator): Order {
+                $existing = Order::query()->where('request_id', $data['request_id'])->orWhere('reference', $legacyReference)->first();
                 if ($existing) {
                     return $existing;
                 }
@@ -95,7 +96,8 @@ class DemoStaffOrderController extends Controller
                     throw ValidationException::withMessages(['consultation_id' => 'Choose a confirmed consultation.']);
                 }
 
-                $order = Order::query()->createOrFirst(['reference' => $reference], [
+                $order = Order::query()->createOrFirst(['request_id' => $data['request_id']], [
+                    'reference' => ShortReference::forOrder($data['category']),
                     'customer_id' => $data['customer_id'],
                     'category' => $data['category'],
                     'store' => OrderLocation::forNew(request()->user(), $data['category']),

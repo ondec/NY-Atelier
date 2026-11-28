@@ -55,9 +55,13 @@ class OrderSourceTest extends TestCase
         $this->assertDatabaseCount('orders', 0);
 
         $this->signInStaff('manager');
-        $reference = $this->postJson($url, ['request_id' => (string) Str::uuid(), ...$payload])->assertCreated()->json('reference');
+        $requestId = (string) Str::uuid();
+        $reference = $this->postJson($url, ['request_id' => $requestId, ...$payload])->assertCreated()->json('reference');
 
-        $this->assertStringStartsWith('NY-CUS-', $reference);
+        // A short code (CUS + 4 characters without look-alikes), and a repeated tap returns the same order.
+        $this->assertMatchesRegularExpression('/^CUS-[2-9A-HJKMNP-Z]{4}$/', $reference);
+        $this->assertSame($reference, $this->postJson($url, ['request_id' => $requestId, ...$payload])->json('reference'));
+        $this->assertDatabaseCount('orders', 1);
         $this->assertDatabaseHas('orders', ['reference' => $reference, 'category' => 'Custom', 'source' => 'studio', 'customer_id' => $customer->id]);
     }
 

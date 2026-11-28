@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, ChevronRight, X } from "@/components/icons";
 import { orderDate } from "../order-table";
 import { useStaff } from "../staff-context";
@@ -42,6 +42,17 @@ export default function FrontDeskBell({ onOpen }: { onOpen: (customerId: number)
     document.title = fresh.length ? `(${fresh.length}) ${base}` : base;
   }, [fresh.length]);
 
+  // Escape or a click outside closes the list.
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    const onDown = (event: MouseEvent) => { if (!root.current?.contains(event.target as Node)) setOpen(false); };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDown);
+    return () => { document.removeEventListener("keydown", onKey); document.removeEventListener("mousedown", onDown); };
+  }, [open]);
+
   function toggle() {
     if (open) { setOpen(false); return; }
     setShown(data?.alerts ?? []); setOpen(true);
@@ -50,7 +61,7 @@ export default function FrontDeskBell({ onOpen }: { onOpen: (customerId: number)
       .then((result) => { if (result?.seen_at) setData((current) => current && { ...current, seen_at: result.seen_at }); }).catch(() => undefined);
   }
 
-  return <div className="production-bell">
+  return <div className="production-bell" ref={root}>
     <button type="button" className="production-bell-button" aria-expanded={open} aria-label={`Notifications${fresh.length ? `, ${fresh.length} new` : ""}`} onClick={toggle}>
       <Bell size={19} />{fresh.length > 0 && <span className="production-bell-count">{fresh.length > 9 ? "9+" : fresh.length}</span>}
     </button>

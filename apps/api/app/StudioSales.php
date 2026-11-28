@@ -74,10 +74,10 @@ class StudioSales
             abort_if($reference && DB::table('studio_sales')->where('payment_method', $data['payment_method'])->where('payment_reference', $reference)->exists(), 409, 'This payment reference is already recorded. Check the original receipt.');
             $customer = Customer::query()->findOrFail($data['customer_id']);
             $collected = $data['handover'] === 'take-away';
-            $orderReference = 'NY-RTW-'.mb_strtoupper(str_replace('-', '', $data['request_id']));
+            $orderReference = ShortReference::forOrder('Ready-to-Wear');
             $alterations = self::alterations($data['lines'], $quote['lines']);
             $order = Order::query()->create([
-                'reference' => $orderReference, 'customer_id' => $customer->id, 'source' => 'studio', 'store' => OrderLocation::forNew($actor, 'Ready-to-Wear'),
+                'reference' => $orderReference, 'request_id' => $data['request_id'], 'customer_id' => $customer->id, 'source' => 'studio', 'store' => OrderLocation::forNew($actor, 'Ready-to-Wear'),
                 // A piece that needs adjusting turns the whole sale into an alteration; the sale stays recorded as Ready-to-Wear.
                 'category' => $alterations ? 'Alterations' : 'Ready-to-Wear', 'original_category' => $alterations ? 'Ready-to-Wear' : null,
                 'specifications' => $alterations, 'created_by_id' => $actor->id,
