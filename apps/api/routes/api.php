@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\CatalogueTransferController;
+use App\Http\Controllers\ConsultationReplyController;
 use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\CustomerConsultationController;
+use App\Http\Controllers\CustomerOrderController;
 use App\Http\Controllers\CustomerPasskeyController;
 use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\DeliverySettingsController;
@@ -53,6 +55,9 @@ Route::get('/shop/catalogue', [ShopCatalogueController::class, 'index'])->middle
 // Read by the portal's public /api/size-charts (the app and the RTW store); Laravel itself is internal on Render.
 Route::get('/size-charts', [SizeChartController::class, 'show']);
 Route::post('/consultations', [PublicConsultationController::class, 'store'])->middleware('throttle:5,1');
+// The reply page linked from appointment emails; the private token in the link stands in for signing in.
+Route::post('/consultations/{id}/view', [ConsultationReplyController::class, 'view'])->whereUuid('id')->middleware('throttle:30,1');
+Route::post('/consultations/{id}/reply', [ConsultationReplyController::class, 'reply'])->whereUuid('id')->middleware('throttle:10,1');
 Route::prefix('customer/auth')->group(function () {
     Route::post('/start', [CustomerAuthController::class, 'start'])->middleware('throttle:10,1');
     Route::get('/link', [CustomerAuthController::class, 'link'])->middleware('throttle:30,1');
@@ -80,6 +85,7 @@ Route::prefix('staff/auth')->group(function () {
     Route::get('/me', [StaffAuthController::class, 'me'])->middleware('auth:sanctum');
     Route::post('/logout', [StaffAuthController::class, 'logout'])->middleware('auth:sanctum');
 });
+Route::get('/customer/orders', [CustomerOrderController::class, 'index'])->middleware(['auth:sanctum', 'throttle:60,1']);
 Route::prefix('customer/consultations')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [CustomerConsultationController::class, 'mine'])->middleware('throttle:60,1');
     Route::post('/', [CustomerConsultationController::class, 'book'])->middleware('throttle:10,1');
@@ -119,12 +125,14 @@ Route::prefix('demo/staff')->middleware('auth:sanctum')->group(function () {
         Route::patch('/{reference}/tailor', [ProductionController::class, 'assign'])->middleware(['can:staff.production.manage', 'throttle:60,1']);
         Route::patch('/{reference}/workflow', [ProductionController::class, 'workflow'])->middleware(['can:staff.production.manage', 'throttle:60,1']);
         Route::post('/{reference}/return', [ProductionController::class, 'sendBack'])->middleware(['can:staff.production.manage', 'throttle:30,1']);
+        Route::post('/{reference}/to-reception', [ProductionController::class, 'handToFrontDesk'])->middleware(['can:staff.production.manage', 'throttle:30,1']);
     });
 });
 // Delivery couriers have neither NY Office nor NY Studio: only their own deliveries.
 Route::prefix('demo/staff/deliveries')->middleware(['auth:sanctum', 'can:staff.deliveries'])->group(function () {
     Route::get('/', [DeliveryController::class, 'index']);
     Route::post('/{reference}/delivered', [DeliveryController::class, 'delivered'])->middleware('throttle:30,1');
+    Route::post('/{reference}/claim', [DeliveryController::class, 'claim'])->middleware('throttle:30,1');
     Route::post('/route', [DeliveryController::class, 'route'])->middleware('throttle:30,1');
     Route::post('/start', [DeliveryController::class, 'start'])->middleware('throttle:20,1');
     Route::post('/{reference}/postpone', [DeliveryController::class, 'postpone'])->middleware('throttle:30,1');
@@ -135,9 +143,9 @@ Route::prefix('demo/staff')->middleware(['auth:sanctum', 'can:staff.desk'])->gro
     Route::get('/orders', $listOrders)->name('demo.staff.order-list')->middleware('can:staff.orders.read');
     Route::get('/orders/options', [DemoStaffOrderController::class, 'options'])->middleware('can:staff.orders.read');
     Route::get('/orders/{reference}', [DemoOrderWorkflowController::class, 'show'])->middleware('can:staff.orders.read');
-    Route::patch('/orders/{reference}/workflow', [DemoOrderWorkflowController::class, 'update'])->middleware(['can:staff.orders.manage', 'throttle:60,1']);
-    Route::get('/couriers', [DeliveryController::class, 'couriers'])->middleware('can:staff.orders.manage');
-    Route::patch('/orders/{reference}/courier', [DeliveryController::class, 'assign'])->middleware(['can:staff.orders.manage', 'throttle:60,1']);
+    Route::patch('/orders/{reference}/workflow', [DemoOrderWorkflowController::class, 'update'])->middleware(['can:staff.orders.read', 'throttle:60,1']);
+    Route::get('/couriers', [DeliveryController::class, 'couriers'])->middleware('can:staff.orders.read');
+    Route::patch('/orders/{reference}/courier', [DeliveryController::class, 'assign'])->middleware(['can:staff.orders.read', 'throttle:60,1']);
     Route::patch('/orders/{reference}/delivery-zone', [DeliverySettingsController::class, 'setOrderZone'])->middleware(['can:staff.orders.manage', 'throttle:60,1']);
     Route::prefix('delivery-settings')->middleware('can:staff.orders.manage')->group(function () {
         Route::get('/', [DeliverySettingsController::class, 'index']);

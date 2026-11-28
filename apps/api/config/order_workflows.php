@@ -48,6 +48,11 @@ return [
         'delivered' => 'Delivery will be confirmed once your parcel has been received.',
     ],
     /** The shared front-desk (NY Studio) mailbox: told when production sends an order back and when an online order arrives. */
+    /** The two NY Atelier locations. Custom orders and alterations belong to the atelier; Ready-to-Wear (in store and online) to the RTW store. */
+    'stores' => [
+        'atelier' => ['name' => 'NY Atelier (bespoke atelier)', 'address' => 'St Johns – Dome – Kwabenya – Brekusu Rd, Kwabenya, Accra', 'plus_code' => 'MQG5+HF Kwabenya', 'map' => 'https://maps.app.goo.gl/tbAMUUhrLmgotv3g6', 'email' => env('NY_ATELIER_FRONT_DESK_EMAIL')],
+        'rtw_store' => ['name' => 'NY Atelier RTW store', 'address' => 'Haatso, Accra', 'plus_code' => 'MR97+3CM Haatso', 'map' => 'https://maps.app.goo.gl/qrBRmeG3NzFX2pjn6', 'email' => env('NY_RTW_FRONT_DESK_EMAIL')],
+    ],
     'front_desk_email' => env('NY_FRONT_DESK_EMAIL'),
     'email_enabled' => (bool) env('ORDER_UPDATE_EMAIL_ENABLED', false),
     'sms_endpoint' => env('ORDER_UPDATE_SMS_ENDPOINT'),

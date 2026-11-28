@@ -1,5 +1,6 @@
 "use client";
 
+import FilterMenu from "./filter-menu";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
@@ -71,8 +72,10 @@ function ProductionList() {
     {data?.can_manage && unassigned > 0 && <p className="production-callout"><UserRound size={17} /> {unassigned} active {unassigned === 1 ? "order needs" : "orders need"} a tailor. <button type="button" className="text-link" onClick={() => { setTailor("none"); setStatus("active"); }}>Show them</button></p>}
     <div className="inventory-toolbar production-toolbar">
       <label className="inventory-search"><Search size={17} aria-hidden="true" /><span className="sr-only">Search production orders</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search order, customer or garment" /></label>
-      <select aria-label="Filter by progress" value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="active">In progress</option><option value="completed">Completed</option><option value="all">All orders</option></select>
-      {data?.can_manage && <select aria-label="Filter by tailor" value={tailor} onChange={(event) => setTailor(event.target.value)}><option value="">All tailors</option><option value="none">Not assigned</option>{data.tailors.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>}
+      <FilterMenu count={[status !== "active", data?.can_manage && tailor].filter(Boolean).length} onClear={() => { setStatus("active"); setTailor(""); }}>
+        <label>Progress<select aria-label="Filter by progress" value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="active">In progress</option><option value="completed">Completed</option><option value="all">All orders</option></select></label>
+        {data?.can_manage && <label>Tailor<select aria-label="Filter by tailor" value={tailor} onChange={(event) => setTailor(event.target.value)}><option value="">All tailors</option><option value="none">Not assigned</option>{data.tailors.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
+      </FilterMenu>
     </div>
     {error ? <p className="collection-error" role="alert">{error} <button className="inventory-quiet-button" onClick={() => setRetry((value) => value + 1)}>Retry</button></p>
       : !data ? <p role="status" className="consultation-muted">Loading production…</p>
@@ -133,6 +136,7 @@ export function ProductionOrderPanels({ detail, onChange, onAssigned, onReturned
       <div className="production-detail-side">
         <TailorCard key={order.assigned_tailor?.id ?? "none"} detail={detail} onChanged={(next) => { onChange(next); onAssigned?.(); }} />
         {detail.can_manage && <SendBackCard key={detail.order.reference} order={detail.order} onReturned={onReturned} />}
+        {detail.can_manage && <ToReceptionCard key={`reception-${detail.order.reference}`} order={detail.order} onHanded={onReturned} />}
         <section className="panel production-card-section" aria-label="Customer">
           <h2>Customer</h2>
           <dl className="production-facts">
@@ -190,6 +194,26 @@ export function TailorCard({ detail, onChanged }: { detail: Detail; onChanged: (
       {message && <p className="inventory-message" role="status">{message}</p>}
       {error && <p className="collection-error" role="alert">{error}</p>}
     </>}
+  </section>;
+}
+
+/** When production is done, the production manager can send the order to reception unpackaged; reception packs it. */
+function ToReceptionCard({ order, onHanded }: { order: DemoOrder; onHanded?: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  if (order.workflow?.current !== "production_done" || order.workflow.closed || order.reception) return null;
+  async function send() {
+    setBusy(true); setError("");
+    try {
+      await productionJson(`/api/staff-production/${encodeURIComponent(order.reference)}/to-reception`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: "{}" });
+      onHanded?.();
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not send this order to reception."); setBusy(false); }
+  }
+  return <section className="panel production-card-section" aria-label="Hand to reception">
+    <h2>Packaging</h2>
+    <p className="consultation-muted">Package it here with <strong>Mark packaged</strong>, or send it to reception to package.</p>
+    {error && <p className="collection-error" role="alert">{error}</p>}
+    <button type="button" className="inventory-quiet-button" disabled={busy} onClick={send}>{busy ? "Sending…" : "Send to reception, not packaged"}</button>
   </section>;
 }
 

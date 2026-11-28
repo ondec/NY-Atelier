@@ -3,7 +3,7 @@ import { shopCatalogue } from "./shop-catalogue";
 
 export const productTypes = ["Tops & shirts", "Trousers", "Two-piece sets", "Kaftans", "Agbadas", "Suits", "Dresses", "Skirts", "Other"] as const;
 export type ProductType = (typeof productTypes)[number];
-export type Product = { id: string; name: string; type: ProductType; price: number; createdAt?: string; catalogueId?: string; wordpressId?: number; sourceUrl?: string; description?: string; section?: ProductSection; isNew?: boolean; offerPrice?: number; sizing?: SizingPart[]; photo?: string; gallery?: string[]; colours?: readonly string[] };
+export type Product = { id: string; name: string; type: ProductType; price: number; createdAt?: string; catalogueId?: string; wordpressId?: number; sourceUrl?: string; description?: string; section?: ProductSection; isNew?: boolean; /** Last day (YYYY-MM-DD) the piece shows as a new arrival. */ newUntil?: string; offerPrice?: number; sizing?: SizingPart[]; photo?: string; gallery?: string[]; colours?: readonly string[] };
 export const productSections = [{ value: "men", label: "Men" }, { value: "women", label: "Women" }, { value: "accessories", label: "Accessories" }] as const;
 export type ProductSection = (typeof productSections)[number]["value"];
 export type SizingPart = "shirt" | "trousers";
@@ -89,3 +89,11 @@ export function parseInventory(value: string | null): Inventory {
 export const inventoryChanged = "ny-atelier-inventory-changed";
 export const stockKnown = (row: Pick<Variant, 'stockVerified'>) => row.stockVerified !== false;
 export const isLowStock = (row: Variant) => stockKnown(row) && row.quantity > 0 && row.quantity <= row.reorderAt;
+
+/** How long a piece shows as a new arrival after it is ticked. */
+export const newArrivalDays = 30;
+/** A date `days` from today, as YYYY-MM-DD in local time. */
+export function daysFromToday(days: number) {
+  const date = new Date(); date.setDate(date.getDate() + days);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}

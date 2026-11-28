@@ -2,17 +2,18 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { siteForHost, siteForPath, siteRoute, sitesUseOwnAddresses } from '@/lib/public-sites';
 import { publicHost } from '@/lib/workspace-hosts';
 
-/** Serves the public website and RTW store (own addresses, or /home and /store); everything else passes through. */
+/** Serves the public website and its /shop (own address, or the /home preview); everything else passes through. */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const ownAddresses = sitesUseOwnAddresses();
-  const byHost = ownAddresses ? siteForHost(publicHost(request.headers)) : null;
+  const byHost = ownAddresses ? siteForHost(publicHost(request.headers), pathname) : null;
   const byPath = ownAddresses ? null : siteForPath(pathname);
   if (!byHost && !byPath) {
     // The built files are reachable only through the sites themselves.
     return pathname.startsWith('/_sites/') ? new NextResponse(null, { status: 404 }) : NextResponse.next();
   }
-  const route = byHost ? siteRoute(byHost, pathname, request.method) : siteRoute(byPath!.site, byPath!.inner, request.method);
+  const site = (byHost ?? byPath)!;
+  const route = siteRoute(site.site, site.inner, request.method);
   const response = route.kind === 'block'
     ? Response.json({ message: route.status === 404 ? 'Not found.' : 'Method not allowed.' }, { status: route.status }) as NextResponse
     : NextResponse.rewrite(new URL(route.path, request.url));

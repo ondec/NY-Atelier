@@ -26,6 +26,8 @@ import FrontDeskBell from "./front-desk-bell";
 import {openSavedCustomerFitting, readStudioLocation, type StudioLocation} from "@/lib/studio-location";
 import {leaveStudioDialog} from "@/lib/studio-dialog-history";
 import {readSaleDraft, saleDraftKey} from "@/lib/studio-sale-draft";
+import ShowroomOrders from "./orders-panel";
+import FilterMenu from "../filter-menu";
 import { filterStudioCatalogue } from "@/lib/studio-catalogue";
 import { FittingMedia } from "../fitting-fields";
 import FittingReadings from "../fitting-readings";
@@ -42,9 +44,11 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
   // Staff without the sales permission (customer records only) never open Ready-to-Wear, even from a typed URL or Back.
   const canSell = can(staff, "sales");
   const canReadOrders = can(staff, "orders.read");
-  const canCreateOrders = can(staff, "orders.manage");
+  /** The RTW store's reception sells and handles orders; it does no fittings. */
+  const rtwDesk = staff.location === "rtw_store";
+  const canCreateOrders = can(staff, "orders.manage") || can(staff, "sales");
   const initialLocation = canSell ? requestedLocation : salesFreeLocation(requestedLocation);
-  const [module, setModule] = useState<"welcome" | "collection" | "measurements">(initialLocation.module);
+  const [module, setModule] = useState<"welcome" | "collection" | "measurements" | "orders">(initialLocation.module === "orders" && !can(staff, "orders.read") ? "welcome" : initialLocation.module);
   const [inventory, setInventory] = useState(emptyInventory);
   const [catalogueError, setCatalogueError] = useState("");
   const [collections, setCollections] = useState<Collection[]>(sampleCollections);
@@ -116,10 +120,10 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
     }
   }, [customerId, profile, fittingPage]);
 
-  function changeStudioModule(next: 'welcome' | 'collection') {
+  function changeStudioModule(next: 'welcome' | 'collection' | 'orders') {
     setModule(next); setSaleDesk(false);
     const url = new URL(window.location.href);
-    if (next === 'collection') url.searchParams.set('view', 'collection'); else url.searchParams.delete('view');
+    if (next !== 'welcome') url.searchParams.set('view', next); else url.searchParams.delete('view');
     url.searchParams.delete('customer'); url.searchParams.delete('screen'); url.searchParams.delete('garment'); url.searchParams.delete('product');
     setViewingProduct(false);
     if (url.href !== window.location.href) window.history.pushState({studioModule: true}, '', url);
@@ -363,6 +367,18 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
       <h1>Made for<br />your world.</h1>
       <p className="showroom-welcome-intro">A personal experience.<br />From the first fitting to the final detail.</p>
       <nav className="showroom-welcome-modules" aria-label="NY Studio modules">
+        {rtwDesk ? <>
+          {canSell && <button onClick={() => { changeStudioModule("collection"); setViewingProduct(false); }}>
+            <span className="showroom-welcome-icon"><Shirt size={23} /></span>
+            <span><small>01 / THE COLLECTION</small><strong>Ready-to-Wear</strong><span>Sell from the collection</span></span>
+            <ArrowRight size={20} />
+          </button>}
+          {can(staff, "orders.read") && <button onClick={() => changeStudioModule("orders")}>
+            <span className="showroom-welcome-icon"><ShoppingBag size={23} /></span>
+            <span><small>02 / ORDERS</small><strong>Orders</strong><span>Package and send out orders</span></span>
+            <ArrowRight size={20} />
+          </button>}
+        </> : <>
         <button onClick={showFittingCustomers}>
           <span className="showroom-welcome-icon"><Ruler size={23} /></span>
           <span><small>01 / THE PERSONAL FIT</small><strong>Fittings</strong><span>Customer measurements & fitting history</span></span>
@@ -373,6 +389,7 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
           <span><small>02 / THE COLLECTION</small><strong>Ready-to-Wear</strong><span>Explore garments, colours & available sizes</span></span>
           <ArrowRight size={20} />
         </button>}
+        </>}
 
       </nav>
     </div>
@@ -386,13 +403,15 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
         <div className="showroom-module-navigation">
           <button className="showroom-home-button showroom-header-brand" aria-label="Return to NY Studio" onClick={() => changeStudioModule("welcome")}><ArrowLeft size={16} /><Image src="/ny-mark.svg" alt="" width={34} height={34} /><span><strong>NY ATELIER</strong><small>NY Studio</small></span></button>
           <div className={`studio-module-dock${saleCount ? ' has-sale' : ''}`}>
-            <nav aria-label="NY Studio modules"><button aria-pressed={module === "measurements"} onClick={showFittingCustomers}>Fittings</button>{canSell && <button aria-pressed={module === "collection"} onClick={() => { changeStudioModule("collection"); setViewingProduct(false); }}>Ready-to-Wear</button>}</nav>
+            <nav aria-label="NY Studio modules">{!rtwDesk && <button aria-pressed={module === "measurements"} onClick={showFittingCustomers}>Fittings</button>}{rtwDesk ? <>{canSell && <button aria-pressed={module === "collection"} onClick={() => { changeStudioModule("collection"); setViewingProduct(false); }}>Ready-to-Wear</button>}{can(staff, "orders.read") && <button aria-pressed={module === "orders"} onClick={() => changeStudioModule("orders")}>Orders</button>}</> : <>{can(staff, "orders.read") && <button aria-pressed={module === "orders"} onClick={() => changeStudioModule("orders")}>Orders</button>}{canSell && <button aria-pressed={module === "collection"} onClick={() => { changeStudioModule("collection"); setViewingProduct(false); }}>Ready-to-Wear</button>}</>}</nav>
             {saleCount > 0 && <button type="button" className="studio-sale-trigger" aria-label={`Open Sales Desk, ${saleCount} ${saleCount === 1 ? 'item' : 'items'}`} aria-haspopup="dialog" onClick={openSaleDesk}><ShoppingBag size={23}/><span className="studio-sale-badge" aria-hidden="true">{saleCount > 99 ? '99+' : saleCount}</span></button>}
           </div>
         </div>
         <div className="showroom-header-actions">{can(staff, "orders.read") && <FrontDeskBell onOpen={(id) => { openFittingCustomer(id); setProfileTab('orders'); }} />}<StudioTools staff={staff} onSalesHistory={canSell ? ()=>setSalesHistory(true) : undefined}/></div>
       </header>
-      {module === "collection" && canSell ? <>
+      {module === "orders" || (rtwDesk && module === "measurements") ? <div>
+        <div><ShowroomOrders canCreate={canCreateOrders && !rtwDesk} onSell={canSell ? () => { changeStudioModule("collection"); setViewingProduct(false); } : undefined} /></div>
+      </div> : module === "collection" && canSell ? <>
         <div className="showroom-intro"><div>{viewingProduct && <button type="button" className="showroom-home-button" onClick={backToGarments}><ArrowLeft size={18} />Back to garments</button>}<h1>Ready-to-Wear</h1></div></div>
         {saleNotice && <p className="showroom-sale-notice" role="status">{saleNotice}</p>}
         <div className="showroom-pos-layout"><div className="showroom-pos-catalogue" key={viewingProduct ? productId : 'catalogue'}>
@@ -420,13 +439,12 @@ export default function Showroom({ staff, initialLocation: requestedLocation = r
         </div></> : <>
           <div className="studio-catalogue-filters">
             <label className="showroom-search"><Search size={19} /><input type="search" aria-label="Search garments" placeholder="Search garments, colour, fabric or SKU" value={productQuery} onChange={event => setProductQuery(event.target.value)} /></label>
-            <div className="studio-filter-controls">
+            <FilterMenu count={[clothingType !== "all", collectionId !== "all", availableSize !== "all", availability !== "all"].filter(Boolean).length} canClear={filtersActive} onClear={clearProductFilters}>
               <label>Clothing type<select aria-label="Clothing type" value={clothingType} onChange={event => setClothingType(event.target.value)}><option value="all">All clothing</option>{productTypes.map(type => <option key={type}>{type}</option>)}</select></label>
               <label>Collection<select aria-label="Filter by collection" value={collectionId} onChange={event => setCollectionId(event.target.value)}><option value="all">All collections</option>{collections.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
               <label>Size<select aria-label="Filter by size" value={availableSize} onChange={event => setAvailableSize(event.target.value)}><option value="all">All sizes</option>{[...new Set([...sizes, ...inventory.variants.map(row => row.size)])].map(size => <option key={size}>{size}</option>)}</select></label>
               <label>Stock<select aria-label="Filter by stock" value={availability} onChange={event => setAvailability(event.target.value)}><option value="all">All stock</option><option value="not-counted">Not counted</option><option value="in-stock">In stock</option><option value="low-stock">Low stock</option><option value="out-of-stock">Out of stock</option></select></label>
-              {filtersActive && <button type="button" className="showroom-secondary" onClick={clearProductFilters}>Clear filters</button>}
-            </div>
+            </FilterMenu>
           </div>
           <div className="showroom-product-heading"><h3>{collection?.title ?? "Browse the garments"}</h3><span>{catalogue.length} {catalogue.length === 1 ? "garment" : "garments"}</span></div>
           <div className="showroom-pos-grid">{catalogue.map((item) => {

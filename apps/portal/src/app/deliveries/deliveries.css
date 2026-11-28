@@ -290,3 +290,15 @@
 .delivery-status { font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: #eef1ef; color: var(--petrol); align-self: start; white-space: nowrap; }
 .delivery-status[data-stage="out_for_delivery"] { background: #e3edf7; color: #1d4e89; }
 .deliveries.is-board, .board, .board > *, .board-toolbar > * { min-width: 0; }
+.courier-waiting{margin-bottom:18px}
+.courier-waiting summary{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:4px 14px;border-radius:999px;background:#f1f4f4;cursor:pointer;list-style:none}
+.courier-waiting summary::-webkit-details-marker{display:none}
+.courier-waiting summary h2{margin:0}
+.courier-waiting summary svg{transition:transform .2s}
+.courier-waiting[open] summary{margin-bottom:10px}
+.courier-waiting[open] summary svg{transform:rotate(180deg)}
+.courier-waiting h2{display:flex;align-items:center;gap:8px;font-size:15px;margin:0 0 10px}
+.courier-waiting h2 span{display:grid;place-items:center;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#123c45;color:#fff;font-size:12px}
+.courier-waiting .courier-stop{display:grid;gap:10px}
+.courier-primary{min-height:46px;border:0;border-radius:999px;background:#123c45;color:#fff;font-weight:600;font-size:15px;cursor:pointer}
+.courier-primary:disabled{opacity:.6}

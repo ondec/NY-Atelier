@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Bell, ChevronRight, X } from "@/components/icons";
 import { orderDate } from "../order-table";
+import { useStaff } from "../staff-context";
 
-type Alert = { reference: string; kind: "packed" | "returned"; customer_id: number; customer_name: string; garments: string[]; fulfilment_method: string | null; reason: string | null; arrived_at: string | null };
+type Alert = { reference: string; category?: string; store?: "atelier" | "rtw_store"; kind: "packed" | "returned" | "to_package" | "delivered"; customer_id: number; customer_name: string; garments: string[]; fulfilment_method: string | null; reason: string | null; arrived_at: string | null };
 type Alerts = { alerts: Alert[]; seen_at: string | null };
 
 const ago = (value: string) => {
@@ -17,7 +18,10 @@ const ago = (value: string) => {
  * delivery), and orders production sent back with a reason. The same events go to the shared order mailbox.
  */
 export default function FrontDeskBell({ onOpen }: { onOpen: (customerId: number) => void }) {
-  const [data, setData] = useState<Alerts>();
+  const location = useStaff()?.location;
+  const [rawData, setData] = useState<Alerts>();
+  // A receptionist sees only their own store's hand-offs.
+  const data = useMemo(() => rawData && location ? { ...rawData, alerts: rawData.alerts.filter((alert) => (alert.store ?? (alert.category === "Ready-to-Wear" ? "rtw_store" : "atelier")) === location) } : rawData, [rawData, location]);
   const [open, setOpen] = useState(false);
   const [shown, setShown] = useState<Alert[]>([]);
 
@@ -51,10 +55,10 @@ export default function FrontDeskBell({ onOpen }: { onOpen: (customerId: number)
       <Bell size={19} />{fresh.length > 0 && <span className="production-bell-count">{fresh.length > 9 ? "9+" : fresh.length}</span>}
     </button>
     {open && <div className="production-bell-panel" role="dialog" aria-label="Notifications">
-      <div className="production-bell-heading"><strong>From production</strong><button type="button" aria-label="Close notifications" onClick={() => setOpen(false)}><X size={16} /></button></div>
+      <div className="production-bell-heading"><strong>Order updates</strong><button type="button" aria-label="Close notifications" onClick={() => setOpen(false)}><X size={16} /></button></div>
       {shown.length ? <ul>{shown.map((alert) => <li key={`${alert.kind}-${alert.reference}`}><button type="button" onClick={() => { setOpen(false); onOpen(alert.customer_id); }}>
         <span><strong>{alert.customer_name}</strong><small>{alert.garments.join(" · ")}</small>
-          <small>{alert.kind === "packed" ? `Packed · arrange ${alert.fulfilment_method === "Delivery" ? "delivery" : "collection"}` : `Sent back: ${alert.reason ?? ""}`}{alert.arrived_at ? ` · ${ago(alert.arrived_at)}` : ""}</small></span><ChevronRight size={16} />
+          <small>{alert.kind === "packed" ? `Packed · arrange ${alert.fulfilment_method === "Delivery" ? "delivery" : "collection"}` : alert.kind === "delivered" ? "Delivered by the courier" : alert.kind === "to_package" ? `Not packaged · package it, then arrange ${alert.fulfilment_method === "Delivery" ? "delivery" : "collection"}` : `Sent back: ${alert.reason ?? ""}`}{alert.arrived_at ? ` · ${ago(alert.arrived_at)}` : ""}</small></span><ChevronRight size={16} />
       </button></li>)}</ul> : <p className="production-muted">Nothing waiting. Orders appear here when production packs them or sends them back.</p>}
     </div>}
   </div>;

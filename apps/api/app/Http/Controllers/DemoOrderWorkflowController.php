@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\OrderCustomerNotice;
+use App\OrderLocation;
 use App\OrderWorkflow;
 use App\StaffAccess;
 use Illuminate\Http\JsonResponse;
@@ -22,8 +23,15 @@ class DemoOrderWorkflowController extends Controller
 
     public function update(Request $request, string $reference, OrderWorkflow $workflow, OrderCustomerNotice $notices): JsonResponse
     {
-        StaffAccess::requireStaffToken($request);
+        $user = StaffAccess::requireStaffToken($request);
+        abort_unless($user->can('staff.orders.manage') || ($user->staff_role === 'receptionist' && $user->staff_location !== null), 403, 'You can’t update this order.');
         $data = $request->validate(self::rules());
+        if (! $user->can('staff.orders.manage')) {
+            // Reception: only the hand-over steps, only for its own store's orders.
+            $order = Order::query()->where('reference', $reference)->firstOrFail();
+            abort_unless($data['action'] === 'advance' && in_array($data['stage'] ?? null, OrderLocation::RECEPTION_STEPS, true)
+                && OrderLocation::canHandOver($user, $order), 403, 'Reception records packing, pick-up and collection for its own store. Ask operations for anything else.');
+        }
         $event = $workflow->update($reference, $data);
         $notices->send($event);
         $order = Order::query()->where('reference', $reference)->with(['customer', 'items', 'events'])->firstOrFail();

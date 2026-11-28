@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\OrderLocation;
 use App\StaffAccess;
 use App\StaffInvitations;
 use App\StaffTeam;
@@ -28,13 +29,17 @@ class DemoTeamController extends Controller
             'name' => ['required', 'string', 'min:2', 'max:120'],
             'email' => ['required', 'email', 'max:255'],
             'role' => ['required', Rule::in(StaffAccess::INVITABLE_ROLES)],
+            'location' => ['nullable', Rule::in(OrderLocation::LOCATIONS)],
         ]);
         abort_unless(StaffAccess::canAssign($actor, $data['role']), 403, 'You can only invite roles with no more access than your own.');
         // A pending invitation may be corrected by inviting again; never one above the actor's own access.
         $pending = DB::table('users')->where('email', mb_strtolower(trim($data['email'])))->where('staff_active', false)->whereIn('staff_role', StaffAccess::INVITABLE_ROLES)->value('staff_role');
         abort_if($pending && ! StaffAccess::canAssign($actor, $pending), 403, 'You can’t change this account.');
 
-        return $this->invited($request, $invitations->invite($data['name'], $data['email'], $data['role']), 201);
+        $result = $invitations->invite($data['name'], $data['email'], $data['role']);
+        $this->setLocation($result['user']->id, $data['role'], $data['location'] ?? null);
+
+        return $this->invited($request, $result, 201);
     }
 
     public function resend(Request $request, StaffInvitations $invitations, int $member): JsonResponse
@@ -49,9 +54,13 @@ class DemoTeamController extends Controller
     public function role(Request $request, StaffTeam $team, int $member): JsonResponse
     {
         $owner = StaffAccess::requireStaffToken($request);
-        $data = $request->validate(['role' => ['required', Rule::in(StaffAccess::INVITABLE_ROLES)]]);
+        $data = $request->validate(['role' => ['required', Rule::in(StaffAccess::INVITABLE_ROLES)],
+            'location' => ['nullable', Rule::in(OrderLocation::LOCATIONS)],
+        ]);
+        $user = $team->changeRole($owner, $member, $data['role']);
+        $this->setLocation($user->id, $data['role'], $data['location'] ?? null);
 
-        return $this->changed($request, $team->changeRole($owner, $member, $data['role'])->id);
+        return $this->changed($request, $user->id);
     }
 
     public function deactivate(Request $request, StaffTeam $team, int $member): JsonResponse
@@ -62,6 +71,13 @@ class DemoTeamController extends Controller
     public function reactivate(Request $request, StaffTeam $team, int $member): JsonResponse
     {
         return $this->changed($request, $team->reactivate(StaffAccess::requireStaffToken($request), $member)->id);
+    }
+
+    /** Receptionists work at one store; every other role has no store. */
+    private function setLocation(int $userId, string $role, ?string $location): void
+    {
+        $current = DB::table('users')->where('id', $userId)->value('staff_location');
+        DB::table('users')->where('id', $userId)->update(['staff_location' => $role === 'receptionist' ? ($location ?? $current ?? 'atelier') : null]);
     }
 
     private function changed(Request $request, int $userId): JsonResponse
@@ -87,12 +103,13 @@ class DemoTeamController extends Controller
             ->leftJoin('staff_activation_tokens', 'staff_activation_tokens.user_id', '=', 'staff_members.user_id')
             ->orderBy('staff_members.sort_order')->orderBy('staff_members.id')
             ->get(['staff_members.id', 'staff_members.name', 'staff_members.job_title', 'staff_members.salary_eligible', 'staff_members.user_id',
-                'users.email', 'users.staff_role', 'users.staff_active', 'users.staff_deactivated_at', 'staff_activation_tokens.expires_at'])
+                'users.email', 'users.staff_role', 'users.staff_location', 'users.staff_active', 'users.staff_deactivated_at', 'staff_activation_tokens.expires_at'])
             ->map(fn (object $member): array => [
                 'id' => $member->id, 'name' => $member->name, 'job_title' => $member->job_title,
                 'salary_eligible' => (bool) $member->salary_eligible, 'has_account' => $member->user_id !== null,
                 'user_id' => $member->user_id, 'email' => $member->email, 'role' => $member->staff_role,
                 'role_label' => StaffAccess::ROLE_LABELS[$member->staff_role] ?? null,
+                'location' => $member->staff_location,
                 'status' => match (true) {
                     $member->user_id === null => 'none',
                     $member->staff_deactivated_at !== null => 'deactivated',

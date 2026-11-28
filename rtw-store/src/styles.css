@@ -792,7 +792,6 @@ a.cx-reach-item:hover{background:#ebe5da}
 .rtw-card-swatches i{display:block;width:16px;height:16px;border-radius:50%;border:1px solid #fff}
 .rtw-card-swatches i+i{margin-top:-3px}
 .rtw-card-swatches small{color:#fff;font-size:8px;font-weight:700;margin-top:3px;line-height:1}
-.product-image-wrap:hover .rtw-card-swatches{opacity:0}
 .product-card.is-sold-out img{opacity:.4}
 .product-card.is-sold-out .product-details{opacity:.6}
 .rtw-price{display:inline-flex;align-items:baseline;flex-wrap:wrap;gap:8px}
@@ -937,3 +936,72 @@ select:not([multiple]):not([size])::-ms-expand{display:none}
   .rtw-feature.is-reversed{grid-template-columns:.9fr 1.1fr}
   .rtw-feature.is-reversed .rtw-feature-image{order:2}
 }
+
+/* One main menu for the website and the RTW store (keep in sync with website/src/styles.css). */
+.site-header{height:auto}
+.site-nav{height:94px}
+.mobile-menu .mobile-menu-heading{margin:22px 0 4px;color:var(--cognac)}
+@media(max-width:1200px){.site-nav{height:82px}}
+@media(max-width:900px){.site-nav{height:74px}.mobile-menu{top:100%}}
+@media(max-width:640px){.site-nav{height:69px}}
+.shop-toolbar{justify-content:flex-end}
+.nav-mega{display:flex;align-items:center}
+.mega-panel{position:absolute;left:0;right:0;top:100%;background:#f6f3ec;color:var(--petrol);border-top:1px solid #dfddd4;border-bottom:1px solid #dfddd4;box-shadow:0 24px 48px #0c202826;z-index:75}
+.mega-panel[hidden]{display:none}
+.mega-panel:before{content:'';position:absolute;left:0;right:0;top:-24px;height:24px}
+.mega-inner{display:grid;grid-template-columns:minmax(220px,1fr) 1fr 1fr;gap:24px;padding:30px 0 34px}
+.mega-links{display:flex;flex-direction:column}
+.mega-links .eyebrow{margin-bottom:10px}
+.mega-links a{display:flex;justify-content:space-between;align-items:center;padding:11px 16px;margin-left:-16px;border-radius:999px;font-size:14px;color:var(--petrol)}
+.mega-links a:hover,.mega-links a:focus-visible{background:#123c450d;color:var(--cognac)}
+.mega-tile{position:relative;display:block;border-radius:22px;overflow:hidden;aspect-ratio:4/3;background:#dedbd3;color:#fff}
+.mega-tile img{width:100%;height:100%;object-fit:cover;transition:transform .5s}
+.mega-tile:hover img{transform:scale(1.04)}
+.mega-tile:after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,#091e21b3,transparent 55%)}
+.mega-tile span{position:absolute;left:20px;bottom:16px;z-index:1;font-size:30px;letter-spacing:-.04em}
+@media(max-width:900px){.mega-panel{display:none}}
+/* Store sections, top left under the header on every store page except the store home. */
+.store-sections{display:flex;flex-wrap:wrap;gap:6px;padding-top:18px;margin-bottom:-6px}
+.store-sections a{padding:8px 14px;border-radius:999px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#4d5b5c;white-space:nowrap}
+.store-sections a:hover{color:var(--cognac)}
+.store-sections a.active{background:var(--petrol);color:#fff}
+/* Store home: the row sits over the hero photos, just under the header. */
+.store-sections.is-over-hero{position:absolute;top:94px;left:0;right:0;z-index:65;margin-bottom:0}
+.store-sections.is-over-hero a{color:#ffffffd9}
+.store-sections.is-over-hero a:hover{color:#fff;background:#ffffff1f}
+.store-sections.is-over-hero a.active{background:#fff;color:var(--petrol)}
+@media(max-width:1200px){.store-sections.is-over-hero{top:82px}}
+@media(max-width:900px){.store-sections.is-over-hero{top:74px}}
+@media(max-width:640px){.store-sections.is-over-hero{top:69px}}
+@media(max-width:640px){.store-sections{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-top:14px}.store-sections::-webkit-scrollbar{display:none}}
+/* Collection story: chapters, each text beside its close-up shots, alternating sides. */
+video.rtw-hero-image{width:100%;height:100%;object-fit:cover}
+.rtw-story{display:flex;flex-direction:column;gap:clamp(56px,8vw,120px);padding-top:clamp(60px,8vw,120px);padding-bottom:clamp(60px,8vw,120px)}
+.rtw-chapter{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(28px,5vw,80px);align-items:center}
+.rtw-chapter.is-reversed{grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr)}
+.rtw-chapter.is-reversed .rtw-story-copy{order:2}
+.rtw-chapter.is-text-only{grid-template-columns:1fr;text-align:center}
+.rtw-chapter.is-text-only p:not(.eyebrow){margin-inline:auto}
+.rtw-story-copy h2{font-size:clamp(36px,4.2vw,64px);line-height:1.12;letter-spacing:-.045em;margin-bottom:22px;color:var(--petrol)}
+.rtw-story-copy h2 em{color:var(--cognac)}
+.rtw-story-copy p:not(.eyebrow){font:300 17px/1.85 'Josefin Sans',sans-serif;color:#5d6866;max-width:520px}
+.rtw-story-photos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.rtw-story-photos img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:24px}
+.rtw-story-photos.is-1{grid-template-columns:1fr}
+.rtw-story-photos.is-1 img{aspect-ratio:4/3}
+.rtw-story-photos.is-3 img:first-child{grid-row:span 2;aspect-ratio:auto;height:100%}
+@media(max-width:900px){.rtw-chapter,.rtw-chapter.is-reversed{grid-template-columns:1fr}.rtw-chapter.is-reversed .rtw-story-copy{order:0}}
+/* Product cards: hovering fades to the piece's second photo (no "View details" bar). */
+.product-image-wrap>a:first-child{position:relative}
+.product-image-wrap .product-second-photo{position:absolute;inset:0;opacity:0;transition:opacity .45s ease}
+@media(hover:hover){.product-card.has-second-photo .product-image-wrap:hover .product-second-photo{opacity:1}.product-card.has-second-photo .product-image-wrap:hover img{transform:none}}
+/* While the RTW Store menu is open the header turns solid, like the menu, with the logo in petrol (keep in sync in both sites). */
+.site-header.site-header:has(.nav-mega.is-open){background:#f6f3ec;color:var(--petrol);border-bottom-color:#dfddd4;backdrop-filter:none}
+.site-header.site-header:has(.nav-mega.is-open) .wordmark{color:var(--petrol)}
+.site-header.site-header:has(.nav-mega.is-open) .nav-link:hover,.site-header.site-header:has(.nav-mega.is-open) .nav-link.active,.site-header.site-header:has(.nav-mega.is-open) .nav-mega.is-open>.nav-link{color:var(--cognac)}
+.site-header.site-header:has(.nav-mega.is-open) .nav-link:hover:after,.site-header.site-header:has(.nav-mega.is-open) .nav-link.active:after,.site-header.site-header:has(.nav-mega.is-open) .nav-mega.is-open>.nav-link:after{background:var(--cognac)}
+.site-header.site-header:has(.nav-mega.is-open) .icon-btn:hover{background:#123c4510;border-color:#123c4520}
+.nav-mega.is-open .mega-panel{border-top:0;animation:mega-drop .32s cubic-bezier(.2,.7,.2,1) both;transform-origin:top}
+@keyframes mega-drop{from{opacity:0;clip-path:inset(0 0 100% 0)}to{opacity:1;clip-path:inset(0 0 0 0)}}
+@media (prefers-reduced-motion:reduce){.nav-mega.is-open .mega-panel{animation:none}}
+.mega-panel{border-radius:0 0 32px 32px}

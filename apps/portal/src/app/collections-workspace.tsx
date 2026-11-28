@@ -20,7 +20,18 @@ export type Collection = {
   productIds: string[];
   featuredOn: FeaturedOn;
   order: number;
+  /** Where featured, the hero shows the campaign photos as a carousel, or a launch video. */
+  heroMode?: "photos" | "video";
+  /** An HTTPS link to an MP4 or WebM file (kept when switching back to photos). */
+  heroVideo?: string;
+  /** Shown under the pieces: up to three chapters on why the collection is unique, each with close-up shots. */
+  story?: StoryChapter[];
 };
+export type StoryChapter = { title: string; text: string; photos: string[] };
+const chapterSlots = [0, 1, 2];
+/** The saved chapters (older records held one chapter as an object). */
+const chaptersOf = (entry: { story?: StoryChapter[] | StoryChapter }) => Array.isArray(entry.story) ? entry.story : entry.story ? [entry.story] : [];
+const videoLink = /^(https:\/\/[^\s]+|\/[A-Za-z0-9\/_.-]+)\.(mp4|webm)(\?[^\s]*)?$/i;
 
 /** The three home heroes a collection can lead. Each site features at most one collection. */
 export type FeatureSite = "website" | "rtw" | "app";
@@ -36,14 +47,14 @@ const notFeatured: FeaturedOn = { website: false, rtw: false, app: false };
 export function normaliseCollection(entry: Collection & { featured?: boolean }): Collection {
   const { featured, ...rest } = entry;
   const flags = entry.featuredOn && typeof entry.featuredOn === "object" ? entry.featuredOn : { ...notFeatured, rtw: featured === true, app: featured === true };
-  return { ...rest, featuredOn: { website: flags.website === true, rtw: flags.rtw === true, app: flags.app === true } };
+  return { ...rest, story: chaptersOf(rest), featuredOn: { website: flags.website === true, rtw: flags.rtw === true, app: flags.app === true } };
 }
 const featuredLabel = (entry: Collection) => {
   const places = featureSites.filter((site) => entry.featuredOn[site.id]).map((site) => site.id === "rtw" ? "RTW store" : site.id === "app" ? "app" : "website");
   return places.length ? ` · Featured on ${places.join(", ")}` : "";
 };
 
-const collectionStorageKey = "ny-atelier-collections-v1";
+export const collectionStorageKey = "ny-atelier-collections-v1";
 export const sampleCollections: Collection[] = [{
   ...redCloverCollectionInfo,
   productIds: redCloverCollectionInfo.productIds.map((id) => `shop-${id}`),
@@ -117,9 +128,18 @@ export default function CollectionsWorkspace() {
     try {
       const photos = await readGallery(data, draft.photos);
       if (!photos.length) throw new Error("Add at least one campaign photo.");
+      const heroMode = data.get("heroMode") === "video" ? "video" : "photos";
+      const heroVideo = String(data.get("heroVideo") ?? "").trim();
+      if (heroVideo && !videoLink.test(heroVideo)) throw new Error("The launch video must be an https:// link or a /path ending in .mp4 or .webm.");
+      if (heroMode === "video" && !heroVideo) throw new Error("Add the launch video link, or choose photos for the hero.");
+      const story: StoryChapter[] = [];
+      for (const slot of chapterSlots) {
+        const chapter = { title: String(data.get(`chapter${slot}Title`) ?? "").trim(), text: String(data.get(`chapter${slot}Text`) ?? "").trim(), photos: await readGallery(data, chaptersOf(draft)[slot]?.photos ?? [], `chapter${slot}`) };
+        if (chapter.title || chapter.text || chapter.photos.length) story.push(chapter);
+      }
       const record: Collection = {
         id: draft.id || crypto.randomUUID(), title, description, productIds, photos, order,
-        featuredOn,
+        featuredOn, heroMode, heroVideo, story,
       };
       const next = [
         ...readCollections().filter((item) => item.id !== record.id).map((item) => ({
@@ -184,10 +204,21 @@ export default function CollectionsWorkspace() {
         <div className="eyebrow">CAMPAIGN · DISPLAY ORDER {selected.order}</div>
         <h2>{featuredLabel(selected) ? "Home hero & collection photos" : "Collection photos"}</h2>
         <p className="collection-help">The first photo is the collection cover. Where the collection is featured, the photos cycle in this order on that home hero with the collection name kept in place.{featuredLabel(selected) && <strong>{featuredLabel(selected)}.</strong>}</p>
+        {selected.heroMode === "video" && selected.heroVideo && <p className="collection-help">Hero: <strong>launch video</strong> · <a href={selected.heroVideo} target="_blank" rel="noreferrer">{selected.heroVideo}</a></p>}
         <div className="collection-photos">{selected.photos.map((photo, index) => (
           <figure key={index}><Image src={photo} alt={`${selected.title} campaign photo ${index + 1}`} width={200} height={260} unoptimized /><figcaption>{index === 0 ? "Cover · Slide 1" : `Slide ${index + 1}`}</figcaption></figure>
         ))}</div>
       </section>
+      {chaptersOf(selected).length > 0 && <section className="panel inventory-form-panel">
+        <div className="eyebrow">COLLECTION STORY</div>
+        {chaptersOf(selected).map((chapter, index) => <div key={index}>
+          <h2>{chapter.title || `Chapter ${index + 1}`}</h2>
+          {chapter.text && <p className="collection-help">{chapter.text}</p>}
+          {chapter.photos.length > 0 && <div className="collection-photos">{chapter.photos.map((photo, photoIndex) => (
+            <figure key={photoIndex}><Image src={photo} alt={`${selected.title} close-up ${photoIndex + 1}`} width={200} height={260} unoptimized /><figcaption>Close-up {photoIndex + 1}</figcaption></figure>
+          ))}</div>}
+        </div>)}
+      </section>}
       <SizeChartEditor key={selected.id} scope="collection" targetId={selected.id} title={selected.title} productIds={selected.productIds} initialProfile={productSizing[sizingProductId(selected.productIds[0] ?? "")]} />
       <section className="panel inventory-form-panel">
         <div className="eyebrow">CUSTOMER SHOP PREVIEW</div>
@@ -252,6 +283,26 @@ export default function CollectionsWorkspace() {
           </fieldset>
           <GalleryFields photos={draft.photos} label="Campaign photos" />
           <p className="collection-help">Choose the cover first. Portrait photos work best for the mobile hero.</p>
+          <fieldset className="inventory-size-entries">
+            <legend>Hero style</legend>
+            <p className="collection-help">Where this collection is featured, its hero can cycle through the campaign photos or play a launch video. You can switch at any time.</p>
+            <div className="collection-hero-mode">
+              <label className="collection-check"><input type="radio" name="heroMode" value="photos" defaultChecked={(draft.heroMode ?? "photos") === "photos"} /><span>Photo carousel</span></label>
+              <label className="collection-check"><input type="radio" name="heroMode" value="video" defaultChecked={draft.heroMode === "video"} /><span>Launch video</span></label>
+            </div>
+            <label className="inventory-wide-field">Launch video link<input name="heroVideo" type="url" inputMode="url" maxLength={2000} defaultValue={draft.heroVideo ?? ""} placeholder="https://…/launch.mp4" /></label>
+            <p className="collection-help">An https:// link to an MP4 or WebM file. It plays muted and on loop, with the cover photo shown while it loads.</p>
+          </fieldset>
+          <fieldset className="inventory-size-entries">
+            <legend>Collection story</legend>
+            <p className="collection-help">Shown under the pieces: up to three chapters on what makes this collection unique (the inspiration, the cloth, the making), each with its own close-up shots. Leave a chapter empty to hide it.</p>
+            {chapterSlots.map((slot) => { const chapter = chaptersOf(draft)[slot]; return <div className="collection-chapter" key={slot}>
+              <h3>Chapter {slot + 1}</h3>
+              <label className="inventory-wide-field">Heading<input name={`chapter${slot}Title`} maxLength={80} defaultValue={chapter?.title ?? ""} placeholder={["e.g. The inspiration", "e.g. The cloth", "e.g. Made by hand"][slot]} /></label>
+              <label className="inventory-wide-field">Text<textarea name={`chapter${slot}Text`} maxLength={1200} rows={4} defaultValue={chapter?.text ?? ""} /></label>
+              <GalleryFields photos={chapter?.photos} label={`Chapter ${slot + 1} close-ups`} name={`chapter${slot}`} />
+            </div>; })}
+          </fieldset>
           <fieldset className="inventory-size-entries">
             <legend>Link garments</legend>
             <p className="collection-help">Select existing garments. Every colour or fabric becomes an edition card. Manage prices, sizes, quantities and variant photos in Products &amp; variants.</p>

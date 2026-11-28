@@ -6,7 +6,7 @@ import type { SignInReason } from '@/components/sign-in-sheet';
 import { useCustomerAuth } from '@/lib/customer-auth';
 
 const promptCopy: Partial<Record<SignInReason, { title: string; text: string }>> = {
-  orders: { title: 'Your orders live here', text: 'Sign in with your email or phone to follow your pieces, alterations and consultations.' },
+  orders: { title: 'Your orders live here', text: 'Sign in with your email or phone to follow your pieces, alterations and appointments.' },
   account: { title: 'Sign in to your account', text: 'Keep your details, addresses and measurements with you. Use your password or a one-time code.' },
 };
 

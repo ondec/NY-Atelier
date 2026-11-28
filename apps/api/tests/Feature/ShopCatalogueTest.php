@@ -87,6 +87,80 @@ class ShopCatalogueTest extends TestCase
             ->assertJsonMissingPath('collections.0.order');
     }
 
+    public function test_a_collection_can_lead_with_a_launch_video_and_a_story(): void
+    {
+        $payload = ['inventory' => ['products' => [], 'variants' => []], 'collections' => [
+            ['id' => 'video', 'title' => 'Video', 'order' => 1, 'photos' => ['https://example.com/1.jpg'], 'productIds' => [], 'heroMode' => 'video', 'heroVideo' => 'https://cdn.example.com/launch.mp4',
+                'story' => [
+                    ['title' => 'Cut by hand', 'text' => 'Why it is unique.', 'photos' => ['https://example.com/close-1.jpg', 'javascript:alert(1)', '/uploads/close-2.jpg']],
+                    ['title' => '', 'text' => '', 'photos' => []],
+                    ['title' => '  ', 'text' => 'The cloth.', 'photos' => []],
+                ]],
+            ['id' => 'photos', 'title' => 'Photos', 'order' => 2, 'photos' => [], 'productIds' => [], 'heroMode' => 'photos', 'heroVideo' => 'https://cdn.example.com/kept-for-later.mp4', 'story' => ['title' => 'Old single chapter', 'text' => '', 'photos' => []]],
+            ['id' => 'unsafe', 'title' => 'Unsafe', 'order' => 3, 'photos' => [], 'productIds' => [], 'heroMode' => 'video', 'heroVideo' => 'http://example.com/clip.mp4', 'story' => ['text' => '  ', 'photos' => []]],
+            ['id' => 'page', 'title' => 'Page', 'order' => 4, 'photos' => [], 'productIds' => [], 'heroMode' => 'video', 'heroVideo' => 'https://example.com/watch?v=1'],
+        ]];
+        DB::table('studio_catalogues')->updateOrInsert(['id' => 1], ['payload' => json_encode($payload), 'revision' => 11, 'created_at' => now(), 'updated_at' => now()]);
+
+        $this->getJson('/api/shop/catalogue')->assertOk()
+            ->assertJsonPath('collections.0.heroVideo', 'https://cdn.example.com/launch.mp4')
+            ->assertJsonCount(2, 'collections.0.story')
+            ->assertJsonPath('collections.0.story.0.title', 'Cut by hand')
+            ->assertJsonPath('collections.0.story.0.text', 'Why it is unique.')
+            ->assertJsonCount(2, 'collections.0.story.0.photos')
+            ->assertJsonPath('collections.0.story.0.photos.0.src', 'https://example.com/close-1.jpg')
+            ->assertJsonPath('collections.0.story.1.title', null)
+            ->assertJsonPath('collections.0.story.1.text', 'The cloth.')
+            ->assertJsonPath('collections.1.heroVideo', null)
+            ->assertJsonPath('collections.1.story', [])
+            ->assertJsonPath('collections.2.heroVideo', null)
+            ->assertJsonPath('collections.2.story', [])
+            ->assertJsonPath('collections.3.heroVideo', null);
+    }
+
+    public function test_site_heroes_are_shared_only_when_custom_and_safe(): void
+    {
+        $payload = ['inventory' => ['products' => [], 'variants' => []], 'collections' => [], 'heroes' => [
+            'website' => ['use' => 'custom', 'style' => 'photos', 'media' => ['/uploads/heroes/a.jpg', 'javascript:alert(1)', 'https://example.com/b.jpg'], 'eyebrow' => 'NEW', 'title' => ' Meet the edit ', 'text' => '', 'buttonLabel' => 'SHOP', 'buttonTo' => 'collection:plum-piping'],
+            'rtw' => ['use' => 'default', 'style' => 'photos', 'media' => ['https://example.com/c.jpg']],
+            'services' => ['use' => 'custom', 'style' => 'video', 'media' => ['site:/videos/our-story/01.mp4', 'site:/../secret.mp4', '/uploads/heroes/film.mp4', 'https://example.com/page'], 'title' => 'Services', 'buttonLabel' => 'GO', 'buttonTo' => 'https://evil.example'],
+        ], 'heroDrafts' => [
+            'rtw' => ['use' => 'custom', 'style' => 'photos', 'media' => ['https://example.com/draft.jpg'], 'title' => 'Not yet'],
+        ]];
+        DB::table('studio_catalogues')->updateOrInsert(['id' => 1], ['payload' => json_encode($payload), 'revision' => 12, 'created_at' => now(), 'updated_at' => now()]);
+        $portal = rtrim((string) config('staff.portal_url'), '/');
+
+        $this->getJson('/api/shop/catalogue')->assertOk()
+            ->assertJsonPath('heroes.website.media', [$portal.'/uploads/heroes/a.jpg', 'https://example.com/b.jpg'])
+            ->assertJsonPath('heroes.website.title', 'Meet the edit')
+            ->assertJsonPath('heroes.website.text', null)
+            ->assertJsonPath('heroes.website.button', ['label' => 'SHOP', 'to' => 'collection:plum-piping'])
+            ->assertJsonMissingPath('heroes.rtw')
+            ->assertJsonMissingPath('heroDrafts')
+            ->assertJsonPath('heroes.services.style', 'video')
+            ->assertJsonPath('heroes.services.media', ['site:/videos/our-story/01.mp4', $portal.'/uploads/heroes/film.mp4'])
+            ->assertJsonPath('heroes.services.button', null);
+    }
+
+    public function test_new_arrivals_drop_out_after_their_new_until_day(): void
+    {
+        $this->travelTo(now('Africa/Accra')->setDate(2026, 12, 10)->setTime(12, 0));
+        $product = fn (string $id, array $extra): array => ['id' => $id, 'name' => $id, 'price' => 100, 'type' => 'Shirts', ...$extra];
+        $payload = ['inventory' => ['products' => [
+            $product('today', ['isNew' => true, 'newUntil' => '2026-12-10']),
+            $product('ended', ['isNew' => true, 'newUntil' => '2026-12-09']),
+            $product('no-date', ['isNew' => true]),
+            $product('not-new', ['newUntil' => '2027-01-01']),
+        ], 'variants' => []], 'collections' => []];
+        DB::table('studio_catalogues')->updateOrInsert(['id' => 1], ['payload' => json_encode($payload), 'revision' => 13, 'created_at' => now(), 'updated_at' => now()]);
+
+        $this->getJson('/api/shop/catalogue')->assertOk()
+            ->assertJsonPath('products.0.isNew', true)
+            ->assertJsonPath('products.1.isNew', false)
+            ->assertJsonPath('products.2.isNew', true)
+            ->assertJsonPath('products.3.isNew', false);
+    }
+
     public function test_the_old_feature_on_home_flag_still_features_the_store_and_app(): void
     {
         $payload = ['inventory' => ['products' => [], 'variants' => []], 'collections' => [

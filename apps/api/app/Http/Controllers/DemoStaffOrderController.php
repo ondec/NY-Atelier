@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\OrderCustomerNotice;
 use App\OrderInspiration;
+use App\OrderLocation;
 use App\OrderWorkflow;
 use App\StaffAccess;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -62,12 +63,16 @@ class DemoStaffOrderController extends Controller
             'items.*.wearer_name' => ['nullable', 'string', 'max:100'],
         ]);
 
-        Gate::authorize($data['category'] === 'Alterations' ? 'staff.alterations.create' : 'staff.orders.manage');
+        // Custom orders: order managers, or the bespoke atelier's own reception.
+        $atelierReception = $request->user()->staff_role === 'receptionist' && $request->user()->staff_location === 'atelier';
+        if (! ($data['category'] === 'Custom' && $atelierReception)) {
+            Gate::authorize($data['category'] === 'Alterations' ? 'staff.alterations.create' : 'staff.orders.manage');
+        }
 
         $source = $request->routeIs('demo.staff.studio.order-create') ? 'studio' : 'office';
 
         if (! empty($data['consultation_id']) && ! $request->boolean('consultation_held')) {
-            throw ValidationException::withMessages(['consultation_held' => 'Confirm the consultation took place before linking it.']);
+            throw ValidationException::withMessages(['consultation_held' => 'Confirm the appointment took place before linking it.']);
         }
 
         if (! empty($data['consultation_id']) && (int) $data['customer_id'] !== (int) Customer::query()->where('name', config('demo.customer_name'))->oldest('id')->value('id')) {
@@ -93,6 +98,7 @@ class DemoStaffOrderController extends Controller
                 $order = Order::query()->createOrFirst(['reference' => $reference], [
                     'customer_id' => $data['customer_id'],
                     'category' => $data['category'],
+                    'store' => OrderLocation::forNew(request()->user(), $data['category']),
                     'source' => $source,
                     'created_by_id' => $creator,
                     'status' => 'Order created', 'workflow_stage' => 'received',
@@ -128,7 +134,7 @@ class DemoStaffOrderController extends Controller
             if (empty($data['consultation_id']) || ! Order::query()->where('consultation_id', $data['consultation_id'])->exists()) {
                 throw $error;
             }
-            abort(409, 'This consultation is already linked to an order.');
+            abort(409, 'This appointment is already linked to an order.');
         }
 
         if ($order->wasRecentlyCreated && ($created = $order->events()->where('action_type', 'created')->whereNotNull('notified_at')->first())) {

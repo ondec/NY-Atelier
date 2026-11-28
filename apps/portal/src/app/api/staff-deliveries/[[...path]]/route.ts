@@ -15,16 +15,16 @@ const id = /^\d{1,9}$/;
 function target(method: Method, path: string[]): { url: string; permission: StaffPermission } | undefined {
   const [first, second, third] = path;
   if (method === "GET" && path.length === 0) return { url: "/deliveries", permission: "deliveries" };
-  if (method === "GET" && path.length === 1 && first === "couriers") return { url: "/couriers", permission: "orders.manage" };
+  if (method === "GET" && path.length === 1 && first === "couriers") return { url: "/couriers", permission: "orders.read" };
   if (method === "GET" && path.length === 1 && first === "settings") return { url: "/delivery-settings", permission: "orders.manage" };
   if (method === "POST" && path.length === 1 && (first === "route" || first === "start")) return { url: `/deliveries/${first}`, permission: "deliveries" };
-  if (method === "POST" && path.length === 2 && reference.test(first) && (second === "delivered" || second === "postpone")) return { url: `/deliveries/${encodeURIComponent(first)}/${second}`, permission: "deliveries" };
+  if (method === "POST" && path.length === 2 && reference.test(first) && (second === "delivered" || second === "postpone" || second === "claim")) return { url: `/deliveries/${encodeURIComponent(first)}/${second}`, permission: "deliveries" };
   if (first === "settings" && (second === "zones" || second === "start-points")) {
     if (method === "POST" && path.length === 2) return { url: `/delivery-settings/${second}`, permission: "orders.manage" };
     if (method === "PATCH" && path.length === 3 && id.test(third)) return { url: `/delivery-settings/${second}/${third}`, permission: "orders.manage" };
   }
   if (method === "PATCH" && first === "orders" && reference.test(second ?? "")) {
-    if (path.length === 2) return { url: `/orders/${encodeURIComponent(second)}/courier`, permission: "orders.manage" };
+    if (path.length === 2) return { url: `/orders/${encodeURIComponent(second)}/courier`, permission: "orders.read" };
     if (path.length === 3 && third === "zone") return { url: `/orders/${encodeURIComponent(second)}/delivery-zone`, permission: "orders.manage" };
   }
   return undefined;

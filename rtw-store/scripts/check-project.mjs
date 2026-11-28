@@ -5,7 +5,7 @@ for (const file of ['src/App.jsx', 'src/main.jsx', 'src/catalog.js', 'src/sizing
 const app = readFileSync('src/App.jsx', 'utf8');
 const catalog = readFileSync('src/catalog.js', 'utf8');
 for (const label of ['New Arrivals', 'Men', 'Women', 'Accessories', 'Collections']) if (!app.includes(`label: '${label}'`)) throw new Error('Missing store menu item ' + label);
-for (const path of ["mainSite('/services')", "mainSite('/consultation')", "mainSite('/contact')"]) if (!app.includes(path)) throw new Error('Missing link back to the main website: ' + path);
+for (const path of ["mainSite('/services')", "mainSite('/appointment')", "mainSite('/contact')"]) if (!app.includes(path)) throw new Error('Missing link back to the main website: ' + path);
 for (const [, src] of catalog.matchAll(/photo\('([^']+)'\)/g)) if (!existsSync(`public/products/${src}.webp`)) throw new Error('Missing product photo ' + src);
 
 // Every photo the catalogue and the home promotion point to must exist, and stock must be per listed size.

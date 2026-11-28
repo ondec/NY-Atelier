@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronRight, ClipboardList, X } from "@/components/icons";
 import type { DemoOrder } from "@/lib/orders";
 import { orderAttention } from "@/lib/status";
-import CreateStaffOrder from "../create-staff-order";
+import NewOrderButtons from "./new-order-buttons";
 import { InventoryDrawer } from "../catalogue-editor";
 import OrderDetailsContent from "../order-details-content";
 import StatusBadge from "../status-badge";
@@ -56,8 +56,8 @@ export default function CustomerOrders({ customerId, customerName, fittingId, ca
 
   return <section className="showroom-customer-orders" aria-label={`${customerName}’s orders`}>
     <div className="showroom-customer-orders-heading">
-      <div><h3>Orders</h3><p>Custom and alteration orders for {customerName}.</p></div>
-      {canCreate && <CreateStaffOrder category="Custom" preferredCustomerId={customerId} preferredMeasurementId={fittingId} buttonClassName="showroom-primary" buttonLabel="Create order" onCreated={onCreated} />}
+      <div><h3>Orders</h3><p>Orders for {customerName}.</p></div>
+      {canCreate && <NewOrderButtons customerId={customerId} fittingId={fittingId} onCreated={onCreated} />}
     </div>
     {error ? <p role="alert" className="collection-error">{error} <button className="showroom-secondary" onClick={() => setRetry((value) => value + 1)}>Retry</button></p>
       : !orders ? <p role="status" className="showroom-customer-orders-status">Loading orders…</p>

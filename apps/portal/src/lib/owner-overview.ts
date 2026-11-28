@@ -8,4 +8,8 @@ export type OwnerFinances = {
   average_sale_minor: number | null; series: {date: string; total_minor: number}[];
   payroll_paid_minor: number; payroll_outstanding_minor: number; salary_approvals: number; scope: string; updated_at: string;
 };
-export type OwnerOverviewData = {orders: DemoOrder[] | null; consultations: StaffConsultation[] | null; finances: OwnerFinances | null; updatedAt: string};
+/** A delivery as the office sees it (from the delivery board). */
+export type OverviewDelivery = {reference: string; stage: string; ready: boolean; due_from: string | null; due_by: string | null; delivered_at: string | null; zone: string | null; area: string | null; courier: {id: number; name: string} | null; customer: {name: string}};
+/** An order on the production floor. */
+export type OverviewProduction = {reference: string; category: string; customer_name: string; status: string; expected_completion_date: string | null; is_complete: boolean; assigned_tailor: {id: number; name: string} | null};
+export type OwnerOverviewData = {orders: DemoOrder[] | null; consultations: StaffConsultation[] | null; deliveries: OverviewDelivery[] | null; production: OverviewProduction[] | null; finances: OwnerFinances | null; updatedAt: string};

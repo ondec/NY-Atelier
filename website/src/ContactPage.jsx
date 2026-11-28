@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { firstName, accountCall, useCustomer } from './account.js';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import { CalendarDays, Check, MapPin, MessageCircle, Phone, Users, Video } from 'lucide-react';
 import { ArrowDown, ArrowRight, ArrowUpRight } from './NyIcons.jsx';
 import { SOCIALS } from './SocialSection.jsx';
 
-/** What a consultation can be about. Mirrors the mobile app's consultation purposes. */
-export const CONSULTATION_SERVICES = [
+/** What an appointment can be about. Mirrors the mobile app's appointment purposes. */
+export const APPOINTMENT_SERVICES = [
   { id: 'bespoke', name: 'Bespoke tailoring', copy: 'Choose your cloth, fit and finishing details. Your piece is made to your measurements, from the first cut to the final stitch.', image: '/images/services/bespoke-white-tux.webp', position: 'center 30%' },
   { id: 'couture', name: 'Couture experience', copy: 'A one-of-a-kind design handcrafted for you, conceived as a work of art and finished by hand.', image: '/images/services/couture.webp', position: 'center 30%' },
   { id: 'occasions', name: 'Occasions & special events', copy: 'Weddings, galas and landmark days. We develop a concept for you and your party that carries the spirit of the event.', image: '/images/services/occasion.webp', position: 'center 40%' },
@@ -27,7 +28,7 @@ const TIMES = ['10:00', '12:00', '14:00', '16:00'];
 const TOPICS = ['A ready-to-wear piece', 'Sizing & fit', 'An existing order', 'Press & collaborations', 'Something else'];
 
 const COLLAGE = {
-  consultation: [
+  appointment: [
     { src: '/images/services/couture.webp', alt: 'A couple in NY Atelier couture', position: 'center 30%' },
     { src: '/images/discover/workshop.webp', alt: 'A fitting in the NY Atelier workshop', position: 'center 35%' },
     { src: '/images/services/fabric.webp', alt: 'Close view of a floral jacquard cloth', position: 'center 30%' },
@@ -55,11 +56,11 @@ const ATELIER_PHONE = { label: '050 074 4266', href: 'tel:+233500744266' };
 const LOCATIONS = [
   {
     id: 'atelier', label: 'THE BESPOKE ATELIER', name: 'NY Atelier',
-    copy: 'Where consultations, measurements and fittings take place, and where every bespoke and couture piece is made.',
+    copy: 'Where appointments, measurements and fittings take place, and where every bespoke and couture piece is made.',
     address: 'St Johns – Dome – Kwabenya – Brekusu Rd, Kwabenya, Accra', plusCode: 'MQG5+HF Kwabenya',
     lat: 5.6763897, lng: -0.2412862, directions: 'https://maps.app.goo.gl/tbAMUUhrLmgotv3g6',
     phone: ATELIER_PHONE,
-    action: { label: 'Book a consultation', to: '/consultation' },
+    action: { label: 'Book an appointment', to: '/appointment' },
   },
   {
     id: 'store', label: 'THE READY-TO-WEAR STORE', name: 'NY Atelier RTW',
@@ -72,7 +73,7 @@ const LOCATIONS = [
 
 /** The house asks for at least two weeks' notice, so offer the two weeks that follow that. */
 const NOTICE_DAYS = 14;
-const PLAN_AHEAD = ['Fabric swatches and design sketches curated for you', 'Studio time reserved for your fittings and consultation', 'Time to perfect every detail of your garment'];
+const PLAN_AHEAD = ['Fabric swatches and design sketches curated for you', 'Studio time reserved for your fittings and appointment', 'Time to perfect every detail of your garment'];
 
 function nextDays() {
   const today = new Date();
@@ -100,7 +101,7 @@ function DemoNotice() {
   return <p className="form-caption">This website is a preview: nothing is sent or saved yet. Contact the atelier through its official channels for a real booking.</p>;
 }
 
-function ConsultationPanel({ initialService }) {
+function AppointmentPanel({ initialService }) {
   const days = useMemo(nextDays, []);
   const [method, setMethod] = useState('in-person');
   const [serviceId, setServiceId] = useState(initialService ?? 'bespoke');
@@ -110,7 +111,8 @@ function ConsultationPanel({ initialService }) {
   const [sending, setSending] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const submissionId = useRef(null);
-  const service = CONSULTATION_SERVICES.find(item => item.id === serviceId) ?? CONSULTATION_SERVICES[0];
+  const customer = useCustomer();
+  const service = APPOINTMENT_SERVICES.find(item => item.id === serviceId) ?? APPOINTMENT_SERVICES[0];
   const day = days.find(item => item.value === date);
   const meeting = MEETING.find(item => item.id === method);
 
@@ -141,14 +143,21 @@ function ConsultationPanel({ initialService }) {
     setSending(true);
     setSubmitError('');
     try {
-      const base = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
-      const response = await fetch(`${base}/api/consultations`, {
-        method: 'POST',
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(Object.values(result.errors ?? {})[0]?.[0] ?? result.message ?? 'Your request could not be sent. Please try again.');
+      if (customer) {
+        // Signed in: the request joins the customer's account, so suggested times show on their account page.
+        const { name: _name, email: _email, phone: _phone, ...booking } = payload; void _name; void _email; void _phone;
+        await accountCall('appointments', { method: 'POST', body: booking });
+      } else {
+        const base = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
+        const response = await fetch(`${base}/api/consultations`, {
+          method: 'POST',
+          headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (response.status === 429) throw new Error('Too many requests from this device. Please wait a minute and try again.');
+        if (!response.ok) throw new Error(Object.values(result.errors ?? {})[0]?.[0] ?? result.message ?? 'Your request could not be sent. Please try again.');
+      }
       setSent({ meeting: meeting.name, service: service.name, day: `${day?.day} ${day?.date}`, time });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Your request could not be sent. Please try again.');
@@ -161,7 +170,7 @@ function ConsultationPanel({ initialService }) {
     <aside className="cx-visual" aria-live="polite">
       <div className="cx-visual-image"><img key={service.image} src={service.image} alt="" style={{ objectPosition: service.position }}/></div>
       <div className="cx-visual-copy">
-        <p className="eyebrow">YOUR CONSULTATION</p>
+        <p className="eyebrow">YOUR APPOINTMENT</p>
         <h3>{service.name}</h3>
         <p>{service.copy}</p>
         <dl className="cx-summary">
@@ -180,30 +189,33 @@ function ConsultationPanel({ initialService }) {
 
     <form className="cx-form" onSubmit={submit} aria-busy={sending} onChangeCapture={() => { if (!sent) { submissionId.current = null; setSubmitError(''); } }}>
       <p className="eyebrow">BEGIN YOUR JOURNEY</p>
-      <h2>Request a <em>consultation.</em></h2>
+      <h2>Request an <em>appointment.</em></h2>
       <p className="cx-form-intro">A free conversation about your garment, fabric, measurements and timeline. Choose a preferred time and the team will confirm it or suggest another.</p>
 
       <Chips label="How would you like to meet?" options={MEETING} value={method} onChange={value => changeSelection(setMethod, value)} keyOf={option => option.id} className="cx-field-meet"
         render={({ name, note, Icon }) => <><Icon size={18}/><span><strong>{name}</strong><small>{note}</small></span></>}/>
-      <Chips label="What can we help with?" options={CONSULTATION_SERVICES} value={serviceId} onChange={value => changeSelection(setServiceId, value)} keyOf={option => option.id} render={option => option.name}/>
+      <Chips label="What can we help with?" options={APPOINTMENT_SERVICES} value={serviceId} onChange={value => changeSelection(setServiceId, value)} keyOf={option => option.id} render={option => option.name}/>
       <Chips label="Preferred day" options={days} value={date} onChange={value => changeSelection(setDate, value)} keyOf={option => option.value} className="cx-field-days"
         render={option => <><small>{option.day}</small><strong>{option.date}</strong></>}/>
       <Chips label="Preferred time · Accra" options={TIMES} value={time} onChange={value => changeSelection(setTime, value)}/>
       <p className="cx-hint cx-hint-hours">The atelier is open 8:00 to 17:00. Days start two weeks from today so the team can prepare for you.</p>
 
-      <div className="form-row">
-        <label>FULL NAME<input name="name" type="text" required autoComplete="name" placeholder="Your full name"/></label>
-        <label>EMAIL ADDRESS<input name="email" type="email" required autoComplete="email" placeholder="you@example.com"/></label>
-      </div>
-      <label>PHONE NUMBER<input name="phone" type="tel" required autoComplete="tel" placeholder="+233"/></label>
+      {customer ? <p className="cx-signed-in"><span>Booking as <strong>{firstName(customer) || customer.email}</strong></span><Link to="/account">Your account</Link></p> : <>
+        <p className="cx-signed-in"><span>Have an account? Sign in to answer the team's suggested times online.</span><Link to="/account">Sign in</Link></p>
+        <div className="form-row">
+          <label>FULL NAME<input name="name" type="text" required autoComplete="name" placeholder="Your full name"/></label>
+          <label>EMAIL ADDRESS<input name="email" type="email" required autoComplete="email" placeholder="you@example.com"/></label>
+        </div>
+        <label>PHONE NUMBER<input name="phone" type="tel" required autoComplete="tel" placeholder="+233"/></label>
+      </>}
       <label>TELL US ABOUT YOUR IDEA · OPTIONAL<textarea name="notes" rows={4} maxLength={1000} placeholder="The garment, occasion or fit you have in mind…"/></label>
 
-      <label className="cx-agree"><input type="checkbox" required/><span>I understand consultations are best booked at least two weeks ahead, and the team will confirm my time or suggest another.</span></label>
-      <button type="submit" className="button button-solid cx-submit" disabled={!date || !time || sending || sent}>{sending ? 'SENDING REQUEST…' : sent ? 'REQUEST SENT' : 'SEND CONSULTATION REQUEST'}</button>
+      <label className="cx-agree"><input type="checkbox" required/><span>I understand appointments are best booked at least two weeks ahead, and the team will confirm my time or suggest another.</span></label>
+      <button type="submit" className="button button-solid cx-submit" disabled={!date || !time || sending || sent}>{sending ? 'SENDING REQUEST…' : sent ? 'REQUEST SENT' : 'SEND APPOINTMENT REQUEST'}</button>
       {(!date || !time) && <p className="cx-hint">Choose a day and a time to continue.</p>}
       <p className="form-caption">Your preferred time is a request. The team will contact you to confirm it or arrange another.</p>
       {submitError && <p className="field-error" role="alert">{submitError}</p>}
-      {sent && <div className="form-success" role="status"><Check size={18}/><div><strong>Request received.</strong><p>{sent.meeting} · {sent.service} · {sent.day} at {sent.time}. The team will be in touch to confirm.</p></div></div>}
+      {sent && <div className="form-success" role="status"><Check size={18}/><div><strong>Request received.</strong><p>{sent.meeting} · {sent.service} · {sent.day} at {sent.time}. {customer ? <>Track it in <Link to="/account">your account</Link>.</> : 'The team will be in touch to confirm.'}</p></div></div>}
       <p className="cx-switch">Just a question? <Link to="/contact">Send an enquiry instead <ArrowRight size={14}/></Link></p>
     </form>
   </div>;
@@ -240,9 +252,9 @@ function EnquiryPanel() {
           <Icon size={18}/><div><strong>{name}</strong><span>{handle}</span></div><ArrowUpRight size={14}/>
         </a>)}
       </div>
-      <Link to="/consultation" className="cx-promo">
+      <Link to="/appointment" className="cx-promo">
         <img src="/images/services/bespoke-white-tux.webp" alt="" style={{ objectPosition: 'center 30%' }}/>
-        <span className="cx-promo-copy"><small>MADE FOR YOU</small><strong>Thinking of a bespoke piece?</strong><span>Book a consultation <ArrowRight size={14}/></span></span>
+        <span className="cx-promo-copy"><small>MADE FOR YOU</small><strong>Thinking of a bespoke piece?</strong><span>Book an appointment <ArrowRight size={14}/></span></span>
       </Link>
     </aside>
   </div>;
@@ -281,7 +293,7 @@ function Locations() {
         {place.phone && <a className="cx-location-address cx-location-phone" href={place.phone.href}><Phone size={18}/><div><strong>{place.phone.label}</strong><span>Call the atelier</span></div></a>}
         <div className="cx-location-actions">
           <a href={place.directions} target="_blank" rel="noreferrer" className="button button-solid">GET DIRECTIONS <ArrowUpRight size={16}/></a>
-          <Link to={place.action.to} className="svc-link">{place.action.label.toUpperCase()} {place.action.to.startsWith('/rtw-store') ? <ArrowUpRight size={16}/> : <ArrowRight size={16}/>}</Link>
+          <Link to={place.action.to} className="svc-link">{place.action.label.toUpperCase()} <ArrowRight size={16}/></Link>
         </div>
       </div>
     </article>)}</div>
@@ -307,17 +319,17 @@ function useFormScroll(onArrival) {
   return [formRef, scroll];
 }
 
-/** Consultation: book time with the atelier, following the app's request flow. */
-export function ConsultationPage() {
+/** Appointment: book time with the atelier, following the app's request flow. */
+export function AppointmentPage() {
   const location = useLocation();
   const requestedService = new URLSearchParams(location.search).get('service');
-  const initialService = CONSULTATION_SERVICES.some(item => item.id === requestedService) ? requestedService : undefined;
+  const initialService = APPOINTMENT_SERVICES.some(item => item.id === requestedService) ? requestedService : undefined;
   const [formRef, scrollToForm] = useFormScroll(initialService ?? (location.hash === '#book' ? 'book' : null));
 
   return <main id="main" className="cx-page">
     <section className="cx-hero container">
       <div className="cx-hero-copy">
-        <p className="eyebrow">BESPOKE CONSULTATION</p>
+        <p className="eyebrow">BESPOKE APPOINTMENT</p>
         <h1>Begin your <em>journey.</em></h1>
         <p>A free, unhurried conversation with the atelier about your garment, fabric, measurements and timeline. In person in Accra, or by video wherever you are.</p>
         <div className="cx-hero-paths">
@@ -325,16 +337,16 @@ export function ConsultationPage() {
           <Link to="/contact"><MessageCircle size={18}/><span><strong>Just a question?</strong><small>Send the atelier a message instead</small></span><ArrowRight size={15}/></Link>
         </div>
       </div>
-      <Collage images={COLLAGE.consultation} badge="Free consultation"/>
+      <Collage images={COLLAGE.appointment} badge="Free appointment"/>
     </section>
-    <section className="cx-body container" aria-label="Request a consultation" ref={formRef}>
-      <ConsultationPanel initialService={initialService}/>
+    <section className="cx-body container" aria-label="Request an appointment" ref={formRef}>
+      <AppointmentPanel initialService={initialService}/>
     </section>
     <Gallery/>
   </main>;
 }
 
-/** Contact: general enquiries. Old consultation links (/contact#consultation) move to the consultation page. */
+/** Contact: general enquiries. Old links (/contact#consultation, /contact#appointment) move to the appointment page. */
 export default function ContactPage() {
   const location = useLocation();
   const [formRef, scrollToForm] = useFormScroll(location.hash === '#message' ? 'message' : null);
@@ -344,7 +356,7 @@ export default function ContactPage() {
     const timer = setTimeout(() => { document.getElementById('locations')?.scrollIntoView({ behavior: 'smooth' }); }, 120);
     return () => { clearTimeout(timer); };
   }, [location.hash]);
-  if (location.hash === '#consultation') return <Navigate to={`/consultation${location.search}`} replace/>;
+  if (location.hash === '#appointment' || location.hash === '#consultation') return <Navigate to={`/appointment${location.search}`} replace/>;
 
   return <main id="main" className="cx-page">
     <section className="cx-hero container">
@@ -354,7 +366,7 @@ export default function ContactPage() {
         <p>Questions about a piece, sizing, an order or working together? Write to the atelier and the team will get back to you.</p>
         <div className="cx-hero-paths">
           <button type="button" onClick={scrollToForm}><MessageCircle size={18}/><span><strong>Send a message</strong><small>Orders, sizing and everything else</small></span><ArrowDown size={15}/></button>
-          <Link to="/consultation"><CalendarDays size={18}/><span><strong>Planning a bespoke piece?</strong><small>Book a consultation instead</small></span><ArrowRight size={15}/></Link>
+          <Link to="/appointment"><CalendarDays size={18}/><span><strong>Planning a bespoke piece?</strong><small>Book an appointment instead</small></span><ArrowRight size={15}/></Link>
         </div>
       </div>
       <Collage images={COLLAGE.enquiry} badge="We read every message"/>

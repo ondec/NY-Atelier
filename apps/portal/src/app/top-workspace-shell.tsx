@@ -8,13 +8,13 @@ import Notifications, { type PortalNotification } from "./notifications";
 import { financePages, financeHref } from "./finance-workspace";
 import { layoutComparisonLinksEnabled } from "@/lib/dev-links";
 
-type Section = "overview" | "production" | "orders" | "appointments" | "customers" | "ready-to-wear" | "atelier" | "alterations" | "inventory" | "collections" | "production-inventory" | "finances" | "team";
+type Section = "overview" | "production" | "orders" | "appointments" | "customers" | "ready-to-wear" | "atelier" | "alterations" | "inventory" | "collections" | "heroes" | "production-inventory" | "finances" | "team";
 type Props = { staff: StaffIdentity; current: Section; finance?: string; inventoryView?: string; notifications: PortalNotification[]; unavailable: boolean; children: React.ReactNode };
 const primary = [
   { id: "overview", label: "Overview", href: "/" },
   { id: "production", label: "Production", href: "/?section=production" },
   { id: "orders", label: "Orders", href: "/?section=orders" },
-  { id: "appointments", label: "Consultations", href: "/?section=appointments" },
+  { id: "appointments", label: "Appointments", href: "/?section=appointments" },
   { id: "customers", label: "Customers", href: "/?section=customers" },
   { id: "inventory", label: "Inventory", href: "/?section=inventory" },
   { id: "business", label: "Business", href: "/?section=finances" },
@@ -25,9 +25,6 @@ export default function TopWorkspaceShell({ staff, current, finance, inventoryVi
   const active = ["orders", "ready-to-wear", "atelier", "alterations"].includes(current) ? "orders" : ["inventory", "collections", "production-inventory"].includes(current) ? "inventory" : ["finances", "team"].includes(current) ? "business" : current;
   const secondary = active === "orders" ? [
     { label: "All orders", href: "/?section=orders", selected: current === "orders" },
-    { label: "Ready-to-wear", href: "/?section=ready-to-wear", selected: current === "ready-to-wear" },
-    { label: "Atelier · Bespoke", href: "/?section=atelier", selected: current === "atelier" },
-    { label: "Alterations", href: "/?section=alterations", selected: current === "alterations" },
   ] : active === "inventory" ? [
     { label: "Stock overview", href: "/?section=inventory", selected: current === "inventory" && inventoryView === "overview" },
     { label: "Products & variants", href: "/?section=inventory&view=products", selected: current === "inventory" && inventoryView === "products" },

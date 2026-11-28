@@ -133,6 +133,7 @@ class DemoStudioSaleController extends Controller
             'inventory.products.*.description' => ['sometimes', 'nullable', 'string', 'max:20000'],
             'inventory.products.*.section' => ['sometimes', 'nullable', 'in:men,women,accessories'],
             'inventory.products.*.isNew' => ['sometimes', 'boolean'],
+            'inventory.products.*.newUntil' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
             'inventory.products.*.offerPrice' => ['sometimes', 'nullable', 'numeric', 'gt:0', 'max:9999999'],
             'inventory.products.*.sizing' => ['sometimes', 'array', 'max:2'],
             'inventory.products.*.sizing.*' => ['in:shirt,trousers', 'distinct'],
@@ -156,6 +157,8 @@ class DemoStudioSaleController extends Controller
             'inventory.visuals.*.swatch' => ['sometimes', 'nullable', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'inventory.visuals.*.group' => ['sometimes', 'nullable', 'in:black,blue,light,brown'], 'inventory.movements' => ['present', 'array', 'list'],
             'collections' => ['present', 'array', 'list'],
+            ...$this->heroRules('heroes'),
+            ...$this->heroRules('heroDrafts'),
         ]);
         foreach ($data['inventory']['variants'] as &$variant) {
             $variant['colour'] ??= '';
@@ -166,6 +169,30 @@ class DemoStudioSaleController extends Controller
         unset($variant);
 
         return $data;
+    }
+
+    /**
+     * The hero at the top of the website home, the RTW Store and Services, set in the catalogue manager:
+     * `heroes` is what the sites show (published); `heroDrafts` is saved work not yet published.
+     *
+     * @return array<string, list<string>>
+     */
+    private function heroRules(string $key): array
+    {
+        return [
+            $key => ['sometimes', 'array:website,rtw,services'],
+            "{$key}.*" => ['array'],
+            "{$key}.*.use" => ['required', 'in:default,custom'],
+            "{$key}.*.style" => ['required', 'in:photos,video'],
+            "{$key}.*.media" => ['present', 'array', 'list', 'max:8'],
+            "{$key}.*.media.*" => ['string', 'max:3000'],
+            "{$key}.*.eyebrow" => ['nullable', 'string', 'max:60'],
+            "{$key}.*.title" => ['nullable', 'string', 'max:80'],
+            "{$key}.*.text" => ['nullable', 'string', 'max:300'],
+            "{$key}.*.buttonLabel" => ['nullable', 'string', 'max:40'],
+            "{$key}.*.buttonTo" => ['nullable', 'string', 'max:160', 'regex:/^(services|rtw|appointment|featured|collection:[A-Za-z0-9_-]+)$/'],
+            "{$key}.*.featuredId" => ['nullable', 'string', 'max:150'],
+        ];
     }
 
     private function requireStaff(Request $request): void

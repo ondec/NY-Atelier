@@ -150,10 +150,10 @@ export default function AtelierScreen() {
             <View style={styles.heroBooking}>
               <Text style={styles.heroCaption}>CUSTOM CLOTHING · BESPOKE CRAFT</Text>
               <Pressable accessibilityRole="button" onPress={() => setBookingOpen(true)} style={styles.bookingButton}>
-                <Text style={styles.bookingButtonText}>BOOK A CONSULTATION</Text>
+                <Text style={styles.bookingButtonText}>BOOK AN APPOINTMENT</Text>
                 <ShopActionIcon name="arrow-up-right" color={atelier.petrol} />
               </Pressable>
-              <Text style={styles.bookingNote}>Free consultation · The team will confirm your request.</Text>
+              <Text style={styles.bookingNote}>Free appointment · The team will confirm your request.</Text>
             </View>
           </View>
         </View>
@@ -168,7 +168,7 @@ export default function AtelierScreen() {
 
         {requests.length ? <Pressable accessibilityRole="button" onPress={() => router.navigate({ pathname: '/orders', params: { view: 'consultations' } })} style={styles.requestShortcut}>
           <NyIcon name="calendar-days" color={atelier.petrol} size={20} />
-          <Text style={styles.requestShortcutText}>Your consultations</Text>
+          <Text style={styles.requestShortcutText}>Your appointments</Text>
           <ShopActionIcon name="forward" color={atelier.petrol} size={16} />
         </Pressable> : null}
 
@@ -217,12 +217,12 @@ export default function AtelierScreen() {
         <Animated.View {...bookingSwipe.panHandlers} style={[bookingSwipe.animatedStyle, styles.formSafe, { paddingTop: insets.top }]}>
           {bookingOpen && <StatusBar style="dark" />}
           <View style={styles.formHeader}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Close consultation request" onPress={closeBooking} style={styles.modalClose}><ShopActionIcon name="close" color={atelier.petrol} size={24} /></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close appointment request" onPress={closeBooking} style={styles.modalClose}><ShopActionIcon name="close" color={atelier.petrol} size={24} /></Pressable>
             <Text style={styles.formHeaderLabel}>THE ATELIER</Text>
           </View>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.formContent, { paddingBottom: Math.max(insets.bottom, 20) + 30 }]}>
             <Text style={styles.eyebrow}>BEGIN YOUR JOURNEY</Text>
-            <Text style={styles.modalTitle}>Request a consultation.</Text>
+            <Text style={styles.modalTitle}>Request an appointment.</Text>
             <Text style={styles.modalCopy}>Choose a preferred time to discuss your idea. The team can confirm your time or suggest alternatives.</Text>
             <View style={styles.demoIdentity}><NyMark color={atelier.petrol} size={26} /><View><Text style={styles.demoIdentityTitle}>{customer ? customer.name || customer.email || customer.phone : 'Sign in to send'}</Text><Text style={styles.demoIdentityNote}>{customer ? 'YOUR NY ATELIER ACCOUNT' : 'WE WILL ASK YOU TO SIGN IN'}</Text></View></View>
 
@@ -237,7 +237,7 @@ export default function AtelierScreen() {
             <View style={styles.formOptions}>{timeOptions.map((value) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: preferredTime === value }} onPress={() => setPreferredTime(value)} style={[styles.formChip, preferredTime === value && styles.formChipSelected]}><Text style={[styles.formChipText, preferredTime === value && styles.formChipTextSelected]}>{formatConsultationTime(value)}</Text></Pressable>)}</View>
             <Text style={styles.formLabel}>TELL US ABOUT YOUR IDEA · OPTIONAL</Text>
             <TextInput accessibilityLabel="Notes for NY Atelier" multiline maxLength={1000} value={notes} onChangeText={setNotes} placeholder="The garment, occasion or fit you have in mind…" placeholderTextColor={atelier.muted} style={styles.notesInput} textAlignVertical="top" />
-            <Text style={styles.formDisclaimer}>The team will review your preferred time. Check Orders → Consultations for updates.</Text>
+            <Text style={styles.formDisclaimer}>The team will review your preferred time. Check Orders → Appointments for updates.</Text>
             {bookingError ? <Text accessibilityRole="alert" style={styles.formError}>{bookingError}</Text> : null}
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: !canSubmit }} disabled={!canSubmit} onPress={submitRequest} style={[styles.modalButton, !canSubmit && styles.modalButtonDisabled]}><IconLabel label={submitting ? 'SENDING…' : 'SEND CONSULTATION REQUEST'} name="arrow-up-right" color={atelier.white} style={styles.modalButtonText} /></Pressable>
           </ScrollView>

@@ -6,7 +6,7 @@ import type { StatusTone } from "@/lib/status";
 import { demoStock } from "../../../mobile/src/data/demo-stock";
 import Image from "next/image";
 import Link from "next/link";
-import { emptyInventory, inventoryChanged, isLowStock, stockKnown, normalize, parseInventory, productSections, productTypes, colourGroups, storageKey, variantKey, variantLabel, type Inventory, type Movement, type Product, type ProductSection, type ColourGroup, type Variant, type VariantVisual } from "@/lib/inventory";
+import { daysFromToday, newArrivalDays, emptyInventory, inventoryChanged, isLowStock, stockKnown, normalize, parseInventory, productSections, productTypes, colourGroups, storageKey, variantKey, variantLabel, type Inventory, type Movement, type Product, type ProductSection, type ColourGroup, type Variant, type VariantVisual } from "@/lib/inventory";
 import SizeChartEditor from "./size-chart-editor";
 import { productSizing } from "../../../mobile/src/data/product-sizing";
 import { sizingProductId } from "../../../mobile/src/lib/sizing";
@@ -169,7 +169,12 @@ export default function ReadyToWearInventory({ view, productId, canImport = fals
       return;
     }
     const isNew = data.get("isNew") === "on";
-    const details = { description: description || undefined, section, offerPrice, isNew: isNew || undefined };
+    const newUntil = isNew ? field(data, "newUntil") || daysFromToday(newArrivalDays) : undefined;
+    if (newUntil && (!/^\d{4}-\d{2}-\d{2}$/.test(newUntil) || newUntil < daysFromToday(0))) {
+      showMessage("Choose a “New until” date from today onwards.");
+      return;
+    }
+    const details = { description: description || undefined, section, offerPrice, isNew: isNew || undefined, newUntil };
     if (inventory.products.some((product) => (!editing || product.id !== selected?.id) && normalize(product.name) === normalize(name))) {
       showMessage("That product name is already in use.");
       return;
@@ -391,7 +396,7 @@ export default function ReadyToWearInventory({ view, productId, canImport = fals
         </div>
         <label className="inventory-description">Description<textarea name="description" rows={4} maxLength={20000} placeholder="Fabric, fit and care notes customers will see" defaultValue={formMode === "edit-product" ? selected?.description : undefined} /></label>
         <div className="inventory-product-options">
-          <label className="inventory-check"><input type="checkbox" name="isNew" defaultChecked={formMode === "edit-product" && selected?.isNew === true} /> Show as a new arrival</label>
+          <NewArrivalField key={selected?.id ?? "new"} isNew={formMode === "edit-product" && selected?.isNew === true} newUntil={formMode === "edit-product" ? selected?.newUntil : undefined} />
         </div>
         <GalleryFields label="Product photos" photos={formMode === "edit-product" && selected ? selected.gallery ?? (selected.photo ? [selected.photo] : []) : []} />
         <div className="inventory-form-footer"><button type="submit" disabled={savingVariant}>{savingVariant ? "Saving…" : formMode === "edit-product" ? "Save changes" : "Save product"}</button></div>
@@ -621,3 +626,17 @@ export default function ReadyToWearInventory({ view, productId, canImport = fals
     {view === "activity" && <><div className="inventory-toolbar"><span>Every entry records the variant, reason and time.</span><button type="button" className="create-bill-button" disabled={!stockRows.length} title="Adjust stock for a SKU and record the reason" onClick={() => { setFormMode("movement"); showMessage(""); }}><Plus size={16} /> Record movement</button></div>{formMode === "movement" && formPanel}<section className="panel inventory-list-panel"><div className="panel-heading"><div><div className="eyebrow">STOCK LEDGER</div><h2>Recent movements <span className="heading-count">{inventory.movements.length}</span></h2></div></div>{inventory.movements.length ? <div className="table-wrap"><table className="order-table inventory-table"><thead><tr><th>When</th><th>Product / variant</th><th>Reason</th><th>Change</th><th>Note</th></tr></thead><tbody>{inventory.movements.map((movement) => <tr key={movement.id}><td>{time(movement.occurredAt)}</td><td className="order-reference"><strong>{variantName(movement.variantId)}</strong><span>{inventory.variants.find((variant) => variant.id === movement.variantId)?.sku}</span></td><td>{movement.reason}</td><td><span className={`inventory-change ${movement.change > 0 ? "in" : "out"}`}>{movement.change > 0 ? <ArrowDownLeft size={14} /> : <ArrowUpRight size={14} />}{movement.change > 0 ? "+" : ""}{movement.change}</span></td><td>{movement.note}</td></tr>)}</tbody></table></div> : <div className="empty-state">No stock activity yet. Add a variant with a counted opening quantity or record a movement.</div>}</section></>}
   </>;
 }
+
+/** "Show as a new arrival", which ends by itself: ticking it shows the piece as new for 30 days, and the date can be changed. */
+function NewArrivalField({ isNew, newUntil }: { isNew: boolean; newUntil?: string }) {
+  const today = daysFromToday(0);
+  const expired = isNew && Boolean(newUntil) && newUntil! < today;
+  const [on, setOn] = useState(isNew && !expired);
+  const [until, setUntil] = useState(!expired && newUntil ? newUntil : daysFromToday(newArrivalDays));
+  return <div className="inventory-new-arrival">
+    <label className="inventory-check"><input type="checkbox" name="isNew" checked={on} onChange={(event) => { setOn(event.target.checked); if (event.target.checked && !newUntil) setUntil(daysFromToday(newArrivalDays)); }} /> Show as a new arrival</label>
+    {on && <label className="inventory-new-until">New until<input type="date" name="newUntil" min={today} value={until} onChange={(event) => setUntil(event.target.value)} required /></label>}
+    <small>{on ? `Shows in New Arrivals until ${formatDay(until)}, then drops out by itself.` : expired ? `Was new until ${formatDay(newUntil!)}. Tick to show it as new again for ${newArrivalDays} days.` : `Ticking shows it as new for ${newArrivalDays} days.`}</small>
+  </div>;
+}
+const formatDay = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });

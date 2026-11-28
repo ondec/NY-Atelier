@@ -1,7 +1,7 @@
-// The public website and RTW store are served by this same service. With NY_WEBSITE_ORIGIN and
-// NY_STORE_ORIGIN set (for example https://home.thenyatelier.com), each has its own address, like
-// NY Studio and NY Office. Without them, they are previews under /home and /store on the service's
-// own address. Their built files are copied to public/_sites/<site>/ when the Render image is built.
+// The public website, with the ready-to-wear shop inside it at /shop, is served by this same service.
+// With NY_WEBSITE_ORIGIN set (for example https://thenyatelier.com) the website has its own address.
+// Without it, it is a preview under /home (and /home/shop) on the service's own address. The two built
+// apps are copied to public/_sites/website/ and public/_sites/store/ when the Render image is built.
 // Only the named public API calls below are reachable through them.
 type Environment = Record<string, string | undefined>;
 export type PublicSite = 'website' | 'store';
@@ -17,41 +17,46 @@ function host(value: string | undefined): string | null {
   return url.host.toLowerCase();
 }
 
-/** Own addresses when configured; otherwise (or with NY_PUBLIC_SITES_PREVIEW_PATHS=1) /home and /store. */
+/** Own address when configured; otherwise (or with NY_PUBLIC_SITES_PREVIEW_PATHS=1) the /home preview. */
 export function sitesUseOwnAddresses(env: Environment = process.env): boolean {
   if (env.NY_PUBLIC_SITES_PREVIEW_PATHS === '1') return false;
-  return Boolean(env.NY_WEBSITE_ORIGIN || env.NY_STORE_ORIGIN);
+  return Boolean(env.NY_WEBSITE_ORIGIN);
 }
 
-const previewPaths: Record<string, PublicSite> = { '/home': 'website', '/store': 'store' };
-/** The preview site for a path like /store/product/x, with the path inside that site. */
+/** The shop is its own built app, living under /shop on the website. */
+export function withinWebsite(pathname: string): { site: PublicSite; inner: string } {
+  const shop = pathname === '/shop' || pathname.startsWith('/shop/');
+  return shop ? { site: 'store', inner: pathname.slice('/shop'.length) || '/' } : { site: 'website', inner: pathname };
+}
+
+/** The preview site for a path like /home/shop/product/x, with the path inside that site. */
 export function siteForPath(pathname: string): { site: PublicSite; inner: string } | null {
-  const prefix = Object.keys(previewPaths).find(path => pathname === path || pathname.startsWith(`${path}/`));
-  return prefix ? { site: previewPaths[prefix], inner: pathname.slice(prefix.length) || '/' } : null;
+  if (pathname !== '/home' && !pathname.startsWith('/home/')) return null;
+  return withinWebsite(pathname.slice('/home'.length) || '/');
 }
 
-export function siteForHost(requestHost: string, env: Environment = process.env): PublicSite | null {
+/** The website (or its shop) for the website's own address. */
+export function siteForHost(requestHost: string, pathname: string, env: Environment = process.env): { site: PublicSite; inner: string } | null {
   const name = requestHost.toLowerCase();
-  if (name && name === host(env.NY_WEBSITE_ORIGIN)) return 'website';
-  if (name && name === host(env.NY_STORE_ORIGIN)) return 'store';
-  return null;
+  return name && name === host(env.NY_WEBSITE_ORIGIN) ? withinWebsite(pathname) : null;
 }
 
 /** The public API calls each site makes, mapped to the portal's own public routes. */
-const apis: Record<PublicSite, Record<string, { method: string; path: string }>> = {
-  website: {
-    '/api/shop/catalogue': { method: 'GET', path: '/api/public/shop/catalogue' },
-    '/api/consultations': { method: 'POST', path: '/api/public/consultations' },
-  },
-  store: {
-    '/api/shop/catalogue': { method: 'GET', path: '/api/public/shop/catalogue' },
-    '/api/size-charts': { method: 'GET', path: '/api/size-charts' },
-  },
+// The shop shares the website's address, so both use the same list.
+const apis: Record<string, { method: string; path: string }> = {
+  '/api/shop/catalogue': { method: 'GET', path: '/api/public/shop/catalogue' },
+  '/api/consultations': { method: 'POST', path: '/api/public/consultations' },
+  '/api/size-charts': { method: 'GET', path: '/api/size-charts' },
 };
 
 export function siteRoute(site: PublicSite, pathname: string, method: string): SiteRoute {
   if (pathname === '/api' || pathname.startsWith('/api/')) {
-    const api = apis[site][pathname];
+    // Customer sign-in and account calls: the portal's /api/account route checks each one itself.
+    if (pathname.startsWith('/api/account/') && ['GET', 'POST', 'PATCH'].includes(method)) return { kind: 'rewrite', path: pathname };
+    // Appointment replies from the email link: /api/consultations/<id>/view or /reply.
+    const reply = pathname.match(/^\/api\/consultations\/([\da-f-]{36})\/(view|reply)$/i);
+    if (reply) return method === 'POST' ? { kind: 'rewrite', path: `/api/public/consultations/${reply[1]}/${reply[2]}` } : { kind: 'block', status: 405 };
+    const api = apis[pathname];
     if (!api) return { kind: 'block', status: 404 };
     const allowed = method === api.method || (api.method === 'GET' && method === 'HEAD');
     return allowed ? { kind: 'rewrite', path: api.path } : { kind: 'block', status: 405 };

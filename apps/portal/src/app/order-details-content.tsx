@@ -48,7 +48,8 @@ export default function OrderDetailsContent({ order: source, showWorkspaceLinks 
   const attention = orderAttention(order);
   const next = workflow?.next;
   const notReady = order.items.filter((item) => !item.is_ready).length;
-  const nextBlocked = next?.key === "packaged" && notReady > 0;
+  // Packing a Ready-to-Wear order is its garment check.
+  const nextBlocked = next?.key === "packaged" && notReady > 0 && order.category !== "Ready-to-Wear";
   const canManage = Boolean(workflow?.can_manage);
   // NY Production records workroom steps only; the front desk records the rest (the API enforces both).
   const productionDesk = Boolean(endpoints);
@@ -112,13 +113,13 @@ export default function OrderDetailsContent({ order: source, showWorkspaceLinks 
     {error && <p ref={errorRef} className="collection-error" role="alert">{error}</p>}
     {!endpoints && order.category === "Ready-to-Wear" && !order.is_complete && <OrderAlterationSwitch order={order} onChange={(next) => { setLatest(next); onUpdated?.(next); router.refresh(); }} />}
     {!endpoints && order.production && <OrderProductionHandover order={order} onChange={(next) => { setLatest(next); onUpdated?.(next); router.refresh(); }} />}
-    {!endpoints && <OrderCourier order={order} onChange={(next) => { setLatest(next); onUpdated?.(next); router.refresh(); }} />}
+    {(!endpoints || order.can_dispatch !== undefined) && <OrderCourier order={order} onChange={(next) => { setLatest(next); onUpdated?.(next); router.refresh(); }} />}
     <section className="panel order-detail-section order-summary-section">
       <h2>Order details</h2>
       {attention && <p className="order-detail-note"><StatusBadge status={attention.label} tone={attention.tone} /> {attention.label === "Overdue" ? "Review the expected completion date and update the customer." : order.client_action ?? "This order is expected today."}</p>}
       <dl className="order-summary-facts"><div><dt>Customer</dt><dd>{order.customer_name}</dd></div><div><dt>Order source</dt><dd>{orderSourceLabel(order.source)}</dd></div><div><dt>Expected completion</dt><dd>{date(order.expected_completion_date)}</dd></div><div><dt>Handover</dt><dd>{order.fulfilment_method ?? "Choose collection or delivery"}</dd></div>{order.payment_status !== undefined && <div><dt>Payment</dt><dd><StatusBadge status={order.payment_status ?? "Not recorded"} /></dd></div>}{order.assigned_tailor !== undefined && <div><dt>Tailor</dt><dd>{order.assigned_tailor?.name ?? "Not assigned"}</dd></div>}</dl>
       <div className="order-more-details"><dl className="order-detail-facts">{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{label.includes("stage") || label.includes("status") ? <StatusBadge status={value} /> : value}</dd></div>)}</dl>
-        {showWorkspaceLinks && order.consultation_id && <p className="order-detail-note"><Link prefetch={false} className="text-link" href={`/?section=appointments&consultation=${encodeURIComponent(order.consultation_id)}`}>View linked consultation <ArrowRight size={16} /></Link></p>}
+        {showWorkspaceLinks && order.consultation_id && <p className="order-detail-note"><Link prefetch={false} className="text-link" href={`/?section=appointments&consultation=${encodeURIComponent(order.consultation_id)}`}>View linked appointment <ArrowRight size={16} /></Link></p>}
         {order.date_change_explanation && <p className="order-detail-note">{order.date_change_explanation}</p>}
         {order.handover_instructions && <p className="order-detail-note"><strong>Handover instructions</strong><br />{order.handover_instructions}</p>}
       </div>
@@ -139,7 +140,7 @@ export default function OrderDetailsContent({ order: source, showWorkspaceLinks 
         </li>)}</ol>
         {workflow.current === "cancelled" && <StatusBadge status="Cancelled" />}
       </div>
-      {canManage && <aside className="order-next-action" aria-label="Order actions">
+      {(canManage || workflow?.can_advance) && <aside className="order-next-action" aria-label="Order actions">
         <p className="eyebrow">{mode === "advance" ? workflow.current === "cancelled" ? "ORDER CANCELLED" : workflow.closed ? "ORDER COMPLETE" : "NEXT ACTION" : mode === "handover" ? "HANDOVER ARRANGEMENTS" : mode === "cancel" ? "CANCEL ORDER" : "RECORD AN UPDATE"}</p>
         {mode === "advance" && <><h3>{next?.label ?? (workflow.closed ? order.status : "Choose collection or delivery")}</h3><p className="order-journey-help">{next?.help ?? (workflow.closed ? "The order journey is closed. Its history remains available below." : "Set the handover method so the remaining steps match the customer’s arrangement.")}</p></>}
         {mode === "advance" && advanceBlocked && <p className="order-journey-help order-advance-blocked">{workflow.advance_blocked}</p>}
@@ -157,8 +158,8 @@ export default function OrderDetailsContent({ order: source, showWorkspaceLinks 
           <button className={mode === "cancel" ? "order-cancel-button" : "create-bill-button"} type="submit" value={mode} disabled={busy || (mode === "advance" && nextBlocked)}>{busy ? "Saving…" : mode === "advance" ? next?.action : mode === "handover" ? "Save handover" : mode === "cancel" ? "Confirm cancellation" : "Save note"}</button>
           {mode === "advance" && next?.optional && <button className="inventory-quiet-button" type="submit" value="skip" disabled={busy}>Fitting not required · record why</button>}
         </form>}
-        {mode === "advance" && !next && !workflow.closed && !productionDesk && <button className="create-bill-button" type="button" onClick={() => setMode("handover")}>Set handover method</button>}
-        <div className="order-secondary-actions">{mode !== "advance" && <button type="button" className="inventory-quiet-button" onClick={() => setMode("advance")}>Back to next action</button>}{mode !== "note" && <button type="button" className="inventory-quiet-button" onClick={() => setMode("note")}>Add note</button>}{!productionDesk && workflow.can_edit_handover && mode !== "handover" && <button type="button" className="inventory-quiet-button" onClick={() => setMode("handover")}>Edit handover</button>}{!productionDesk && workflow.can_cancel && mode !== "cancel" && <button type="button" className="order-cancel-link" onClick={() => setMode("cancel")}>Cancel order</button>}</div>
+        {canManage && mode === "advance" && !next && !workflow.closed && !productionDesk && <button className="create-bill-button" type="button" onClick={() => setMode("handover")}>Set handover method</button>}
+        {canManage && <div className="order-secondary-actions">{mode !== "advance" && <button type="button" className="inventory-quiet-button" onClick={() => setMode("advance")}>Back to next action</button>}{mode !== "note" && <button type="button" className="inventory-quiet-button" onClick={() => setMode("note")}>Add note</button>}{!productionDesk && workflow.can_edit_handover && mode !== "handover" && <button type="button" className="inventory-quiet-button" onClick={() => setMode("handover")}>Edit handover</button>}{!productionDesk && workflow.can_cancel && mode !== "cancel" && <button type="button" className="order-cancel-link" onClick={() => setMode("cancel")}>Cancel order</button>}</div>}
         {!productionDesk && <div className="order-client-notice"><h4><Bell size={15} /> Customer update</h4><p className="order-journey-help">Saved in the app, plus email. SMS is used when no email is recorded.</p>{workflow.current_notification && <NoticeResult notice={workflow.current_notification} />}<button className="inventory-quiet-button" type="button" disabled={busy || Boolean(workflow.current_notification && ["submitted", "submitting"].includes(workflow.current_notification.status ?? ""))} onClick={() => void update({ action: "notify" })}><Bell size={15} />{workflow.current_notification?.status === "failed" ? "Retry external message" : workflow.current_notification ? "Refresh notification delivery" : "Notify client"}</button></div>}
       </aside>}
       </div>

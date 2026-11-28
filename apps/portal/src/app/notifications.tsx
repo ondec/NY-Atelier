@@ -81,7 +81,7 @@ export default function Notifications({ items, unavailable }: { items: PortalNot
     .filter((row) => row.status === "awaiting-confirmation" || row.status === "needs-alternatives")
     .map((row) => ({
       id: row.id,
-      title: row.status === "awaiting-confirmation" ? "New consultation request" : "Customer requested other times",
+      title: row.status === "awaiting-confirmation" ? "New appointment request" : "Customer requested other times",
       tone: row.status === "awaiting-confirmation" ? "info" as const : "warning" as const,
       detail: `${row.customer_name ?? "Customer"} · ${row.purpose}`,
       href: `/?section=appointments&consultation=${encodeURIComponent(row.id)}`,
@@ -92,14 +92,14 @@ export default function Notifications({ items, unavailable }: { items: PortalNot
     { id: "finance", label: "Salary approvals", items: salaryAlerts, Icon: Wallet },
     { id: "orders", label: "Order reminders", items, Icon: CalendarDays },
     { id: "inventory", label: "Ready-to-wear stock alerts", items: stockAlerts, Icon: Package },
-    { id: "appointments", label: "Consultation alerts", items: consultationAlerts, Icon: CalendarDays },
+    { id: "appointments", label: "Appointment alerts", items: consultationAlerts, Icon: CalendarDays },
   ].filter((group) => filter === "all" || filter === group.id);
 
   const filters = [
     { id: "all", label: "All", count },
     { id: "orders", label: "Orders", count: items.length },
     { id: "inventory", label: "Inventory", count: stockAlerts.length },
-    { id: "appointments", label: "Consultations", count: consultationAlerts.length },
+    { id: "appointments", label: "Appointments", count: consultationAlerts.length },
     { id: "finance", label: "Finances", count: salaryAlerts.length },
   ] as const;
   const visibleFilters = filters.filter(option => (option.id !== "finance" || canFinance) && (option.id !== "inventory" || canInventory));
@@ -146,7 +146,7 @@ export default function Notifications({ items, unavailable }: { items: PortalNot
           </div>)}
         </div> : <div className="notification-empty">
           <Bell size={25} aria-hidden="true" />
-          <strong>{filter === "appointments" ? "No consultation alerts" : "No alerts in this view"}</strong>
+          <strong>{filter === "appointments" ? "No appointment alerts" : "No alerts in this view"}</strong>
           <p>{filter === "appointments" ? "New requests and requests for other times will appear here." : "New alerts will appear here when something needs attention."}</p>
         </div>}
       </div>

@@ -79,6 +79,6 @@ class StaffAccess
     public static function profile(User $user): array
     {
         return ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'role' => $user->staff_role,
-            'permissions' => self::PERMISSIONS[$user->staff_role] ?? [], 'officeHref' => self::homeHref((string) $user->staff_role)];
+            'permissions' => self::PERMISSIONS[$user->staff_role] ?? [], 'location' => $user->staff_location, 'officeHref' => self::homeHref((string) $user->staff_role)];
     }
 }

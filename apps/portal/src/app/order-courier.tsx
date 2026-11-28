@@ -13,7 +13,7 @@ export default function OrderCourier({ order, onChange }: { order: DemoOrder; on
   const [couriers, setCouriers] = useState<Courier[]>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const allowed = can(staff, "orders.manage");
+  const allowed = order.can_dispatch ?? can(staff, "orders.manage");
 
   useEffect(() => {
     if (!allowed) return;
@@ -40,6 +40,7 @@ export default function OrderCourier({ order, onChange }: { order: DemoOrder; on
 
   return <section className="panel order-detail-section" aria-label="Delivery courier">
     <div className="order-section-heading"><div><p className="eyebrow">DELIVERY</p><h2>Courier</h2></div></div>
+    {order.delivery_status && <p className={`order-delivery-status is-${order.delivery_status.key}`} role="status">{order.delivery_status.label}{order.delivery_status.courier ? ` · ${order.delivery_status.courier}` : ""}</p>}
     {allowed ? <>
       <label className="order-courier-select">Delivered by
         <select value={current?.id ?? ""} disabled={busy || couriers === undefined} onChange={(event) => void assign(event.target.value)}>
@@ -49,7 +50,7 @@ export default function OrderCourier({ order, onChange }: { order: DemoOrder; on
         </select>
       </label>
       <p className="order-journey-help">The courier sees the address, phone and garments in Deliveries, and confirms when it’s handed over.</p>
-    </> : <p className="order-journey-help">{current ? `${current.name} will deliver this order.` : "No courier assigned yet."}</p>}
+    </> : <p className="order-journey-help">{current ? `${current.name} will deliver this order.` : "The operations manager will send this out with a courier. Keep it packed and ready at the front desk."}</p>}
     {error && <p className="collection-error" role="alert">{error}</p>}
   </section>;
 }

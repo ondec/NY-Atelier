@@ -194,8 +194,25 @@ class DeliveryTest extends TestCase
         $this->assertSame('current', $timeline['Packaged']['state']);
         $this->assertSame('upcoming', $timeline['Out for delivery']['state']);
         $this->assertSame('Moved to '.$date->format('D j M'), $timeline['Out for delivery']['note']);
-        $html = (new OrderUpdateMail($order->reference, 'Delivery moved', null, $timeline->values()->all()))->render();
+        $notice = app(OrderCustomerNotice::class);
+        $this->assertSame('Expected delivery: '.$date->format('D j M'), $notice->expectedDelivery($order->fresh()));
+        $html = (new OrderUpdateMail($order->reference, 'Delivery moved', null, $timeline->values()->all(), $notice->expectedDelivery($order->fresh())))->render();
         $this->assertStringContainsString('Your order so far', $html);
         $this->assertStringContainsString('Moved to '.$date->format('D j M'), $html);
+        $this->assertStringContainsString('Expected delivery: '.$date->format('D j M'), $html);
+    }
+
+    public function test_the_expected_delivery_window_follows_the_order_and_stops_once_delivered(): void
+    {
+        $notice = app(OrderCustomerNotice::class);
+        $order = $this->order('packaged');
+        $order->forceFill(['fulfilment_method' => 'Delivery', 'delivery_due_from' => '2026-12-02', 'delivery_due_by' => '2026-12-03'])->save();
+        $this->assertSame('Expected delivery: Wed 2 – Thu 3 Dec', $notice->expectedDelivery($order->fresh()));
+        $order->forceFill(['delivery_due_by' => '2027-01-04'])->save();
+        $this->assertSame('Expected delivery: Wed 2 Dec – Mon 4 Jan', $notice->expectedDelivery($order->fresh()));
+        $order->forceFill(['completed_at' => now()])->save();
+        $this->assertNull($notice->expectedDelivery($order->fresh()));
+        $order->forceFill(['completed_at' => null, 'fulfilment_method' => 'Collection'])->save();
+        $this->assertNull($notice->expectedDelivery($order->fresh()));
     }
 }

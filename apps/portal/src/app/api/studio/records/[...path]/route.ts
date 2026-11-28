@@ -30,11 +30,10 @@ async function forward(request: Request, context: Context) {
     if (/^orders\/[A-Z0-9-]+(?:\/workflow|\/brief|\/send-to-production)?$/.test(route)) {
       const check = await fetch(`${base}/api/demo/staff/orders/${path[1]}`, { cache: "no-store", headers: await staffBackendHeaders(request) });
       const current = await check.json();
-      if (!check.ok || !studioOrderCategories.includes(current.order?.category)) return Response.json({ message: "Choose a custom or alteration order." }, { status: 404, headers });
+      if (!check.ok || !current.order) return Response.json({ message: "Choose an order." }, { status: 404, headers });
     }
     const response = await fetch(target, { method, cache: "no-store", headers: {...await staffBackendHeaders(request), ...(multipart ? {'Content-Type': request.headers.get('content-type')!} : {})}, body: upload ?? (body ? JSON.stringify(body) : undefined), signal: AbortSignal.timeout(multipart ? 120000 : 15000) });
     const payload = await response.json();
-    if (route === "orders" && method === "GET" && Array.isArray(payload.orders)) payload.orders = payload.orders.filter((row: { category: string }) => studioOrderCategories.includes(row.category));
     return Response.json(payload, { status: response.status, headers });
   } catch { return Response.json({ message: "Studio records are unavailable. Check the connection and try again." }, { status: 503, headers }); }
 }

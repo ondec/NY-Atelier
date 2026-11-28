@@ -63,16 +63,8 @@ class CustomerConsultationController extends DemoConsultationController
             'version' => ['required', 'integer', 'min:1'],
             'option' => ['required_if:action,accept', 'integer', 'min:0', 'max:2'],
         ]);
-        $row = $this->current($id, $data['version'], ['awaiting-customer']);
-        if ($data['action'] === 'decline') {
-            return $this->update($row, ['status' => 'needs-alternatives', 'options' => null]);
-        }
 
-        $option = json_decode($row->options, true, 512, JSON_THROW_ON_ERROR)[$data['option']] ?? null;
-        abort_unless($option, 422, 'Choose one of the proposed times.');
-        $this->requireFuture($option['date'], $option['time']);
-
-        return $this->update($row, ['status' => 'confirmed', 'confirmedDate' => $option['date'], 'confirmedTime' => $option['time']]);
+        return $this->answer($this->current($id, $data['version'], ['awaiting-customer']), $data);
     }
 
     private function signedIn(Request $request): Customer

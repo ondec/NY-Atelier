@@ -47,13 +47,18 @@ class OrderCustomerNotice
             $event->load('order.customer');
             $order = $event->order;
             $message = $event->action_type === 'notify' ? $event->explanation : $event->title.($event->explanation ? ' · '.$event->explanation : '');
+            if ($event->stage_key === 'ready_collection') {
+                // Tell the customer which store to collect from.
+                $store = OrderLocation::store($order);
+                $message .= " · Collect from {$store['name']}, {$store['address']} ({$store['plus_code']}). Directions: {$store['map']}";
+            }
             if ($event->external_channel === 'email') {
-                Mail::to($order->customer->email)->send(new OrderUpdateMail($order->reference, $message, $order->handover_instructions, $this->timeline($order)));
+                Mail::to($order->customer->email)->send(new OrderUpdateMail($order->reference, $message, $order->handover_instructions, $this->timeline($order), $this->expectedDelivery($order)));
             } else {
                 Http::withToken(config('order_workflows.sms_token'))->withHeaders(['Idempotency-Key' => 'order-event-'.$event->id])
                     ->connectTimeout(2)->timeout(4)->post(config('order_workflows.sms_endpoint'), [
                         'to' => $order->customer->phone,
-                        'message' => 'NY Atelier · '.$order->reference.' · '.($message).($order->handover_instructions ? "\n".$order->handover_instructions : ''),
+                        'message' => 'NY Atelier · '.$order->reference.' · '.($message).($order->handover_instructions ? "\n".$order->handover_instructions : '').(($expected = $this->expectedDelivery($order)) ? "\n".$expected : ''),
                     ])->throw();
             }
             $event->update(['external_status' => 'submitted']);
@@ -80,5 +85,20 @@ class OrderCustomerNotice
             'date' => $step['recorded_at'] ? Carbon::parse($step['recorded_at'])->format('j M') : null,
             'note' => $step['note'] ?? null,
         ], $described['steps']);
+    }
+
+    /** When a delivery order should arrive (from its delivery area), until it is delivered: "Expected delivery: Tue 2 – Thu 3 Dec". */
+    public function expectedDelivery(Order $order): ?string
+    {
+        if ($order->fulfilment_method !== 'Delivery' || ! $order->delivery_due_by || $order->completed_at || $order->status === 'cancelled') {
+            return null;
+        }
+        $from = $order->delivery_due_from;
+        $by = $order->delivery_due_by;
+        if (! $from || $from->isSameDay($by)) {
+            return 'Expected delivery: '.$by->format('D j M');
+        }
+
+        return 'Expected delivery: '.$from->format($from->isSameMonth($by) ? 'D j' : 'D j M').' – '.$by->format('D j M');
     }
 }

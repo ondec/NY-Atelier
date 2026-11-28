@@ -77,7 +77,7 @@ class StudioSales
             $orderReference = 'NY-RTW-'.mb_strtoupper(str_replace('-', '', $data['request_id']));
             $alterations = self::alterations($data['lines'], $quote['lines']);
             $order = Order::query()->create([
-                'reference' => $orderReference, 'customer_id' => $customer->id, 'source' => 'studio',
+                'reference' => $orderReference, 'customer_id' => $customer->id, 'source' => 'studio', 'store' => OrderLocation::forNew($actor, 'Ready-to-Wear'),
                 // A piece that needs adjusting turns the whole sale into an alteration; the sale stays recorded as Ready-to-Wear.
                 'category' => $alterations ? 'Alterations' : 'Ready-to-Wear', 'original_category' => $alterations ? 'Ready-to-Wear' : null,
                 'specifications' => $alterations, 'created_by_id' => $actor->id,

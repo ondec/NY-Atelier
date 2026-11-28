@@ -4,7 +4,7 @@ export type TeamStatus = "active" | "invited" | "expired" | "deactivated" | "non
 export type TeamMember = {
   id: number; name: string; job_title: string; salary_eligible: boolean; has_account: boolean;
   email: string | null; role: StaffRole | null; role_label: string | null; status: TeamStatus;
-  invitation_expires_at: string | null; can_reinvite: boolean; is_self: boolean; manageable: boolean;
+  location?: StoreLocation | null; invitation_expires_at: string | null; can_reinvite: boolean; is_self: boolean; manageable: boolean;
 };
 export type InvitableRole = { id: StaffRole; label: string };
 export type TeamDirectory = { members: TeamMember[]; emailDelivery: boolean; invitableRoles: InvitableRole[] };
@@ -29,16 +29,20 @@ async function teamJson<T>(url: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
+/** Receptionists work at one of the two stores. */
+export type StoreLocation = "atelier" | "rtw_store";
+export const storeLabels: Record<StoreLocation, string> = { atelier: "Bespoke atelier (Kwabenya)", rtw_store: "RTW store (Haatso)" };
+
 export const getTeam = () => teamJson<TeamDirectory>("/api/staff-team");
 
-export const inviteTeamMember = (invitation: { name: string; email: string; role: StaffRole }) =>
+export const inviteTeamMember = (invitation: { name: string; email: string; role: StaffRole; location?: StoreLocation }) =>
   teamJson<InvitationResult>("/api/staff-team/invitations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(invitation) });
 
 export const reinviteTeamMember = (memberId: number) =>
   teamJson<InvitationResult>(`/api/staff-team/${memberId}/invitation`, { method: "POST" });
 
-export const changeTeamRole = (memberId: number, role: StaffRole) =>
-  teamJson<{ member: TeamMember }>(`/api/staff-team/${memberId}/role`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role }) });
+export const changeTeamRole = (memberId: number, role: StaffRole, location?: StoreLocation) =>
+  teamJson<{ member: TeamMember }>(`/api/staff-team/${memberId}/role`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role, location }) });
 
 export const setTeamAccess = (memberId: number, action: "deactivate" | "reactivate") =>
   teamJson<{ member: TeamMember }>(`/api/staff-team/${memberId}/${action}`, { method: "POST" });

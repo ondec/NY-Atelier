@@ -26,26 +26,27 @@ export async function preparePhoto(file: File, maxDimension: number) {
   }
 }
 
-export async function readGallery(data: FormData, existing: string[]) {
-  const removed = new Set(data.getAll("removeGalleryPhoto").map(Number));
+/** `name` keeps two galleries in one form apart (e.g. campaign photos and close-ups). */
+export async function readGallery(data: FormData, existing: string[], name = "gallery") {
+  const removed = new Set(data.getAll(`remove-${name}`).map(Number));
   const retained = existing.filter((_, index) => !removed.has(index));
-  const files = data.getAll("galleryPhotos").filter((file): file is File => file instanceof File && file.size > 0);
+  const files = data.getAll(`${name}Photos`).filter((file): file is File => file instanceof File && file.size > 0);
   if (retained.length + files.length > 6) throw new Error("A gallery can hold up to six photos.");
   for (const file of files) retained.push(await preparePhoto(file, 720));
   return retained;
 }
 
-export function GalleryFields({ photos = [], label }: { photos?: string[]; label: string }) {
+export function GalleryFields({ photos = [], label, name = "gallery" }: { photos?: string[]; label: string; name?: string }) {
   return <fieldset className="inventory-size-entries inventory-gallery-fields">
     <legend>{label}</legend>
     <p>Add up to six JPG, PNG or WebP photos. Select any saved photos you want to remove.</p>
     {photos.length > 0 && <div className="inventory-gallery-existing">
       {photos.map((photo, index) => <label key={index}>
         <Image src={photo} alt={`Photo ${index + 1}`} width={64} height={78} unoptimized />
-        <span><input type="checkbox" name="removeGalleryPhoto" value={index} /> Remove</span>
+        <span><input type="checkbox" name={`remove-${name}`} value={index} /> Remove</span>
       </label>)}
     </div>}
-    <label>Add photos<input type="file" name="galleryPhotos" accept="image/jpeg,image/png,image/webp" multiple /></label>
+    <label>Add photos<input type="file" name={`${name}Photos`} accept="image/jpeg,image/png,image/webp" multiple /></label>
   </fieldset>;
 }
 

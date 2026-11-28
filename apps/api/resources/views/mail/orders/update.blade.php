@@ -5,6 +5,10 @@
 
 {{ $update }}
 
+@if ($expected)
+**{{ $expected }}**
+@endif
+
 @if ($instructions)
 <x-mail::panel>
 **Handover information**

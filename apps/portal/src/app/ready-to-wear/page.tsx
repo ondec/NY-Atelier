@@ -9,5 +9,5 @@ export default async function ReadyToWearPage({searchParams}:{searchParams:Param
   const staff=await requireStaff();
   if(!can(staff,'catalogue.manage'))return <main className="staff-access-denied"><h1>Ready-to-Wear access restricted.</h1><p>You don’t have permission to manage the Ready-to-Wear catalogue. Contact your administrator if you need access.</p><WorkspaceLink href={staff.officeHref}>Go to your workspace</WorkspaceLink></main>;
   const query=await searchParams;
-  return <OfficeWorkspace searchParams={Promise.resolve({...query,section:query.section==='collections'?'collections':'inventory'})}/>;
+  return <OfficeWorkspace searchParams={Promise.resolve({...query,section:query.section==='collections'||query.section==='heroes'?query.section:'inventory'})}/>;
 }

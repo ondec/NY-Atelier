@@ -53,13 +53,12 @@ class DemoOrderWorkflowTest extends TestCase
         $this->advance($order, 'packaged');
     }
 
-    public function test_collection_requires_ready_garments_and_handover_confirmation_before_completion(): void
+    public function test_collection_requires_handover_confirmation_before_completion_and_packing_readies_ready_to_wear(): void
     {
         $order = $this->order();
-        $this->update($order, ['action' => 'advance', 'stage' => 'packaged'])->assertUnprocessable()->assertJsonValidationErrors('stage');
-        $this->assertDatabaseMissing('order_events', ['order_id' => $order->id, 'stage_key' => 'packaged']);
-        $this->update($order, ['action' => 'item_ready', 'item_id' => $order->items->first()->id])->assertOk()->assertJsonPath('order.completed_item_count', 1);
+        // Packing a Ready-to-Wear order is its garment check.
         $this->advance($order, 'packaged');
+        $this->assertSame(0, $order->items()->whereNull('completed_at')->count());
         $this->advance($order, 'ready_collection');
         $this->assertNull($order->fresh()->completed_at);
         $this->update($order, ['action' => 'advance', 'stage' => 'collected'])->assertUnprocessable()->assertJsonValidationErrors('note');

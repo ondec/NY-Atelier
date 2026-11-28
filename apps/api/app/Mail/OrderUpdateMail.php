@@ -9,7 +9,7 @@ use Illuminate\Mail\Mailables\Envelope;
 class OrderUpdateMail extends Mailable
 {
     /** @param  list<array{label: string, state: string, date: ?string, note: ?string}>  $timeline */
-    public function __construct(public string $reference, public string $update, public ?string $instructions, public array $timeline = []) {}
+    public function __construct(public string $reference, public string $update, public ?string $instructions, public array $timeline = [], public ?string $expected = null) {}
 
     public function envelope(): Envelope
     {

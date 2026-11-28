@@ -1,8 +1,8 @@
 {
   "id": "/office",
-  "name": "NY Office",
-  "short_name": "NY Office",
-  "description": "NY Atelier staff workspace for orders, customers and operations.",
+  "name": "NY Team",
+  "short_name": "NY Team",
+  "description": "NY Atelier staff workspaces: each role opens its own.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

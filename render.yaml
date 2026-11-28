@@ -29,33 +29,23 @@ services:
         value: "1"
       - key: NY_DEMO_API_ENABLED
         value: "false"
-      # Staff subdomains (Cloudflare CNAMEs to ny-atelier-preview.onrender.com, DNS only). The three NY_* workspace
-      # values must be set together; sign-in on them uses a shared __Secure- cookie for thenyatelier.com.
-      # ny-atelier-preview.onrender.com keeps working with its own host-only sign-in.
-      - key: NY_STUDIO_ORIGIN
-        value: https://studio.thenyatelier.com
-      - key: NY_OFFICE_ORIGIN
-        value: https://office.thenyatelier.com
-      - key: NY_STAFF_COOKIE_DOMAIN
-        value: thenyatelier.com
-      # Public website and RTW store, served by this same service on their own addresses (portal src/proxy.ts).
-      # Cloudflare CNAMEs home and store -> ny-atelier-preview.onrender.com (DNS only), added as custom domains
-      # in Render like studio and office. Also used at build time for the links between the two sites.
-      # On approval: https://thenyatelier.com and https://rtw.thenyatelier.com, and remove NY_PUBLIC_SITES_NOINDEX.
+      # NY Team: every staff role signs in at one address and lands in their own space. Cloudflare CNAME
+      # team -> ny-atelier-preview.onrender.com (DNS only), added as a custom domain in Render.
+      # ny-atelier-preview.onrender.com keeps working too. Invitation, password-reset links and the email logo use it.
+      - key: NY_TEAM_ORIGIN
+        value: https://team.thenyatelier.com
+      - key: NY_STAFF_PORTAL_URL
+        value: https://team.thenyatelier.com
+      # The public website, with the RTW shop inside it at /shop (portal src/proxy.ts). On approval, point the
+      # thenyatelier.com records at this service, add it as Render's second custom domain, set
+      # NY_PUBLIC_SITES_PREVIEW_PATHS to "0" and remove NY_PUBLIC_SITES_NOINDEX.
       - key: NY_WEBSITE_ORIGIN
-        value: https://home.thenyatelier.com
-      - key: NY_STORE_ORIGIN
-        value: https://store.thenyatelier.com
+        value: https://thenyatelier.com
       - key: NY_PUBLIC_SITES_NOINDEX
         value: "1"
-      # Until home/store are added as custom domains (Render's free plan allows two, used by studio and office),
-      # the sites are previews at https://ny-atelier-preview.onrender.com/home and /store. Set to "0" once the
-      # domains are added, so each site uses its own address.
+      # Until then the website is a preview at https://ny-atelier-preview.onrender.com/home (shop: /home/shop).
       - key: NY_PUBLIC_SITES_PREVIEW_PATHS
         value: "1"
-      # Invitation, password-reset links and the email logo use the Studio address.
-      - key: NY_STAFF_PORTAL_URL
-        value: https://studio.thenyatelier.com
       - key: LOG_CHANNEL
         value: stderr
       - key: LOG_LEVEL

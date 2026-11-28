@@ -22,7 +22,7 @@ export async function consultationApi<T>(path = '', init?: RequestInit, token?: 
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new Error(body.message || 'Consultations are unavailable. Try again.');
+    throw new Error(body.message || 'Appointments are unavailable. Try again.');
   }
   return response.json();
 }

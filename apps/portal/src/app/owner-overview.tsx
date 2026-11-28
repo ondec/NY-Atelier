@@ -34,7 +34,7 @@ function SalesTrend({finance}: {finance: OwnerFinances}) {
 function ConsultationItem({row, now}: {row: StaffConsultation; now: Date}) {
   const slot = consultationSlots(row)[0];
   const passed = new Date(`${slot.date}T${slot.time}:00Z`).getTime() < now.getTime();
-  const action = row.status === 'awaiting-confirmation' ? 'Review request' : row.status === 'needs-alternatives' ? 'Suggest a new time' : row.status === 'awaiting-customer' ? 'View proposed times' : passed ? 'Follow up' : 'View consultation';
+  const action = row.status === 'awaiting-confirmation' ? 'Review request' : row.status === 'needs-alternatives' ? 'Suggest a new time' : row.status === 'awaiting-customer' ? 'View proposed times' : passed ? 'Follow up' : 'View appointment';
   return <Link prefetch={false} href={`/?section=appointments&consultation=${encodeURIComponent(row.id)}`} className="owner-consultation-row">
     <div className="owner-consultation-top"><strong>{row.customer_name ?? 'Customer'}</strong><StatusBadge status={row.status === 'confirmed' && passed ? 'Action needed' : consultationStatuses[row.status]}/></div>
     <span>{row.purpose}</span><small>{shortDate(slot.date)} · {slot.time} · {row.method === 'virtual' ? 'Virtual' : 'In person'}</small>
@@ -42,7 +42,11 @@ function ConsultationItem({row, now}: {row: StaffConsultation; now: Date}) {
   </Link>;
 }
 
-export default function OwnerOverview({initialOrders, initiallyUnavailable}: {initialOrders: DemoOrder[]; initiallyUnavailable: boolean}) {
+/**
+ * The NY Office overview for the Owner, general manager and operations manager: orders, today's deliveries,
+ * production, appointments and (Owner and general manager only) sales.
+ */
+export default function OwnerOverview({initialOrders, initiallyUnavailable, showFinances = true}: {initialOrders: DemoOrder[]; initiallyUnavailable: boolean; showFinances?: boolean}) {
   const [data, setData] = useState<OwnerOverviewData>();
   const [period, setPeriod] = useState<OverviewPeriod>('month');
   const [desk, setDesk] = useState<Desk>('active');
@@ -68,7 +72,8 @@ export default function OwnerOverview({initialOrders, initiallyUnavailable}: {in
   }, [period]);
   useEffect(() => {
     const controller = new AbortController();
-    const load = () => {if (!document.hidden) void refresh(controller.signal);};
+    // A load cancelled before it starts (the page closing or re-opening) must not block the next one.
+    const load = () => {if (!document.hidden && !controller.signal.aborted) void refresh(controller.signal);};
     queueMicrotask(load);
     const timer = setInterval(load, 60000);
     document.addEventListener('visibilitychange', load);
@@ -98,6 +103,20 @@ export default function OwnerOverview({initialOrders, initiallyUnavailable}: {in
     followup: consultations?.filter(row => row.status === 'confirmed' && new Date(`${consultationSlots(row)[0].date}T${consultationSlots(row)[0].time}:00Z`).getTime() < now.getTime()),
   };
   const visibleConsultations = consultationGroups[consultationView];
+  // Today across the business: deliveries, the production floor and appointments.
+  const deliveries = data?.deliveries;
+  const openDeliveries = deliveries?.filter(item => !item.delivered_at) ?? [];
+  const dueDeliveries = openDeliveries.filter(item => item.due_by && item.due_by <= today).sort((a, b) => (a.due_by ?? '').localeCompare(b.due_by ?? ''));
+  const lateDeliveries = dueDeliveries.filter(item => item.due_by! < today);
+  const outForDelivery = openDeliveries.filter(item => item.stage === 'out_for_delivery');
+  const readyToSend = openDeliveries.filter(item => item.ready);
+  const deliveredToday = deliveries?.filter(item => item.delivered_at && new Intl.DateTimeFormat('en-CA', {timeZone: 'Africa/Accra'}).format(new Date(item.delivered_at)) === today) ?? [];
+  const floor = data?.production?.filter(item => !item.is_complete) ?? [];
+  const noTailor = floor.filter(item => !item.assigned_tailor);
+  const lateProduction = floor.filter(item => item.expected_completion_date && item.expected_completion_date < today);
+  const productionAttention = [...lateProduction, ...noTailor.filter(item => !lateProduction.includes(item))];
+  const appointmentsToday = consultations?.filter(row => row.status === 'confirmed' && consultationSlots(row)[0].date === today) ?? [];
+  const known = (value: unknown, number: number) => value === undefined ? '…' : value === null ? '—' : number;
   const financeCurrent = finance?.period === period;
   const count = (value: number) => unavailable ? '—' : value;
   const financial = (value: number | undefined) => financeCurrent && value !== undefined ? saleMoney(value) : '—';
@@ -110,16 +129,34 @@ export default function OwnerOverview({initialOrders, initiallyUnavailable}: {in
       <button type="button" onClick={() => setDesk('due')} aria-pressed={desk === 'due'}><span>Due in the next 7 days</span><strong>{count(due.length)}</strong><small>{shortDate(today)} – {shortDate(weekEnd)}</small></button>
       <button type="button" onClick={() => setDesk('overdue')} aria-pressed={desk === 'overdue'} data-attention={overdue.length ? 'danger' : undefined}><span>Past the expected date</span><strong>{count(overdue.length)}</strong><small>{overdue.length ? 'Review the promised dates' : 'No overdue orders'}</small></button>
     </div>
+    <section className="owner-today" aria-label="Today">
+      <Link prefetch={false} href="/deliveries" className="owner-today-card" data-attention={lateDeliveries.length ? 'danger' : undefined}><span>Deliveries due today</span><strong>{known(deliveries, dueDeliveries.length)}</strong><small>{deliveries ? `${outForDelivery.length} out now · ${readyToSend.length} ready to send · ${deliveredToday.length} delivered today` : 'Loading deliveries…'}</small></Link>
+      <Link prefetch={false} href="/?section=production" className="owner-today-card" data-attention={lateProduction.length ? 'danger' : undefined}><span>In production</span><strong>{known(data?.production, floor.length)}</strong><small>{data?.production ? `${lateProduction.length} past their date · ${noTailor.length} without a tailor` : 'Loading production…'}</small></Link>
+      <Link prefetch={false} href="/?section=appointments" className="owner-today-card"><span>Appointments today</span><strong>{known(data?.consultations, appointmentsToday.length)}</strong><small>{consultationGroups.review ? `${consultationGroups.review.length} waiting for review` : 'Loading appointments…'}</small></Link>
+      {showFinances && <Link prefetch={false} href="/?section=finances&finance=sales" className="owner-today-card"><span>Sales {period === 'month' ? 'this month' : period === '30days' ? 'in 30 days' : 'this year'}</span><strong>{financial(finance?.sales_minor)}</strong><small>{financeCurrent ? `${finance.sales_count} recorded sale${finance.sales_count === 1 ? '' : 's'}` : 'Loading sales…'}</small></Link>}
+    </section>
+    <div className="owner-action-grid">
+      <section className="panel owner-deliveries"><div className="panel-heading"><div><div className="eyebrow">DELIVERIES</div><h2>Due today</h2></div><Link prefetch={false} href="/deliveries" className="text-link">Delivery board<ArrowRight size={16}/></Link></div>
+        {deliveries === undefined ? <p className="empty-state" role="status">Loading deliveries…</p> : deliveries === null ? <p className="empty-state">Deliveries are temporarily unavailable.</p> : !dueDeliveries.length ? <p className="empty-state">Nothing due today.{readyToSend.length ? ` ${readyToSend.length} packaged and ready to send.` : ''}</p>
+          : <div className="owner-deadline-list">{dueDeliveries.slice(0, 5).map(item => <Link prefetch={false} href={orderHref(item.reference, 'overview')} key={item.reference}><div><strong>{item.reference}</strong><span>{item.customer.name} · {item.area ?? item.zone ?? 'No area'} · {item.courier?.name ?? 'No courier yet'}</span></div><time dateTime={item.due_by!} data-late={item.due_by! < today ? 'true' : undefined}>{item.due_by! < today ? `Late · ${shortDate(item.due_by!)}` : item.stage === 'out_for_delivery' ? 'Out now' : 'Today'}</time></Link>)}</div>}
+        {dueDeliveries.length > 5 && <div className="owner-panel-footer">{dueDeliveries.length - 5} more on the delivery board.</div>}
+      </section>
+      <section className="panel owner-production"><div className="panel-heading"><div><div className="eyebrow">PRODUCTION</div><h2>Needs attention</h2></div><Link prefetch={false} href="/?section=production" className="text-link">Production<ArrowRight size={16}/></Link></div>
+        {data?.production === undefined ? <p className="empty-state" role="status">Loading production…</p> : data.production === null ? <p className="empty-state">Production is temporarily unavailable.</p> : !productionAttention.length ? <p className="empty-state">{floor.length ? `All ${floor.length} pieces on the floor have a tailor and are on time.` : 'Nothing in production right now.'}</p>
+          : <div className="owner-deadline-list">{productionAttention.slice(0, 5).map(item => <Link prefetch={false} href={`/?section=production&order=${encodeURIComponent(item.reference)}`} key={item.reference}><div><strong>{item.reference}</strong><span>{item.customer_name} · {item.assigned_tailor?.name ?? 'No tailor yet'}</span></div><time dateTime={item.expected_completion_date ?? undefined} data-late={item.expected_completion_date && item.expected_completion_date < today ? 'true' : undefined}>{item.expected_completion_date && item.expected_completion_date < today ? `Late · ${shortDate(item.expected_completion_date)}` : 'Assign a tailor'}</time></Link>)}</div>}
+        {productionAttention.length > 5 && <div className="owner-panel-footer">{productionAttention.length - 5} more in Production.</div>}
+      </section>
+    </div>
     <section className="panel owner-order-desk"><div className="panel-heading"><div><div className="eyebrow">ORDER DESK</div><h2>In motion</h2></div><Link prefetch={false} href="/?section=orders" className="text-link">All orders<ArrowRight size={16}/></Link></div>
       <div className="owner-desk-filters" role="group" aria-label="Orders in view">{([{id: 'active', label: 'All active', count: active.length}, {id: 'due', label: 'Due in 7 days', count: due.length}, {id: 'overdue', label: 'Overdue', count: overdue.length}, {id: 'ready', label: 'Ready for handover', count: ready.length}] as const).map(item => <button key={item.id} type="button" aria-pressed={desk === item.id} onClick={() => setDesk(item.id)}>{item.label}<span>{count(item.count)}</span></button>)}</div>
       <OrderTable orders={selected.slice(0, 8)} unavailable={unavailable} section="overview" showFulfilment showPayment/>
       {!unavailable && selected.length > 8 && <div className="owner-panel-footer">Showing 8 of {selected.length} orders. <Link prefetch={false} className="text-link" href="/?section=orders">Open the order desk<ArrowRight size={14}/></Link></div>}
     </section>
     <div className="owner-action-grid">
-      <section className="panel owner-consultations"><div className="panel-heading"><div><div className="eyebrow">TODAY’S FOCUS</div><h2>Consultations</h2></div><Link prefetch={false} href="/?section=appointments" className="text-link">View all<ArrowRight size={16}/></Link></div>
-        <div className="owner-desk-filters" role="group" aria-label="Consultations in view">{([{id:'review',label:'Needs review'},{id:'upcoming',label:'Upcoming'},{id:'waiting',label:'Awaiting customer'},{id:'followup',label:'Follow-up'}] as const).map(view => <button type="button" key={view.id} aria-pressed={consultationView===view.id} onClick={()=>setConsultationView(view.id)}>{view.label}<span>{consultationGroups[view.id]?.length ?? '—'}</span></button>)}</div>
-        {visibleConsultations === undefined ? <p className="empty-state" role="status">{data?.consultations === null ? 'Consultations are temporarily unavailable.' : 'Loading consultations…'}</p> : !visibleConsultations.length ? <p className="empty-state">No consultations in this view.</p> : <div className="owner-consultation-list">{visibleConsultations.slice(0, 3).map(row => <ConsultationItem key={row.id} row={row} now={now}/>)}</div>}
-        {visibleConsultations && visibleConsultations.length > 3 && <div className="owner-panel-footer">{visibleConsultations.length - 3} more consultations in the consultation desk.</div>}
+      <section className="panel owner-consultations"><div className="panel-heading"><div><div className="eyebrow">TODAY’S FOCUS</div><h2>Appointments</h2></div><Link prefetch={false} href="/?section=appointments" className="text-link">View all<ArrowRight size={16}/></Link></div>
+        <div className="owner-desk-filters" role="group" aria-label="Appointments in view">{([{id:'review',label:'Needs review'},{id:'upcoming',label:'Upcoming'},{id:'waiting',label:'Awaiting customer'},{id:'followup',label:'Follow-up'}] as const).map(view => <button type="button" key={view.id} aria-pressed={consultationView===view.id} onClick={()=>setConsultationView(view.id)}>{view.label}<span>{consultationGroups[view.id]?.length ?? '—'}</span></button>)}</div>
+        {visibleConsultations === undefined ? <p className="empty-state" role="status">{data?.consultations === null ? 'Appointments are temporarily unavailable.' : 'Loading appointments…'}</p> : !visibleConsultations.length ? <p className="empty-state">No appointments in this view.</p> : <div className="owner-consultation-list">{visibleConsultations.slice(0, 3).map(row => <ConsultationItem key={row.id} row={row} now={now}/>)}</div>}
+        {visibleConsultations && visibleConsultations.length > 3 && <div className="owner-panel-footer">{visibleConsultations.length - 3} more appointments in the appointment desk.</div>}
       </section>
       <section className="panel owner-deadlines"><div className="panel-heading"><div><div className="eyebrow">{shortDate(today)} – {shortDate(weekEnd)}</div><h2>Coming due</h2></div><span className="owner-panel-count">{count(due.length)} orders</span></div>
         <div className="owner-deadline-services">{services.map(service => <div key={service}><span>{serviceLabel(service)}</span><strong>{count(due.filter(order => order.category === service).length)}</strong></div>)}</div>
@@ -127,12 +164,12 @@ export default function OwnerOverview({initialOrders, initiallyUnavailable}: {in
         {!unavailable && active.some(order => !order.expected_completion_date) && <div className="owner-panel-footer">{active.filter(order => !order.expected_completion_date).length} active orders still need an expected date.</div>}
       </section>
     </div>
-    <section className="owner-business"><div className="owner-section-heading"><div><div className="eyebrow">BUSINESS PERFORMANCE</div><h2>Sales & operations</h2></div><label className="owner-period"><span>Reporting period</span><select value={period} onChange={event => setPeriod(event.target.value as OverviewPeriod)}><option value="month">This month</option><option value="30days">Last 30 days</option><option value="year">This year</option></select></label></div>
+    {showFinances && <section className="owner-business"><div className="owner-section-heading"><div><div className="eyebrow">BUSINESS PERFORMANCE</div><h2>Sales & operations</h2></div><label className="owner-period"><span>Reporting period</span><select value={period} onChange={event => setPeriod(event.target.value as OverviewPeriod)}><option value="month">This month</option><option value="30days">Last 30 days</option><option value="year">This year</option></select></label></div>
       <div className="owner-performance-grid"><section className="panel owner-sales-panel"><div className="panel-heading"><div><h3>Recorded Studio sales</h3><p>{financeCurrent ? `${shortDate(finance.from)} – ${shortDate(finance.to)}` : 'Loading sales totals…'}</p></div><Link prefetch={false} href="/?section=finances&finance=sales" className="text-link">Sales register<ArrowRight size={15}/></Link></div><div className="owner-sales-total"><strong>{financial(finance?.sales_minor)}</strong><span>{financeCurrent ? `${finance.sales_count} paid ${finance.sales_count === 1 ? 'sale' : 'sales'}` : '—'}</span></div>
         {financeCurrent ? <><p className="owner-sales-comparison">{finance.previous_sales_minor > 0 ? `${((finance.sales_minor - finance.previous_sales_minor) / finance.previous_sales_minor * 100).toFixed(1)}% vs the previous ${Math.round((new Date(`${finance.to}T12:00:00Z`).getTime() - new Date(`${finance.from}T12:00:00Z`).getTime()) / 86400000) + 1} days` : 'No recorded sales in the previous comparison period.'}</p><SalesTrend finance={finance}/></> : <p className="empty-state">{data?.finances === null ? 'Financial records are temporarily unavailable.' : 'Loading recorded sales…'}</p>}
         <div className="owner-finance-detail"><div><span>Average sale</span><strong>{financeCurrent && finance.average_sale_minor !== null ? saleMoney(finance.average_sale_minor) : '—'}</strong></div><div><span>Payroll paid in period</span><strong>{financial(finance?.payroll_paid_minor)}</strong></div></div>
       </section><section className="panel owner-operations-panel"><div className="panel-heading"><div><h3>Workload by service</h3><p>Current open orders</p></div></div><div className="table-wrap"><table className="owner-workload-table"><thead><tr><th>Service</th><th>Active</th><th>Overdue</th><th>Ready</th></tr></thead><tbody>{services.map(service => <tr key={service}><td><Link prefetch={false} href={`/?section=orders&type=${encodeURIComponent(service)}`}>{serviceLabel(service)}<ArrowRight size={12}/></Link></td><td>{count(active.filter(order => order.category === service).length)}</td><td className={overdue.some(order => order.category === service) ? 'owner-overdue-value' : ''}>{count(overdue.filter(order => order.category === service).length)}</td><td>{count(ready.filter(order => order.category === service).length)}</td></tr>)}</tbody></table></div><div className="owner-payroll-status"><Link prefetch={false} href="/?section=finances&finance=salaries"><span>Approved payroll still to pay</span><strong>{financial(finance?.payroll_outstanding_minor)}</strong><ArrowRight size={15}/></Link><Link prefetch={false} href="/?section=finances&finance=salaries"><span>Salary batches awaiting approval</span><strong>{financeCurrent ? finance.salary_approvals : '—'}</strong><ArrowRight size={15}/></Link></div></section></div>
       <p className="owner-finance-scope">Studio receipts and recorded tailor payroll only. Other expenses and profit are not included.</p>
-    </section>
+    </section>}
   </div>;
 }

@@ -26,6 +26,12 @@ export type DemoOrder = {
   specifications?: string | null;
   /** Custom and alteration orders only: the handover to NY Production. */
   production?: { sent_at: string | null; sent_by: string | null; returned_at: string | null; return_reason: string | null; finished?: boolean; missing: string[]; can_prepare: boolean; can_send: boolean } | null;
+  /** What NY Studio reception must do next: package it, or hand it over. */
+  reception?: "to_package" | "ready" | null;
+  store?: { key: "atelier" | "rtw_store"; name: string; address: string; plus_code: string; map: string };
+  /** Whether this viewer may give the order to a courier (operations, or the RTW store's own reception). */
+  can_dispatch?: boolean;
+  delivery_status?: { key: "waiting" | "collecting" | "out" | "delivered"; label: string; courier: string | null; at: string | null } | null;
   assigned_tailor?: { id: number; name: string } | null;
   assigned_courier?: { id: number; name: string } | null;
   assigned_at?: string | null;

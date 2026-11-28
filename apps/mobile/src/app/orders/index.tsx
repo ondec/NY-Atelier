@@ -21,7 +21,7 @@ import { SignInPrompt } from '@/components/sign-in-prompt';
 const views = [
   { id: 'active', label: 'Active' },
   { id: 'history', label: 'History' },
-  { id: 'consultations', label: 'Consultations' },
+  { id: 'consultations', label: 'Appointments' },
   { id: 'updates', label: 'Updates' },
 ] as const;
 
@@ -57,7 +57,7 @@ export default function OrdersScreen() {
             <Text style={styles.attentionCount}>{actionCount}</Text>
           </View>
           {consultations.map(request => <Pressable key={request.id} accessibilityRole="button" accessibilityLabel={`Respond to consultation: ${request.purpose}`} onPress={() => router.setParams({ view: 'consultations' })} style={styles.attentionRow}>
-            <NyIcon name="calendar-days" size={18} color={statusColours.danger.ink} /><View style={{ flex: 1 }}><Text style={styles.attentionRowTitle}>{request.purpose}</Text><Text style={styles.attentionCopy}>Choose a consultation time</Text></View><NyIcon name="chevron-right" color={statusColours.danger.ink} size={18} />
+            <NyIcon name="calendar-days" size={18} color={statusColours.danger.ink} /><View style={{ flex: 1 }}><Text style={styles.attentionRowTitle}>{request.purpose}</Text><Text style={styles.attentionCopy}>Choose an appointment time</Text></View><NyIcon name="chevron-right" color={statusColours.danger.ink} size={18} />
           </Pressable>)}
           {actionOrders.map(order => <Pressable key={order.reference} accessibilityRole="button" onPress={() => router.push({ pathname: '/orders/[reference]', params: { reference: order.reference } })} style={styles.attentionRow}>
             <NyIcon name="order" size={18} color={statusColours.danger.ink} /><View style={{ flex: 1 }}><Text style={styles.attentionRowTitle}>{order.reference}</Text><Text style={styles.attentionCopy}>{order.client_action}</Text></View><NyIcon name="chevron-right" color={statusColours.danger.ink} size={18} />
@@ -90,14 +90,14 @@ export default function OrdersScreen() {
           </Pressable>)}
         </View> : view === 'consultations' ? (
           <View style={styles.consultations}>
-            {unavailable ? <Text accessibilityRole="alert" style={styles.consultationNote}>Consultation updates are unavailable. Pull down to retry.</Text> : null}
+            {unavailable ? <Text accessibilityRole="alert" style={styles.consultationNote}>Appointment updates are unavailable. Pull down to retry.</Text> : null}
             {needsResponse ? <Text style={styles.consultationNote}>The Atelier has suggested new times. Choose one or ask for other options.</Text> : null}
             {requests.length ? <>
               {[...requests].sort((a, b) => Number(b.status === 'awaiting-customer') - Number(a.status === 'awaiting-customer')).map((request) => <ConsultationCard key={request.id} request={request} />)}
             </> : (
               <View style={styles.empty}>
-                <Text style={styles.emptyTitle}>No consultation requests yet</Text>
-                <Text style={styles.emptyText}>Book a consultation from Atelier to see your request here.</Text>
+                <Text style={styles.emptyTitle}>No appointment requests yet</Text>
+                <Text style={styles.emptyText}>Book an appointment from Atelier to see your request here.</Text>
               </View>
             )}
           </View>

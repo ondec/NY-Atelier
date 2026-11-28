@@ -10,6 +10,12 @@ return [
     // Where that page sends the customer. In Expo Go use exp://<computer IP>:8081/--/sign-in.
     'app_link_base' => env('CUSTOMER_SIGN_IN_LINK_BASE', 'nyatelier://sign-in'),
 
+    // The public website, for links in customer emails (appointment replies). On the Render preview the
+    // website lives under /home on the service's own address.
+    'website_url' => rtrim((string) (env('NY_CUSTOMER_WEBSITE_URL')
+        ?: (env('NY_PUBLIC_SITES_PREVIEW_PATHS') === '1' && env('RENDER_EXTERNAL_URL') ? rtrim((string) env('RENDER_EXTERNAL_URL'), '/').'/home' : null)
+        ?: env('NY_WEBSITE_ORIGIN', 'http://localhost:5173')), '/'),
+
     // Signed-in customers stay signed in on their device for this long.
     'session_days' => (int) env('CUSTOMER_SESSION_DAYS', 60),
 

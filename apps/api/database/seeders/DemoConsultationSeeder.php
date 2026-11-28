@@ -23,7 +23,7 @@ class DemoConsultationSeeder extends Seeder
             ['Couture Experience', 'in-person', 'awaiting-confirmation', 1, '10:00', 'Discuss a handcrafted outfit for an upcoming celebration.'],
             ['Bespoke Tailor-Made Clothing', 'in-person', 'confirmed', 2, '14:00', 'Review suit fabrics, fit and finishing details.'],
             ['Wardrobe Revamping', 'virtual', 'awaiting-customer', 3, '11:00', 'Suggested times have been sent for Ama to choose.'],
-            ['Custom Fabric Selection', 'in-person', 'needs-alternatives', 4, '15:00', 'Ama needs other times to review the fabric selection.'],
+            ['Custom Fabric Selection', 'in-person', 'awaiting-confirmation', 4, '15:00', 'Ama turned down the suggested times; confirm her time or suggest new ones.'],
             ['Personalized Accessories Design', 'virtual', 'awaiting-confirmation', 7, '09:30', 'Explore accessories to complement the new outfit.'],
             ['Consultancy Services', 'virtual', 'confirmed', -3, '12:00', 'Previous consultation about styling and wardrobe planning.'],
         ];

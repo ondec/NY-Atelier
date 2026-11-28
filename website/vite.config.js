@@ -14,9 +14,23 @@ const prefixPublicPaths = () => ({
   },
 });
 
+// The shop's dev server only answers under /shop/, so a bare /shop link gets the slash added.
+const shopSlash = () => ({
+  name: 'ny-shop-slash',
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      const match = req.url?.match(/^\/shop(\?.*)?$/);
+      if (!match) return next();
+      res.statusCode = 302; res.setHeader('Location', `/shop/${match[1] ?? ''}`); res.end();
+    });
+  },
+});
+
 export default defineConfig({
   base,
-  plugins: [react(), prefixPublicPaths()],
-  server: { host: '0.0.0.0', port: 5173, proxy: { '/api': 'http://localhost:8000' } },
+  plugins: [react(), prefixPublicPaths(), shopSlash()],
+  // The shop is its own app (codebase/rtw-store) served inside the website at /shop; locally its dev server
+  // (5174) is passed through here, so open http://localhost:5173/shop. Size charts come from the portal.
+  server: { host: '0.0.0.0', port: 5173, proxy: { '/shop': { target: 'http://localhost:5174', ws: true }, '/api/size-charts': 'http://localhost:3000', '/api/account': 'http://localhost:3000', '/api': 'http://localhost:8000' } },
   preview: { host: '0.0.0.0', port: 4173 },
 });

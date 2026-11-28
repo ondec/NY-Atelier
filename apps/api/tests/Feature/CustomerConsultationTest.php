@@ -82,7 +82,7 @@ class CustomerConsultationTest extends TestCase
         $this->app['auth']->forgetGuards();
         $this->signInStaff();
         $this->patchJson("/api/demo/consultations/$id/staff", [
-            'action' => 'propose', 'version' => 1, 'options' => [['date' => $date, 'time' => '14:00']],
+            'action' => 'propose', 'version' => 1, 'options' => [['date' => $date, 'time' => '14:00'], ['date' => $date, 'time' => '15:00']],
         ])->assertOk()->assertJsonPath('status', 'awaiting-customer');
 
         $this->as($token)->patchJson(self::URL."/$id", ['action' => 'accept', 'version' => 2, 'option' => 0])

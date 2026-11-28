@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\OrderLocation;
 use App\OrderWorkflow;
 use App\StaffAccess;
 use Illuminate\Http\JsonResponse;
@@ -26,8 +27,16 @@ class FrontDeskController extends Controller
             ->whereNull('completed_at')->with(['customer', 'items'])->get()
             ->map(fn (Order $order): array => $this->alert($order, 'returned', $order->returned_from_production_at, $order->production_return_reason));
 
+        $toPackage = Order::query()->where('workflow_stage', 'production_done')->whereNotNull('handed_to_front_desk_at')->whereNull('completed_at')
+            ->with(['customer', 'items'])->get()
+            ->map(fn (Order $order): array => $this->alert($order, 'to_package', $order->handed_to_front_desk_at));
+
+        $delivered = Order::query()->where('workflow_stage', 'delivered')->where('completed_at', '>=', now()->subDays(2))
+            ->with(['customer', 'items'])->get()
+            ->map(fn (Order $order): array => $this->alert($order, 'delivered', $order->completed_at));
+
         return response()->json([
-            'alerts' => $packed->concat($returned)->sortByDesc('arrived_at')->values(),
+            'alerts' => $packed->concat($returned)->concat($toPackage)->concat($delivered)->sortByDesc('arrived_at')->values(),
             'seen_at' => $user->front_desk_seen_at?->toIso8601String(),
         ]);
     }
@@ -72,7 +81,7 @@ class FrontDeskController extends Controller
     private function alert(Order $order, string $kind, mixed $at, ?string $reason = null): array
     {
         return [
-            'reference' => $order->reference, 'kind' => $kind, 'category' => $order->category, 'customer_id' => $order->customer_id,
+            'reference' => $order->reference, 'kind' => $kind, 'category' => $order->category, 'store' => OrderLocation::for($order), 'customer_id' => $order->customer_id,
             'customer_name' => $order->customer->name, 'garments' => $order->items->pluck('garment_name')->values(),
             'fulfilment_method' => $order->fulfilment_method, 'reason' => $reason,
             'arrived_at' => $at ? Carbon::parse($at)->toIso8601String() : null,

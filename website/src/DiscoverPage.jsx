@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
 import { STORY_VIDEOS } from './storyVideos.js';
-import { ArrowRight, ArrowUpRight } from './NyIcons.jsx';
+import { ArrowRight } from './NyIcons.jsx';
 
 const principles = [
   { title: 'Craft', copy: 'The house holds its work to the standard its own team would choose to wear.' },
@@ -132,6 +132,6 @@ export default function DiscoverPage() {
 
     <section className="discover-team section"><div className="container"><div className="discover-section-head"><Kicker>OUR TEAM</Kicker><h2>Every detail has <em>a person behind it.</em></h2></div><div className="discover-team-grid">{team.map(person => <article key={person.name}><span className="discover-initials" aria-hidden="true">{person.initials}</span><p className="eyebrow">{person.role}</p><h3>{person.name}</h3><p>{person.copy}</p></article>)}</div></div></section>
 
-    <section className="discover-atelier section"><div className="container"><div className="discover-section-head"><Kicker>THE ATELIER</Kicker><h2>From our workshop <em>to your wardrobe.</em></h2><p>In the Accra workshop, the team measures carefully, cuts by hand and checks each piece before it leaves the house.</p></div><div className="discover-work-grid">{work.map((item, index) => <article key={item.name}><span>{String(index + 1).padStart(2, '0')}</span><h3>{item.name}</h3><p>{item.copy}</p></article>)}</div><div className="discover-actions"><Link to="/services" className="button button-outline">EXPLORE SERVICES <ArrowRight size={17}/></Link><Link to="/rtw-store" className="button button-outline">VISIT THE RTW STORE <ArrowUpRight size={17}/></Link></div></div></section>
+    <section className="discover-atelier section"><div className="container"><div className="discover-section-head"><Kicker>THE ATELIER</Kicker><h2>From our workshop <em>to your wardrobe.</em></h2><p>In the Accra workshop, the team measures carefully, cuts by hand and checks each piece before it leaves the house.</p></div><div className="discover-work-grid">{work.map((item, index) => <article key={item.name}><span>{String(index + 1).padStart(2, '0')}</span><h3>{item.name}</h3><p>{item.copy}</p></article>)}</div><div className="discover-actions"><Link to="/services" className="button button-outline">EXPLORE SERVICES <ArrowRight size={17}/></Link><Link to="/rtw-store" className="button button-outline">VISIT THE SHOP <ArrowRight size={17}/></Link></div></div></section>
   </main>;
 }

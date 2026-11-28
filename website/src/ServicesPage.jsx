@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 import { ArrowDown, ArrowRight } from './NyIcons.jsx';
 import { STORY_VIDEOS } from './storyVideos.js';
+import { headingParts, heroLink, useSiteHero } from './siteHeroes.jsx';
+const RTW_STORE_URL = `${import.meta.env.BASE_URL}shop`;
 
 /** The three services the house leads with, each shown as a large editorial feature. */
 const SIGNATURE = [
@@ -47,7 +49,7 @@ const ALSO = [
 ];
 
 const STEPS = [
-  { name: 'Consultation', copy: 'We listen first: the occasion, your style and how you want to feel.' },
+  { name: 'Appointment', copy: 'We listen first: the occasion, your style and how you want to feel.' },
   { name: 'Measurements & concept', copy: 'Measurements are taken by hand and the design, cloth and details are agreed.' },
   { name: 'Fittings', copy: 'The garment is fitted on you and refined until it sits perfectly.' },
   { name: 'Finishing & delivery', copy: 'Final finishing in the Accra workshop, then the piece is ready for you.' },
@@ -60,7 +62,7 @@ const pad = n => String(n).padStart(2, '0');
  * Wide screens enlarge each portrait film to the full width and centre it on that film's focal point;
  * phones see the film whole. Pauses off screen, and does not autoplay when reduced motion is requested.
  */
-function HeroFilms() {
+function HeroFilms({ films = STORY_VIDEOS }) {
   const [index, setIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [playing, setPlaying] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -95,16 +97,16 @@ function HeroFilms() {
     return () => { cancelAnimationFrame(frameId); };
   }, [index, playing, visible]);
 
-  const wrap = n => (n + STORY_VIDEOS.length) % STORY_VIDEOS.length;
+  const wrap = n => (n + films.length) % films.length;
   function show(next) { setIndex(wrap(next)); setProgress(0); }
   function step(by) { setIndex(current => wrap(current + by)); setProgress(0); }
-  const film = STORY_VIDEOS[index];
+  const film = films[index];
 
   return <div className="svc-hero-media" ref={frame}>
     <video key={film.src} ref={video} className="svc-hero-video" src={film.src} style={{ '--focus': film.focus }} muted playsInline preload="auto" onEnded={() => { step(1); }} aria-hidden="true"/>
     <div className="svc-hero-controls">
-      <div className="svc-hero-bars">{STORY_VIDEOS.map((item, i) => <button key={item.src} type="button" onClick={() => { show(i); }} aria-label={`Play film ${i + 1} of ${STORY_VIDEOS.length}`} aria-current={i === index ? 'true' : undefined}><span style={{ transform: `scaleX(${i < index ? 1 : i === index ? progress : 0})` }}/></button>)}</div>
-      <span className="svc-hero-count" aria-live="polite">{pad(index + 1)} / {pad(STORY_VIDEOS.length)}</span>
+      <div className="svc-hero-bars">{films.map((item, i) => <button key={item.src} type="button" onClick={() => { show(i); }} aria-label={`Play film ${i + 1} of ${films.length}`} aria-current={i === index ? 'true' : undefined}><span style={{ transform: `scaleX(${i < index ? 1 : i === index ? progress : 0})` }}/></button>)}</div>
+      <span className="svc-hero-count" aria-live="polite">{pad(index + 1)} / {pad(films.length)}</span>
       <div className="svc-hero-buttons">
         <button type="button" className="svc-hero-toggle" onClick={() => { step(-1); }} aria-label="Previous film"><ChevronLeft size={17}/></button>
         <button type="button" className="svc-hero-toggle" onClick={() => { setPlaying(value => !value); }} aria-label={playing ? 'Pause background film' : 'Play background film'}>{playing ? <Pause size={15}/> : <Play size={15}/>}</button>
@@ -114,20 +116,43 @@ function HeroFilms() {
   </div>;
 }
 
+/** A custom Services hero made of photos (Site heroes in the catalogue manager): one stays still, more cross-fade. */
+function HeroPhotos({ photos }) {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    if (photos.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+    const timer = window.setTimeout(() => { setIndex(current => (current + 1) % photos.length); }, 6000);
+    return () => { window.clearTimeout(timer); };
+  }, [index, photos.length]);
+  return <div className="svc-hero-media">{photos.map((src, i) => <img key={`${src}-${i}`} className={`svc-hero-photo ${i === index ? 'is-active' : ''}`} src={src} alt="" loading={i === 0 ? 'eager' : 'lazy'}/>)}</div>;
+}
+
 export default function ServicesPage() {
+  const site = useSiteHero('services');
+  const custom = site.hero;
+  const heading = headingParts(custom?.title);
+  const link = custom?.button ? heroLink(custom.button.to, RTW_STORE_URL) : null;
   return <main id="main" className="svc-page">
     <section className="svc-hero">
-      <HeroFilms/>
+      {!site.ready ? <div className="svc-hero-media"/> : custom?.style === 'video' ? <HeroFilms films={custom.media.map(src => ({ src, focus: STORY_VIDEOS.find(film => src.endsWith(film.src))?.focus ?? '40%' }))}/> : custom ? <HeroPhotos photos={custom.media}/> : <HeroFilms/>}
       <div className="svc-hero-shade"/>
-      <div className="container svc-hero-content">
+      {custom ? <div className="container svc-hero-content">
+        {custom.eyebrow && <p className="eyebrow">{custom.eyebrow}</p>}
+        <h1>{heading.lead} <em>{heading.accent}</em></h1>
+        {custom.text && <p>{custom.text}</p>}
+        <div className="svc-hero-actions">
+          {link && (link.href ? <a href={link.href} className="button svc-button-light">{custom.button.label} <ArrowRight size={17}/></a> : <Link to={link.to} className="button svc-button-light">{custom.button.label} <ArrowRight size={17}/></Link>)}
+          <a href="#signature" className="button button-outline">EXPLORE SERVICES <ArrowDown size={17}/></a>
+        </div>
+      </div> : <div className="container svc-hero-content">
         <p className="eyebrow">THE NY SERVICES</p>
         <h1>Services with <em>intention.</em></h1>
         <p>Exclusive fashion services for discerning clients. From bespoke tailoring to the finishing touch, the NY experience begins with understanding you.</p>
         <div className="svc-hero-actions">
-          <Link to="/consultation" className="button svc-button-light">BOOK A CONSULTATION <ArrowRight size={17}/></Link>
+          <Link to="/appointment" className="button svc-button-light">BOOK AN APPOINTMENT <ArrowRight size={17}/></Link>
           <a href="#signature" className="button button-outline">EXPLORE SERVICES <ArrowDown size={17}/></a>
         </div>
-      </div>
+      </div>}
     </section>
 
     <div className="svc-after-hero">
@@ -151,7 +176,7 @@ export default function ServicesPage() {
           <p className="svc-lead">{service.lead}</p>
           <p>{service.copy}</p>
           <ul className="svc-includes">{service.includes.map(item => <li key={item}>{item}</li>)}</ul>
-          <Link to={`/consultation?service=${service.id}`} className="svc-link">ENQUIRE ABOUT {service.name.toUpperCase()} <ArrowRight size={16}/></Link>
+          <Link to={`/appointment?service=${service.id}`} className="svc-link">ENQUIRE ABOUT {service.name.toUpperCase()} <ArrowRight size={16}/></Link>
         </div>
       </article>)}
     </section>
@@ -160,7 +185,7 @@ export default function ServicesPage() {
       <div className="container">
         <div className="svc-also-head"><p className="eyebrow">THE ATELIER ALSO OFFERS</p><h2>Every detail, <em>considered.</em></h2></div>
         <div className="svc-also-grid">
-          {ALSO.map((service, index) => <Link key={service.name} to={`/consultation?service=${service.id}`} className="svc-card" aria-label={`Enquire about ${service.name}`}>
+          {ALSO.map((service, index) => <Link key={service.name} to={`/appointment?service=${service.id}`} className="svc-card" aria-label={`Enquire about ${service.name}`}>
             <span className="svc-card-image"><img src={service.image} alt={service.alt} loading="lazy" style={{ objectPosition: service.position }}/></span>
             <span className="svc-card-number">{pad(index + SIGNATURE.length + 1)}</span>
             <span className="svc-card-title">{service.name}<ArrowRight size={18}/></span>
@@ -175,7 +200,7 @@ export default function ServicesPage() {
       <ol className="svc-steps">{STEPS.map((step, index) => <li key={step.name}><span>{pad(index + 1)}</span><h3>{step.name}</h3><p>{step.copy}</p></li>)}</ol>
     </section>
 
-    <section className="cta-strip"><p className="eyebrow">YOUR NEXT STEP</p><h2>Begin with a <em>conversation.</em></h2><Link className="button button-outline" to="/consultation">REQUEST A CONSULTATION<ArrowRight size={17}/></Link></section>
+    <section className="cta-strip"><p className="eyebrow">YOUR NEXT STEP</p><h2>Begin with a <em>conversation.</em></h2><Link className="button button-outline" to="/appointment">REQUEST AN APPOINTMENT<ArrowRight size={17}/></Link></section>
     </div>
   </main>;
 }

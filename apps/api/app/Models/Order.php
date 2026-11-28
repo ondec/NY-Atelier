@@ -15,7 +15,7 @@ class Order extends Model
         'workflow_stage', 'workflow_version', 'handover_instructions', 'courier_name', 'tracking_reference',
         'delivery_recipient_name', 'delivery_phone', 'delivery_address', 'delivery_area', 'delivery_gps_code', 'delivery_directions', 'delivery_latitude', 'delivery_longitude',
         'specifications', 'assigned_tailor_id', 'assigned_at', 'assigned_courier_id', 'courier_assigned_at', 'delivery_zone_id', 'delivery_due_from', 'delivery_due_by', 'created_by_id',
-        'sent_to_production_at', 'sent_to_production_by_id', 'returned_from_production_at', 'production_return_reason',
+        'sent_to_production_at', 'sent_to_production_by_id', 'returned_from_production_at', 'production_return_reason', 'handed_to_front_desk_at', 'store',
         'client_action', 'completed_at', 'service_offering', 'consultation_id', 'measurement_id',
     ];
 
@@ -30,6 +30,7 @@ class Order extends Model
             'delivery_due_by' => 'date',
             'sent_to_production_at' => 'datetime',
             'returned_from_production_at' => 'datetime',
+            'handed_to_front_desk_at' => 'datetime',
             'delivery_latitude' => 'float',
             'delivery_longitude' => 'float',
             'workflow_version' => 'integer',

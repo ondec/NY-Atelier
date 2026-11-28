@@ -48,7 +48,7 @@ export default function StaffPasswordRecovery({mode, destination}: {mode: 'forgo
 
   return <main className="staff-sign-in staff-recovery"><section className="staff-sign-in-card">
     <div className="staff-sign-in-brand"><Image src="/ny-mark.svg" alt="" width={52} height={52}/><span>NY ATELIER<small>STAFF ACCESS</small></span></div>
-    <p className="eyebrow">{destination === 'studio' ? 'NY STUDIO' : 'NY OFFICE'}</p>
+    <p className="eyebrow">NY TEAM</p>
     <h1>{complete ? 'You’re all set.' : mode === 'forgot' ? 'Forgot password?' : 'A fresh start.'}</h1>
     {mode === 'forgot' ? <p>Enter your staff email and we’ll send you a link to choose a new password.</p> : !complete && <p>Choose a new password for your NY Atelier staff account.</p>}
     {message && <p className="staff-recovery-status" role="status">{message}</p>}

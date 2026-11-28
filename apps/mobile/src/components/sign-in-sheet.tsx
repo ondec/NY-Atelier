@@ -23,7 +23,7 @@ const reasonCopy: Record<SignInReason, { title: string; text: string }> = {
   checkout: { title: 'Sign in to check out', text: 'We use your email or phone to link this order to you and keep you updated.' },
   orders: { title: 'Sign in to see your orders', text: 'Follow every piece from first step to final handover.' },
   account: { title: 'Sign in to NY Atelier', text: 'Use your email and password, or we can send you a one-time code.' },
-  booking: { title: 'Sign in to book', text: 'We link your consultation to your account so you can follow it here.' },
+  booking: { title: 'Sign in to book', text: 'We link your appointment to your account so you can follow it here.' },
   link: { title: 'Signing you in', text: 'Confirming your sign-in link.' },
 };
 

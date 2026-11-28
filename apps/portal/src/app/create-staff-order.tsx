@@ -160,8 +160,8 @@ function StaffOrderForm({ category, consultationId, preferredCustomerId, onCreat
             {custom && <label>Service offering<select name="offering" required defaultValue={offering ?? ""}>
               <option value="" disabled>Select an offering</option>{Object.entries(options.offerings).map(([id, title]) => <option key={id} value={id}>{title}</option>)}
             </select></label>}
-            {custom && canLinkConsultation && <label className="inventory-wide-field">Confirmed consultation (optional)<select name="consultation" value={selected?.id ?? ""} onChange={(event) => setConsultation(event.target.value)}>
-              <option value="">No linked consultation</option>{options.consultations.map((item) => <option key={item.id} value={item.id}>{item.purpose} · {orderDate(item.confirmedDate)} · {item.confirmedTime} Accra</option>)}
+            {custom && canLinkConsultation && <label className="inventory-wide-field">Confirmed appointment (optional)<select name="consultation" value={selected?.id ?? ""} onChange={(event) => setConsultation(event.target.value)}>
+              <option value="">No linked appointment</option>{options.consultations.map((item) => <option key={item.id} value={item.id}>{item.purpose} · {orderDate(item.confirmedDate)} · {item.confirmedTime} Accra</option>)}
             </select></label>}
             {measurements.length > 0 && <label className="inventory-wide-field">Fitting used (optional)<select key={selectedCustomerId} name="measurement" defaultValue={selectedId === preferredCustomerId && measurements.some((item) => item.id === preferredMeasurementId) ? preferredMeasurementId : ""}>
               <option value="">No fitting linked</option>{measurements.map((item, index) => <option key={item.id} value={item.id}>{orderDate(item.measured_on)} · Fitting #{item.id}{index === 0 ? " · Current" : ""}</option>)}
@@ -171,8 +171,8 @@ function StaffOrderForm({ category, consultationId, preferredCustomerId, onCreat
             <label className="inventory-wide-field">Specifications for production (optional)<textarea name="specifications" rows={4} maxLength={3000} placeholder="Fabric, colour, cut, lining, buttons, finishing — what the tailor needs to know. Not shown to the customer." /></label>
             <label className="inventory-wide-field">{requireNotes ? "Agreed adjustments" : "Customer-facing notes (optional)"}<textarea name="notes" rows={3} required={requireNotes} maxLength={garmentContext ? Math.max(1, 998 - garmentContext.length) : 1000} placeholder={requireNotes ? "Describe the adjustments agreed during the try-on." : "Record any agreed details the client should see."} /></label>
           </div>
-          {consultationId && !selected && consultation === consultationId && <p role="status" className="consultation-muted">The original consultation is unavailable or already linked. Choose another or create a standalone order.</p>}
-          {selected && <label className="collection-check"><input key={selected.id} name="held" type="checkbox" required /> This consultation has taken place.</label>}
+          {consultationId && !selected && consultation === consultationId && <p role="status" className="consultation-muted">The original appointment is unavailable or already linked. Choose another or create a standalone order.</p>}
+          {selected && <label className="collection-check"><input key={selected.id} name="held" type="checkbox" required /> This appointment has taken place.</label>}
           {fulfilment === "Delivery" && <fieldset className="inventory-size-entries delivery-details">
             <legend>Delivery details</legend>
             <div className="inventory-form-grid">

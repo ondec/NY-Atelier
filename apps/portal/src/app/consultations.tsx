@@ -1,5 +1,6 @@
 "use client";
 
+import FilterMenu from "./filter-menu";
 import StatusBadge from "./status-badge";
 
 import Link from "next/link";
@@ -89,7 +90,7 @@ function ConsultationActions({ row }: { row: StaffConsultation }) {
   return <form onSubmit={submit}>
     {optionCount > 0 && <fieldset className="inventory-size-entries">
       <legend>Suggested times in Accra</legend>
-      <p className="consultation-muted">Offer up to three options. The customer can choose one or ask for other times.</p>
+      <p className="consultation-muted">Offer two or three times. The customer picks one; if none suit them, the request comes back here as a new request.</p>
       {Array.from({ length: optionCount }, (_, index) => (
         <div className="inventory-form-grid consultation-slot" key={index}>
           <label>Date {index + 1}<input type="date" name={`date-${index}`} required /></label>
@@ -97,20 +98,23 @@ function ConsultationActions({ row }: { row: StaffConsultation }) {
         </div>
       ))}
       {optionCount < 3 && <button className="inventory-quiet-button" type="button" onClick={() => setOptionCount(optionCount + 1)}>Add another time</button>}
-      {optionCount > 1 && <button className="inventory-quiet-button" type="button" onClick={() => setOptionCount(optionCount - 1)}>Remove last time</button>}
+      {optionCount > 2 && <button className="inventory-quiet-button" type="button" onClick={() => setOptionCount(optionCount - 1)}>Remove last time</button>}
     </fieldset>}
     <div className="inventory-actions consultation-actions">
       {optionCount > 0 ? <>
         <button className="inventory-quiet-button" type="button" disabled={busy} onClick={() => setOptionCount(0)}>Cancel</button>
         <button className="create-bill-button" type="submit" value="propose" disabled={busy}>Send suggested times</button>
       </> : <>
-        {row.source !== "website" && <button className="inventory-quiet-button" type="button" disabled={busy} onClick={() => setOptionCount(1)}>Suggest new times</button>}
-        {row.status === "awaiting-confirmation" && <button className="create-bill-button" type="submit" value="confirm" disabled={busy}>Confirm requested time</button>}
+        <button className="inventory-quiet-button" type="button" disabled={busy} onClick={() => setOptionCount(2)}>Suggest new times</button>
+        {!requestedPassed(row) && <button className="create-bill-button" type="submit" value="confirm" disabled={busy}>Confirm requested time</button>}
       </>}
     </div>
     {error && <p role="alert" className="consultation-muted">{error}</p>}
   </form>;
 }
+
+/** The customer's requested time is already behind us (times are Accra, which is UTC), so it can't be confirmed. */
+const requestedPassed = (row: StaffConsultation) => new Date(`${row.preferredDate}T${row.preferredTime}:00Z`).getTime() <= Date.now();
 
 const emptyFilters: ConsultationFilters = { search: "", status: "", method: "", service: "", from: "", to: "" };
 const views = [{ id: "list", label: "List", Icon: List }, { id: "kanban", label: "Kanban", Icon: Columns3 }, { id: "calendar", label: "Calendar", Icon: CalendarDays }, { id: "gantt", label: "Gantt", Icon: ChartGantt }] as const;
@@ -120,7 +124,7 @@ const timeLabel = (time: string) => new Intl.DateTimeFormat("en-GH", { hour: "nu
 function ConsultationDetails({ row, onClose }: { row: StaffConsultation; onClose: () => void }) {
   return <InventoryDrawer label={`Consultation: ${row.purpose}`} onClose={onClose}>
     <div className="consultation-detail">
-      <div className="consultation-heading"><div><div className="eyebrow">CONSULTATION DETAILS</div><h2>{row.purpose}</h2></div><button type="button" className="icon-button" aria-label="Close consultation details" onClick={onClose}><X size={20} /></button></div>
+      <div className="consultation-heading"><div><div className="eyebrow">APPOINTMENT DETAILS</div><h2>{row.purpose}</h2></div><button type="button" className="icon-button" aria-label="Close appointment details" onClick={onClose}><X size={20} /></button></div>
       <StatusBadge status={statusLabels[row.status]} />
       <dl className="order-detail-facts">
         <div><dt>Customer</dt><dd>{row.customer_id ? <Link prefetch={false} className="text-link" href={`/?section=customers&customer=${row.customer_id}`}>{row.customer_name}</Link> : row.customer_name ?? "Customer not linked"}</dd></div>
@@ -134,11 +138,11 @@ function ConsultationDetails({ row, onClose }: { row: StaffConsultation; onClose
       </dl>
       <h3>Customer notes</h3><p className="consultation-muted">{row.notes || "No notes provided."}</p>
       {row.status === "awaiting-customer" && <><h3>Suggested times · awaiting customer</h3><ul className="consultation-muted">{row.options.map(option => <li key={`${option.date} ${option.time}`}>{slotLabel(option.date, option.time)} (Accra)</li>)}</ul></>}
-      {row.status === "confirmed" && <div className="consultation-actions">
-        <p className="consultation-muted">{row.order_reference ? "This consultation is linked to an order." : "Once the consultation has taken place, create an order with the agreed details."}</p>
-        {row.order_reference ? <Link prefetch={false} className="inventory-quiet-button" href={`/?section=orders&order=${encodeURIComponent(row.order_reference)}`}>View linked order</Link> : <Link prefetch={false} className="inventory-quiet-button" href={`/?section=atelier&consultation=${encodeURIComponent(row.id)}`}>Create custom order</Link>}
+      {row.status === "confirmed" && row.order_reference && <div className="consultation-actions">
+        {/* Orders are created after the appointment, from All orders, in the customer's name. */}
+        <p className="consultation-muted">This appointment is linked to an order.</p><Link prefetch={false} className="inventory-quiet-button" href={`/?section=orders&order=${encodeURIComponent(row.order_reference)}`}>View linked order</Link>
       </div>}
-      {(row.status === "awaiting-confirmation" || row.status === "needs-alternatives") && <><h3>Respond to this request</h3><p className="consultation-muted">{row.source === "website" ? "Confirm the requested time here, then contact the visitor directly. Office does not send a website confirmation yet." : "Confirm the requested time or offer alternatives for the customer to review in the app."}</p><ConsultationActions key={`${row.id}-${row.version}`} row={row} /></>}
+      {row.status === "awaiting-confirmation" && <><h3>Respond to this request</h3><p className="consultation-muted">{requestedPassed(row) ? `The requested time (${slotLabel(row.preferredDate, row.preferredTime)}) has passed. Suggest new times.` : "Confirm the requested time or suggest new times. The customer is emailed either way."}</p><ConsultationActions key={`${row.id}-${row.version}`} row={row} /></>}
     </div>
   </InventoryDrawer>;
 }
@@ -189,30 +193,33 @@ export default function Consultations({ selectedId }: { selectedId?: string }) {
   function close() { setDismissedId(selectedId); setOpenedId(undefined); }
   return <>
     <div className="eyebrow">CUSTOMER WORKSPACE</div>
-    <div className="page-heading"><div><h1>Consultations.</h1><p>Review requests, agree a time and keep the customer informed.</p></div></div>
-    {unavailable && <p className="inventory-message" role="alert">Consultations are unavailable. This page will retry automatically.</p>}
+    <div className="page-heading"><div><h1>Appointments.</h1><p>Review requests, agree a time and keep the customer informed.</p></div></div>
+    {unavailable && <p className="inventory-message" role="alert">Appointments are unavailable. This page will retry automatically.</p>}
     <section className="panel full-panel order-desk consultation-desk">
-      <div className="panel-heading"><div><div className="eyebrow">CONSULTATION DESK</div><h2>Requests <span className="heading-count" aria-live="polite">{loading ? "—" : visible.length}</span></h2></div><div className="order-desk-views" role="group" aria-label="Consultation view">{views.map(({ id, label, Icon }) => <button type="button" key={id} aria-pressed={view === id} onClick={() => setView(id)}><Icon size={16} aria-hidden="true" />{label}</button>)}</div></div>
+      <div className="panel-heading"><div><div className="eyebrow">APPOINTMENT DESK</div><h2>Requests <span className="heading-count" aria-live="polite">{loading ? "—" : visible.length}</span></h2></div><div className="order-desk-views" role="group" aria-label="Appointment view">{views.map(({ id, label, Icon }) => <button type="button" key={id} aria-pressed={view === id} onClick={() => setView(id)}><Icon size={16} aria-hidden="true" />{label}</button>)}</div></div>
       <div className="inventory-toolbar order-desk-toolbar consultation-toolbar">
-        <label className="inventory-search"><Search size={17} aria-hidden="true" /><span className="sr-only">Search consultations</span><input type="search" placeholder="Search customer, service or notes" value={filters.search} onChange={event => updateFilter("search", event.target.value)} /></label>
-        <select aria-label="Filter consultation status" value={filters.status} onChange={event => updateFilter("status", event.target.value)}><option value="">All statuses</option>{Object.entries(statusLabels).filter(([key]) => key !== "local-draft").map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
-        <select aria-label="Filter meeting type" value={filters.method} onChange={event => updateFilter("method", event.target.value)}><option value="">All meeting types</option><option value="in-person">In person</option><option value="virtual">Virtual</option></select>
-        <select aria-label="Filter consultation service" value={filters.service} onChange={event => updateFilter("service", event.target.value)}><option value="">All services</option>{services.map(service => <option key={service}>{service}</option>)}</select>
-        <div className="consultation-date-range"><label className="consultation-date-filter">From<input type="date" aria-label="Consultations from date" value={filters.from} onInput={event => updateFilter("from", event.currentTarget.value)} onChange={event => updateFilter("from", event.target.value)} /></label>
-        <label className="consultation-date-filter">To<input type="date" aria-label="Consultations to date" value={filters.to} min={filters.from || undefined} onInput={event => updateFilter("to", event.currentTarget.value)} onChange={event => updateFilter("to", event.target.value)} /></label></div>
-        {filtered && <button type="button" className="inventory-quiet-button" onClick={() => setFilters(emptyFilters)}>Clear filters</button>}
+        <label className="inventory-search"><Search size={17} aria-hidden="true" /><span className="sr-only">Search appointments</span><input type="search" placeholder="Search customer, service or notes" value={filters.search} onChange={event => updateFilter("search", event.target.value)} /></label>
+        <FilterMenu count={[filters.status, filters.method, filters.service, filters.from || filters.to].filter(Boolean).length} canClear={filtered} onClear={() => setFilters(emptyFilters)}>
+          <label>Status<select aria-label="Filter appointment status" value={filters.status} onChange={event => updateFilter("status", event.target.value)}><option value="">All statuses</option>{Object.entries(statusLabels).filter(([key]) => key !== "local-draft" && key !== "needs-alternatives").map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+          <label>Meeting type<select aria-label="Filter meeting type" value={filters.method} onChange={event => updateFilter("method", event.target.value)}><option value="">All meeting types</option><option value="in-person">In person</option><option value="virtual">Virtual</option></select></label>
+          <label>Service<select aria-label="Filter appointment service" value={filters.service} onChange={event => updateFilter("service", event.target.value)}><option value="">All services</option>{services.map(service => <option key={service}>{service}</option>)}</select></label>
+          <div className="order-filter-dates">
+            <label>From<input type="date" aria-label="Appointments from date" value={filters.from} onInput={event => updateFilter("from", event.currentTarget.value)} onChange={event => updateFilter("from", event.target.value)} /></label>
+            <label>To<input type="date" aria-label="Appointments to date" value={filters.to} min={filters.from || undefined} onInput={event => updateFilter("to", event.currentTarget.value)} onChange={event => updateFilter("to", event.target.value)} /></label>
+          </div>
+        </FilterMenu>
       </div>
       {invalidRange && <p className="consultation-filter-note" role="alert">Choose an end date on or after the start date.</p>}
       <p className="consultation-filter-note">All times are in Accra. Open a request to review details, confirm or suggest times.</p>
-      {loading ? <p className="empty-state" role="status">Loading consultations…</p> : !rows.length ? <p className="empty-state">{unavailable ? "Requests could not be loaded." : "No requests yet. Consultations from the customer app will appear here."}</p> : <>
-        {!visible.length && <p className="empty-state">No consultations match these filters.</p>}
+      {loading ? <p className="empty-state" role="status">Loading appointments…</p> : !rows.length ? <p className="empty-state">{unavailable ? "Requests could not be loaded." : "No requests yet. Appointments from the customer app will appear here."}</p> : <>
+        {!visible.length && <p className="empty-state">No appointments match these filters.</p>}
         {view === "list" && visible.length > 0 && <div className="table-wrap"><table className="order-table consultation-table"><thead><tr><th>Customer</th><th>Service</th><th>Date & time</th><th>Meeting</th><th>Status</th><th><span className="sr-only">Details</span></th></tr></thead><tbody>{visible.map(row => <tr key={row.id}>
           <td>{row.customer_id ? <Link prefetch={false} className="text-link" href={`/?section=customers&customer=${row.customer_id}`}>{row.customer_name}</Link> : row.customer_name ?? "Customer not linked"}</td>
           <td><button type="button" className="order-reference-button text-link" onClick={() => open(row.id)}>{row.purpose}</button></td>
           <td>{consultationSlots(row).map(slot => <div className="consultation-table-slot" key={`${slot.date} ${slot.time}`}><strong>{dateLabel(slot.date)} · {timeLabel(slot.time)}</strong><small>{slot.label}</small></div>)}</td>
           <td>{row.method === "in-person" ? "In person" : "Virtual"}</td><td><StatusBadge status={statusLabels[row.status]} /></td><td><button type="button" className="inventory-quiet-button" aria-label={`View consultation: ${row.purpose}`} onClick={() => open(row.id)}>View request</button></td>
         </tr>)}</tbody></table></div>}
-        {view === "kanban" && <div className="order-board" aria-label="Consultations grouped by status">{Object.entries(statusLabels).filter(([key]) => key !== "local-draft" || visible.some(row => row.status === key)).map(([status, label]) => {
+        {view === "kanban" && <div className="order-board" aria-label="Appointments grouped by status">{Object.entries(statusLabels).filter(([key]) => key !== "needs-alternatives").filter(([key]) => key !== "local-draft" || visible.some(row => row.status === key)).map(([status, label]) => {
           const cards = visible.filter(row => row.status === status);
           return <section className="order-board-column" aria-label={label} data-tone={statusTone(label)} key={status}><h3>{label}<span>{cards.length}</span></h3>{!cards.length && <p className="consultation-muted">No requests</p>}{cards.map(row => <button type="button" className="order-board-card" key={row.id} aria-label={`View consultation: ${row.purpose}`} onClick={() => open(row.id)}><strong>{row.purpose}</strong><span>{row.customer_name ?? "Customer not linked"}</span><span>{row.method === "in-person" ? "In person" : "Virtual"}</span>{consultationSlots(row).map(slot => <small key={`${slot.date} ${slot.time}`}>{slot.label} · {dateLabel(slot.date)} · {timeLabel(slot.time)}</small>)}</button>)}</section>;
         })}</div>}

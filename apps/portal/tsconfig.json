@@ -42,7 +42,9 @@
     ".next-staff-test/types/**/*.ts",
     ".next-staff-test/dev/types/**/*.ts",
     ".next-render-check/types/**/*.ts",
-    ".next-render-check/dev/types/**/*.ts"
+    ".next-render-check/dev/types/**/*.ts",
+    ".next-cdn-test/types/**/*.ts",
+    ".next-cdn-test/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

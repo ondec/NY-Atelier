@@ -17,6 +17,14 @@ use Throwable;
  */
 class OrderAlerts
 {
+    /** @return list<string> The store's own front-desk inbox, else the shared one. */
+    private static function frontDesk(Order $order): array
+    {
+        $key = OrderLocation::for($order);
+
+        return array_values(array_filter([config("order_workflows.stores.{$key}.email") ?: config('order_workflows.front_desk_email')]));
+    }
+
     public static function sentToProduction(Order $order): void
     {
         $managers = User::query()->where('staff_role', 'production')->where('staff_active', true)->whereNotNull('email')->pluck('email')->all();
@@ -27,14 +35,34 @@ class OrderAlerts
 
     public static function backToFrontDesk(Order $order): void
     {
-        self::send(array_filter([config('order_workflows.front_desk_email')]), $order, 'Back from production', 'Packed and ready for handover.',
+        self::send(self::frontDesk($order), $order, 'Back from production', 'Packed and ready for handover.',
             'Production has finished and packed this order. Arrange the collection or delivery with the customer.',
             config('staff.portal_url').'/showroom?view=fittings&customer='.$order->customer_id, 'Open in NY Studio');
     }
 
+    /** A packaged delivery order no courier has yet: every active courier is told it is waiting at the store. */
+    public static function readyForCourier(Order $order): void
+    {
+        if ($order->fulfilment_method !== 'Delivery' || $order->assigned_courier_id !== null) {
+            return;
+        }
+        $store = OrderLocation::store($order);
+        $couriers = User::query()->where('staff_role', 'courier')->where('staff_active', true)->whereNotNull('email')->pluck('email')->all();
+        self::send($couriers, $order, 'Ready for pick-up', "Waiting at the {$store['name']}.",
+            "This order is packed and ready. Collect it from the {$store['name']} ({$store['address']}) and deliver it.",
+            config('staff.portal_url').'/deliveries', 'Open Deliveries');
+    }
+
+    public static function toPackage(Order $order): void
+    {
+        self::send(self::frontDesk($order), $order, 'To package', 'Ready to package for handover.',
+            'Production has finished this order and sent it to reception unpackaged. Package it, then arrange the collection or delivery.',
+            config('staff.portal_url').'/showroom?view=orders', 'Open in NY Studio');
+    }
+
     public static function returnedToFrontDesk(Order $order, string $reason): void
     {
-        self::send(array_filter([config('order_workflows.front_desk_email')]), $order, 'Sent back by production', 'Production needs more from the front desk.',
+        self::send(self::frontDesk($order), $order, 'Sent back by production', 'Production needs more from the front desk.',
             'Production sent this order back: '.$reason,
             config('staff.portal_url').'/showroom?view=fittings&customer='.$order->customer_id, 'Open in NY Studio');
     }

@@ -602,3 +602,19 @@ body:has(.showroom dialog[open]){overflow:hidden}
 .studio-checkout-alteration{display:block;margin-top:4px;color:#a85c32}
 .studio-receipt-alteration{margin:14px 0;padding:12px 14px;border-radius:12px;background:#eef1eb;color:#123c45;font-size:13px;line-height:1.5}
 .studio-receipt-alteration p{margin:4px 0 0;white-space:pre-line}
+.studio-catalogue-filters{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.studio-catalogue-filters .showroom-search{flex:1 1 280px}
+.studio-catalogue-filters .order-filter-menu summary{height:52px;padding:0 20px;background:#fffdf8}
+.studio-catalogue-filters .order-filter-panel label{display:grid;gap:7px;color:#72817c;font-size:11px}
+.studio-catalogue-filters .order-filter-panel select{width:100%;min-height:46px;border:1px solid #dcd8ce;border-radius:99px;padding:10px 15px;background-color:#fffdf8;color:#123c45;font:16px Josefin,Arial,sans-serif}
+.studio-reception-tasks{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:18px}
+.studio-reception-tasks>button:not(.text-link){display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 20px 0 8px;border:1px solid #dcd8ce;border-radius:999px;background:#fffdf8;color:#123c45;font:600 14px Josefin,Arial,sans-serif;cursor:pointer}
+.studio-reception-tasks>button strong{display:grid;place-items:center;min-width:32px;height:32px;padding:0 8px;border-radius:999px;background:#eeeae1;font-size:14px}
+.studio-reception-tasks>button[data-due] strong{background:#123c45;color:#fff}
+.studio-reception-tasks>button[aria-pressed=true]{border-color:#123c45;box-shadow:inset 0 0 0 1px #123c45}
+.studio-new-order{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.studio-new-order .showroom-secondary,.studio-new-order .showroom-primary{width:auto}
+.studio-orders-layout{display:grid;grid-template-columns:minmax(260px,320px) minmax(0,1fr);gap:24px;align-items:start}
+.studio-orders-customers{position:sticky;top:16px;display:grid;gap:12px}
+.studio-orders-customers .showroom-customer-list{max-height:60vh;overflow:auto}
+@media(max-width:900px){.studio-orders-layout{grid-template-columns:1fr}.studio-orders-customers{position:static}}

@@ -57,6 +57,10 @@ class OrderWorkflow
                 : 'This step moves on its own when the front desk sends the order to production.';
         }
         $onProductionDesk = request()->is('api/demo/staff/production/*');
+        if ($next['key'] === 'packaged' && $order->handed_to_front_desk_at !== null) {
+            // Production handed it over unpackaged: reception packs it.
+            return $onProductionDesk ? 'Reception packs this order now.' : null;
+        }
         if (! $next['in_production']) {
             return $onProductionDesk ? 'The front desk records this step.' : null;
         }
@@ -65,6 +69,39 @@ class OrderWorkflow
         }
 
         return request()->user()?->can('staff.production.manage') ? null : 'The production manager records this step in NY Production.';
+    }
+
+    /**
+     * What NY Studio reception must do next: "to_package" (Ready-to-Wear, or handed over unpackaged by production) or
+     * "ready" (packaged and waiting for collection or delivery). Null when reception has nothing to do.
+     */
+    /** Where a delivery order stands with the courier, for the front desk. Null for collection orders. */
+    public static function deliveryStatus(Order $order): ?array
+    {
+        if ($order->fulfilment_method !== 'Delivery' || ! in_array($order->workflow_stage, ['packaged', 'out_for_delivery', 'delivered'], true)) {
+            return null;
+        }
+        $courier = $order->assignedCourier?->name ?? $order->courier_name;
+        [$key, $label] = match ($order->workflow_stage) {
+            'delivered' => ['delivered', 'Delivered'],
+            'out_for_delivery' => ['out', 'Out for delivery'],
+            default => $order->assigned_courier_id ? ['collecting', 'Courier on the way to collect'] : ['waiting', 'Waiting for courier'],
+        };
+
+        return ['key' => $key, 'label' => $label, 'courier' => $order->assigned_courier_id ? $courier : null, 'at' => $order->completed_at?->toIso8601String()];
+    }
+
+    public static function receptionTask(Order $order): ?string
+    {
+        if ($order->completed_at !== null) {
+            return null;
+        }
+        if ($order->workflow_stage === 'packaged') {
+            return 'ready';
+        }
+        $toPackage = $order->category === 'Ready-to-Wear' ? $order->workflow_stage === 'received' : $order->handed_to_front_desk_at !== null && $order->workflow_stage === 'production_done';
+
+        return $toPackage ? 'to_package' : null;
     }
 
     public function describe(Order $order, bool $staff, ?bool $manage = null): array
@@ -81,6 +118,8 @@ class OrderWorkflow
         $next = ! $closed && $index !== false ? ($steps[$index + 1] ?? null) : null;
         $blocked = $next ? $this->advanceBlock($order, $next) : null;
 
+        // Reception records the hand-over steps (packaged, ready for collection, collected) for its own store.
+        $reception = ! $manage && $staff && $next !== null && in_array($next['key'], OrderLocation::RECEPTION_STEPS, true) && OrderLocation::canHandOver(request()->user(), $order);
         $described = [
             'version' => $order->workflow_version, 'current' => $current, 'closed' => $closed,
             'legacy' => $order->workflow_stage === null,
@@ -98,8 +137,8 @@ class OrderWorkflow
             }, $steps, array_keys($steps)),
             'next' => $next,
             'can_manage' => $manage,
-            'can_advance' => $manage && $next !== null && $blocked === null,
-            'advance_blocked' => $manage && $next !== null ? $blocked : null,
+            'can_advance' => ($manage || $reception) && $next !== null && $blocked === null,
+            'advance_blocked' => ($manage || $reception) && $next !== null ? $blocked : null,
             'can_cancel' => $manage && ! $closed && $current !== 'out_for_delivery',
             'can_edit_handover' => $manage && ! $closed,
             'can_change_method' => $manage && ! $closed && $current !== 'out_for_delivery',
@@ -156,7 +195,7 @@ class OrderWorkflow
      */
     public function serialize(Order $order, bool $staff, ?bool $manage = null): array
     {
-        $order->loadMissing(['customer', 'items', 'events', 'assignedTailor']);
+        $order->loadMissing(['customer', 'items', 'events', 'assignedTailor', 'assignedCourier']);
         $manage ??= $staff;
 
         return [
@@ -170,9 +209,13 @@ class OrderWorkflow
                 'assigned_at' => $order->assigned_at?->toIso8601String(),
                 'assigned_courier' => $order->assignedCourier ? ['id' => $order->assignedCourier->id, 'name' => $order->assignedCourier->name] : null,
                 'production' => OrderProduction::state($order, request()->user()),
+                'can_dispatch' => OrderLocation::canDispatch(request()->user(), $order),
                 'attachments' => DB::table('order_attachments')->where('order_id', $order->id)->orderBy('created_at')->orderBy('name')
                     ->get(['id', 'name', 'mime_type', 'size'])->map(fn (object $file): array => (array) $file)->values(),
             ] : []),
+            'reception' => self::receptionTask($order),
+            'store' => OrderLocation::store($order),
+            'delivery_status' => self::deliveryStatus($order),
             'delivery_promise' => $order->fulfilment_method === 'Delivery' && $order->delivery_due_by ? [
                 'zone_id' => $order->delivery_zone_id, 'area' => $order->deliveryZone?->name,
                 'from' => $order->delivery_due_from?->toDateString(), 'by' => $order->delivery_due_by->toDateString(),
@@ -229,6 +272,17 @@ class OrderWorkflow
 
     public function update(string $reference, array $data): OrderEvent
     {
+        $event = $this->record($reference, $data);
+        if ($event->wasRecentlyCreated && $event->stage_key === 'packaged' && $event->action_type === 'advance') {
+            // Packaged for delivery: tell the couriers it is ready to collect from the store.
+            OrderAlerts::readyForCourier($event->order()->with(['customer', 'items'])->firstOrFail());
+        }
+
+        return $event;
+    }
+
+    private function record(string $reference, array $data): OrderEvent
+    {
         return DB::transaction(function () use ($reference, $data): OrderEvent {
             $order = Order::query()->where('reference', $reference)->lockForUpdate()->firstOrFail();
             $hash = hash('sha256', json_encode($data));
@@ -255,6 +309,11 @@ class OrderWorkflow
                 }
                 if (($next['note_required'] ?? false) && ! $note) {
                     throw ValidationException::withMessages(['note' => 'Record the recipient and handover confirmation.']);
+                }
+                if ($next['key'] === 'packaged' && $order->category === 'Ready-to-Wear') {
+                    // Ready-to-Wear pieces need no workroom check: packing them is the check.
+                    $order->items()->whereNull('completed_at')->update(['completed_at' => now(), 'status' => 'Final checks complete']);
+                    $order->load('items');
                 }
                 if ($next['key'] === 'packaged' && ($order->items->isEmpty() || $order->items->contains(fn (OrderItem $item): bool => $item->completed_at === null))) {
                     throw ValidationException::withMessages(['stage' => 'Every garment must be marked ready before packaging.']);

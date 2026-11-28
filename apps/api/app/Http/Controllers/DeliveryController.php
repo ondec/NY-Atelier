@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\User;
 use App\OrderCustomerNotice;
+use App\OrderLocation;
 use App\OrderWorkflow;
 use App\StaffAccess;
 use Illuminate\Http\JsonResponse;
@@ -41,6 +42,7 @@ class DeliveryController extends Controller
             $order = Order::query()->where('reference', $reference)->lockForUpdate()->firstOrFail();
             abort_unless($order->fulfilment_method === 'Delivery', 422, 'Only delivery orders can be given to a courier. Set the handover to delivery first.');
             abort_if($order->completed_at !== null, 422, 'This order is already closed.');
+            abort_unless(OrderLocation::canDispatch($actor, $order), 403, 'The operations manager arranges delivery for this order.');
             $courier = $data['courier_id'] ? User::query()->where('id', $data['courier_id'])->where('staff_role', 'courier')->where('staff_active', true)->first() : null;
             abort_if($data['courier_id'] && ! $courier, 422, 'Choose an active delivery courier.');
             $order->forceFill([
@@ -64,7 +66,9 @@ class DeliveryController extends Controller
     {
         $staff = StaffAccess::requireStaffToken($request);
         $board = $request->user()->can('staff.orders.manage');
-        $orders = Order::query()->when($board, fn ($query) => $query->where('fulfilment_method', 'Delivery'), fn ($query) => $query->where('assigned_courier_id', $staff->id))
+        $orders = Order::query()->when($board, fn ($query) => $query->where('fulfilment_method', 'Delivery'), fn ($query) => $query->where(fn ($mine) => $mine->where('assigned_courier_id', $staff->id)
+            // Packaged delivery orders no courier has taken yet: any courier may pick them up.
+            ->orWhere(fn ($open) => $open->whereNull('assigned_courier_id')->where('fulfilment_method', 'Delivery')->where('workflow_stage', 'packaged')->whereNull('completed_at'))))
             ->where(fn ($query) => $query->whereNull('completed_at')->orWhere('completed_at', '>=', now()->subDays(7)))
             ->with(['customer', 'items', 'assignedCourier', 'deliveryZone'])->orderByRaw('completed_at IS NOT NULL')->orderByRaw('delivery_due_by IS NULL')->orderBy('delivery_due_by')->orderBy('courier_assigned_at')->get();
 
@@ -83,6 +87,26 @@ class DeliveryController extends Controller
         $event = $workflow->update($reference, ['request_id' => $data['request_id'], 'version' => $order->workflow_version, 'action' => 'advance',
             'stage' => 'delivered', 'note' => trim($data['note']).' (delivered by '.$courier->name.')']);
         $notices->send($event);
+
+        return response()->json(['delivery' => $this->delivery($order->fresh(['customer', 'items', 'assignedCourier', 'deliveryZone']), $courier->id)]);
+    }
+
+    /** A courier takes a packaged delivery order no one has yet; it joins their deliveries for the route. */
+    public function claim(Request $request, string $reference): JsonResponse
+    {
+        $courier = StaffAccess::requireStaffToken($request);
+        $order = DB::transaction(function () use ($reference, $courier): Order {
+            $order = Order::query()->where('reference', $reference)->lockForUpdate()->firstOrFail();
+            abort_unless($order->fulfilment_method === 'Delivery' && $order->workflow_stage === 'packaged' && $order->completed_at === null, 422, 'This order isn’t waiting for a courier.');
+            abort_if($order->assigned_courier_id !== null && $order->assigned_courier_id !== $courier->id, 409, 'Another courier has already taken this order.');
+            if ($order->assigned_courier_id === null) {
+                $order->forceFill(['assigned_courier_id' => $courier->id, 'courier_assigned_at' => now(), 'courier_name' => $courier->name, 'workflow_version' => $order->workflow_version + 1])->save();
+                $order->events()->create(['title' => 'Courier on the way', 'action_type' => 'note', 'client_visible' => false, 'occurred_at' => now(),
+                    'explanation' => "{$courier->name} is collecting this order for delivery."]);
+            }
+
+            return $order;
+        });
 
         return response()->json(['delivery' => $this->delivery($order->fresh(['customer', 'items', 'assignedCourier', 'deliveryZone']), $courier->id)]);
     }
@@ -191,6 +215,7 @@ class DeliveryController extends Controller
             'reference' => $order->reference, 'category' => $order->category, 'stage' => $order->workflow_stage, 'status' => $order->status,
             'can_deliver' => $order->workflow_stage === 'out_for_delivery' && $order->assigned_courier_id === $viewerId,
             'ready' => $order->workflow_stage === 'packaged',
+            'claimable' => $order->assigned_courier_id === null && $order->workflow_stage === 'packaged',
             'zone' => $order->deliveryZone?->name, 'due_from' => $order->delivery_due_from?->toDateString(), 'due_by' => $order->delivery_due_by?->toDateString(),
             'courier' => $order->assignedCourier ? ['id' => $order->assignedCourier->id, 'name' => $order->assignedCourier->name] : null,
             'delivered_at' => $order->completed_at?->toIso8601String(),
@@ -199,6 +224,7 @@ class DeliveryController extends Controller
             'address' => $order->delivery_address, 'area' => $order->delivery_area, 'gps_code' => $order->delivery_gps_code,
             'directions' => $order->delivery_directions, 'latitude' => $order->delivery_latitude, 'longitude' => $order->delivery_longitude,
             'instructions' => $order->handover_instructions,
+            'pickup_from' => OrderLocation::store($order),
             'garments' => $order->items->sortBy('sort_order')->map(fn (OrderItem $item): string => $item->garment_name)->values(),
         ];
     }

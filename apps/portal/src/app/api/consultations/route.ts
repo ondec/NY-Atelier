@@ -11,7 +11,7 @@ async function forward(request: Request, path = "", init?: RequestInit): Promise
     });
     return Response.json(await response.json(), { status: response.status });
   } catch {
-    return Response.json({ message: "Consultations are unavailable. Try again." }, { status: 503 });
+    return Response.json({ message: "Appointments are unavailable. Try again." }, { status: 503 });
   }
 }
 
@@ -27,7 +27,7 @@ export async function PATCH(request: Request) {
   }
   const body = await request.json().catch(() => null);
   if (!body || typeof body.id !== "string" || !/^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i.test(body.id)) {
-    return Response.json({ message: "Choose a valid consultation." }, { status: 422 });
+    return Response.json({ message: "Choose a valid appointment." }, { status: 422 });
   }
   return forward(request, `/${body.id}/staff`, { method: "PATCH", body: JSON.stringify(body) });
 }

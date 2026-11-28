@@ -120,15 +120,15 @@ export default function ConsultationGantt({ rows, from, to, onOpen }: { rows: St
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) showDays(7, new Date(`${value}T12:00:00Z`).getTime());
   }
   return <div className="consultation-gantt">
-    <div className="consultation-calendar-heading"><div><h3>Consultation Gantt</h3><p className="consultation-muted" aria-live="polite">{rangeLabel || "Loading dates…"} · Accra time</p></div><div className="inventory-actions consultation-calendar-controls">
+    <div className="consultation-calendar-heading"><div><h3>Appointment Gantt</h3><p className="consultation-muted" aria-live="polite">{rangeLabel || "Loading dates…"} · Accra time</p></div><div className="inventory-actions consultation-calendar-controls">
       <button type="button" className="inventory-quiet-button" disabled={loading || error} onClick={() => move(-1)} aria-label="Previous Gantt period"><ChevronLeft size={16} />Previous</button>
       <button type="button" className="inventory-quiet-button" disabled={loading || error} onClick={() => showDays(7, Date.now())}>Today</button>
       <button type="button" className="inventory-quiet-button" disabled={loading || error} onClick={() => move(1)} aria-label="Next Gantt period">Next<ChevronRight size={16} /></button>
     </div></div>
     <div className="consultation-gantt-controls"><div className="inventory-actions" role="group" aria-label="Gantt timescale"><button type="button" className="inventory-quiet-button" disabled={loading || error} onClick={() => showDays(7)}>Week</button><button type="button" className="inventory-quiet-button" disabled={loading || error} onClick={() => showDays(30)}>Month</button><button type="button" className="inventory-quiet-button" disabled={loading || error} onClick={() => timeline.current?.fit({ animation: false })}>Fit all requests</button></div><label className="consultation-date-filter">Jump to<input type="date" aria-label="Jump to Gantt date" value={jumpDate} onInput={event => jump(event.currentTarget.value)} onChange={event => jump(event.target.value)} /></label></div>
-    <p className="consultation-muted">Bars show time from request received to consultation, rather than meeting duration. Dots mark requested, suggested or confirmed times. Open any row or marker for details.</p>
+    <p className="consultation-muted">Bars show time from request received to appointment, rather than meeting duration. Dots mark requested, suggested or confirmed times. Open any row or marker for details.</p>
     {loading && <p role="status" className="consultation-muted">Loading Gantt chart…</p>}
     {error && <p role="alert" className="inventory-message">The Gantt chart could not load. Please use List or Calendar, or refresh this page.</p>}
-    <div className="consultation-gantt-chart" ref={host} aria-label="Consultation Gantt timeline" />
+    <div className="consultation-gantt-chart" ref={host} aria-label="Appointment Gantt timeline" />
   </div>;
 }

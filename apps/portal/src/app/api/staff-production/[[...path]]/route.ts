@@ -11,7 +11,7 @@ async function forward(request: Request, context: Context, method: "GET" | "PATC
   const seen = method === "POST" && path.length === 1 && path[0] === "seen";
   const denied = await staffRequestError(request, method === "GET" || seen ? "production" : "production.manage"); if (denied) return denied;
   const valid = seen || (method === "GET" ? path.length === 0 || (path.length === 1 && /^[A-Z0-9-]{3,40}$/.test(path[0]))
-    : path.length === 2 && /^[A-Z0-9-]{3,40}$/.test(path[0]) && ["tailor", "workflow", "return"].includes(path[1]));
+    : path.length === 2 && /^[A-Z0-9-]{3,40}$/.test(path[0]) && ["tailor", "workflow", "return", "to-reception"].includes(path[1]));
   if (!valid) return Response.json({ message: "Not found." }, { status: 404 });
   let body: string | undefined;
   if (method === "PATCH") {
@@ -23,7 +23,7 @@ async function forward(request: Request, context: Context, method: "GET" | "PATC
   }
   try {
     const response = await fetch(`${base}/api/demo/staff/production${path.length ? `/${path.map(encodeURIComponent).join("/")}` : ""}`, {
-      method: path[1] === "return" || seen ? "POST" : method, body, cache: "no-store", headers: await staffBackendHeaders(request), signal: AbortSignal.timeout(method === "GET" ? 8000 : 15000),
+      method: path[1] === "return" || path[1] === "to-reception" || seen ? "POST" : method, body, cache: "no-store", headers: await staffBackendHeaders(request), signal: AbortSignal.timeout(method === "GET" ? 8000 : 15000),
     });
     return Response.json(await response.json(), { status: response.status, headers: { "Cache-Control": "no-store" } });
   } catch {

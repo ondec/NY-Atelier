@@ -10,7 +10,7 @@ export type StaffConsultation = ConsultationRequest & {
 };
 export const consultationStatuses: Record<ConsultationRequest["status"], string> = {
   "awaiting-confirmation": "New request",
-  "needs-alternatives": "Other times requested",
+  "needs-alternatives": "New request", // retired: turned-down suggestions now come back as new requests
   "awaiting-customer": "Awaiting customer",
   confirmed: "Confirmed",
   "local-draft": "Draft",

@@ -122,7 +122,7 @@ class ProductionController extends Controller
             // Back to the last front-desk stage, so sending it again approves and starts production afresh.
             $stage = $order->category === 'Custom' && $order->measurement_id ? 'measurements' : 'received';
             $order->forceFill(['sent_to_production_at' => null, 'sent_to_production_by_id' => null,
-                'returned_from_production_at' => now(), 'production_return_reason' => trim($data['reason']),
+                'returned_from_production_at' => now(), 'production_return_reason' => trim($data['reason']), 'handed_to_front_desk_at' => null,
                 'workflow_stage' => $stage, 'status' => config("order_workflows.stages.{$stage}.label"), 'workflow_version' => $order->workflow_version + 1])->save();
             $order->items()->whereNull('completed_at')->update(['status' => $order->status]);
             $order->events()->create(['title' => 'Returned from production', 'explanation' => trim($data['reason'])." ({$user->name})",
@@ -132,6 +132,26 @@ class ProductionController extends Controller
         OrderAlerts::returnedToFrontDesk($order, trim($data['reason']));
 
         return response()->json(['returned' => true]);
+    }
+
+    /** Hands a finished order to reception unpackaged; reception packs it and arranges the handover. */
+    public function handToFrontDesk(Request $request, string $reference): JsonResponse
+    {
+        $user = StaffAccess::requireStaffToken($request);
+        $order = $this->find($user, $reference);
+        abort_unless($order->workflow_stage === 'production_done' && $order->completed_at === null, 422, 'Mark production done first. A packaged order is already with reception.');
+        abort_if($order->items->isEmpty() || $order->items->contains(fn ($item): bool => $item->completed_at === null), 422, 'Mark every garment ready before handing it to reception.');
+        abort_if($order->handed_to_front_desk_at !== null, 409, 'This order is already with reception.');
+
+        DB::transaction(function () use ($order, $user): void {
+            $order = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $order->forceFill(['handed_to_front_desk_at' => now(), 'workflow_version' => $order->workflow_version + 1])->save();
+            $order->events()->create(['title' => 'Sent to reception to package', 'explanation' => "Not packaged ({$user->name})",
+                'action_type' => 'production', 'client_visible' => false, 'occurred_at' => now()]);
+        });
+        OrderAlerts::toPackage($order);
+
+        return response()->json(['handed' => true]);
     }
 
     /** @return Builder<Order> */

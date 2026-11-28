@@ -39,7 +39,7 @@ export function ConsultationCard({ request, summary = false }: { request: Consul
 
   return (
     <View style={[styles.card, request.status === 'awaiting-customer' && styles.replyCard]}>
-      <Text style={styles.label}>{summary ? 'LATEST CONSULTATION REQUEST' : 'CONSULTATION REQUEST'}</Text>
+      <Text style={styles.label}>{summary ? 'LATEST APPOINTMENT REQUEST' : 'APPOINTMENT REQUEST'}</Text>
       <Text style={styles.title}>{request.purpose}</Text>
       <View style={styles.status}><StatusLabel status={statusLabel[request.status]} />
         {request.status === 'awaiting-customer' ? <Text style={styles.replyLabel}>YOUR REPLY NEEDED</Text> : null}
@@ -64,7 +64,7 @@ export function ConsultationCard({ request, summary = false }: { request: Consul
         </View>
       ) : null}
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-      {summary ? <View style={styles.orderLink}><IconLabel label="VIEW CONSULTATIONS" name="forward" color={atelier.petrol} style={styles.footer} /></View> : orderReference ? (
+      {summary ? <View style={styles.orderLink}><IconLabel label="VIEW APPOINTMENTS" name="forward" color={atelier.petrol} style={styles.footer} /></View> : orderReference ? (
         <Pressable accessibilityRole="button" accessibilityLabel={`View order ${orderReference}`}
           onPress={() => router.push({ pathname: '/orders/[reference]', params: { reference: orderReference } })} style={[styles.option, styles.orderLink]}>
           <IconLabel label={`View order · ${orderReference}`} name="forward" color={atelier.petrol} style={styles.optionText} />

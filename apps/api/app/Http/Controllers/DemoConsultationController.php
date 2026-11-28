@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\ConsultationNotice;
 use App\Models\Customer;
 use App\StaffAccess;
 use Illuminate\Database\Query\Builder;
@@ -54,20 +55,19 @@ class DemoConsultationController extends Controller
         $data = $request->validate([
             'action' => ['required', 'in:confirm,propose'],
             'version' => ['required', 'integer', 'min:1'],
-            'options' => ['required_if:action,propose', 'array', 'min:1', 'max:3'],
+            'options' => ['required_if:action,propose', 'array', 'min:2', 'max:3'],
             'options.*' => ['required', 'array:date,time'],
             'options.*.date' => ['required', 'date_format:Y-m-d'],
             'options.*.time' => ['required', 'date_format:H:i'],
         ]);
 
-        $row = $this->current($id, $data['version'], ['awaiting-confirmation', 'needs-alternatives']);
+        $row = $this->current($id, $data['version'], ['awaiting-confirmation']);
         if ($data['action'] === 'confirm') {
-            abort_unless($row->status === 'awaiting-confirmation', 409, 'The customer asked for other options.');
             $this->requireFuture($row->preferredDate, $row->preferredTime);
 
-            return $this->update($row, [
+            return $this->notified($this->update($row, [
                 'status' => 'confirmed', 'confirmedDate' => $row->preferredDate, 'confirmedTime' => $row->preferredTime,
-            ]);
+            ]), $row->id, 'confirmed');
         }
 
         $options = array_values($data['options']);
@@ -78,7 +78,7 @@ class DemoConsultationController extends Controller
             $this->requireFuture($option['date'], $option['time']);
         }
 
-        return $this->update($row, ['status' => 'awaiting-customer', 'options' => json_encode($options, JSON_THROW_ON_ERROR)]);
+        return $this->notified($this->update($row, ['status' => 'awaiting-customer', 'options' => json_encode($options, JSON_THROW_ON_ERROR)]), $row->id, 'options');
     }
 
     public function customer(Request $request, string $id): JsonResponse
@@ -92,16 +92,44 @@ class DemoConsultationController extends Controller
         $row = $this->current($id, $data['version'], ['awaiting-customer']);
         abort_unless($row->customer_id !== null, 404);
         if ($data['action'] === 'decline') {
-            return $this->update($row, ['status' => 'needs-alternatives', 'options' => null]);
+            // Turning down the suggested times sends the request back to the team as a new request.
+            return $this->update($row, ['status' => 'awaiting-confirmation', 'options' => null]);
         }
 
         $option = json_decode($row->options, true, 512, JSON_THROW_ON_ERROR)[$data['option']] ?? null;
         abort_unless($option, 422, 'Choose one of the proposed times.');
         $this->requireFuture($option['date'], $option['time']);
 
-        return $this->update($row, [
+        return $this->notified($this->update($row, [
             'status' => 'confirmed', 'confirmedDate' => $option['date'], 'confirmedTime' => $option['time'],
-        ]);
+        ]), $row->id, 'confirmed');
+    }
+
+    /** Emails the customer after a change that concerns them, then returns the response unchanged. */
+    protected function notified(JsonResponse $response, string $id, string $kind): JsonResponse
+    {
+        app(ConsultationNotice::class)->send($id, $kind);
+
+        return $response;
+    }
+
+    /**
+     * The customer's answer to suggested times: a time is confirmed, or "none suit" sends the request back to the team.
+     *
+     * @param  array{action: string, option?: int}  $data
+     */
+    protected function answer(object $row, array $data): JsonResponse
+    {
+        if ($data['action'] === 'decline') {
+            return $this->update($row, ['status' => 'awaiting-confirmation', 'options' => null]);
+        }
+        $option = json_decode($row->options, true, 512, JSON_THROW_ON_ERROR)[$data['option']] ?? null;
+        abort_unless($option, 422, 'Choose one of the proposed times.');
+        $this->requireFuture($option['date'], $option['time']);
+
+        return $this->notified($this->update($row, [
+            'status' => 'confirmed', 'confirmedDate' => $option['date'], 'confirmedTime' => $option['time'],
+        ]), $row->id, 'confirmed');
     }
 
     /** @param list<string> $statuses */

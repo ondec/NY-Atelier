@@ -1,6 +1,6 @@
 export function readStudioLocation(search: string) {
   const query = new URLSearchParams(search);
-  const workspaceModule = query.get('view') === 'fittings' ? 'measurements' : query.get('view') === 'collection' ? 'collection' : 'welcome';
+  const workspaceModule = query.get('view') === 'fittings' ? 'measurements' : query.get('view') === 'collection' ? 'collection' : query.get('view') === 'orders' ? 'orders' : 'welcome';
   const rawId = query.get('customer');
   const parsedId = rawId && /^\d+$/.test(rawId) ? Number(rawId) : undefined;
   const customerId = parsedId && Number.isSafeInteger(parsedId) && parsedId > 0 ? parsedId : undefined;

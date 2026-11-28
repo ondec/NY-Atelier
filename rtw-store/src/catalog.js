@@ -144,7 +144,7 @@ export const PROMOTIONS = [
   {
     id: 'new-arrivals', eyebrow: 'JUST IN', title: 'New', accent: 'arrivals.',
     copy: 'Recently listed pieces from the NY Atelier ready-to-wear store.', image: photo('red-clover-olive-campaign-front'),
-    cta: { label: 'SHOP NEW ARRIVALS', to: '/shop/new' },
+    cta: { label: 'SHOP NEW ARRIVALS', to: '/new' },
   },
 ];
 

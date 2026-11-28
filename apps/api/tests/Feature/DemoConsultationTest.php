@@ -33,16 +33,32 @@ class DemoConsultationTest extends TestCase
             'options' => [['date' => $date, 'time' => '12:00'], ['date' => $date, 'time' => '14:00']],
         ])->assertOk()->assertJsonPath('status', 'awaiting-customer')->assertJsonCount(2, 'options');
         $this->patchJson("$url/$id/customer", ['action' => 'decline', 'version' => 2])
-            ->assertOk()->assertJsonPath('status', 'needs-alternatives')->assertJsonCount(0, 'options');
+            ->assertOk()->assertJsonPath('status', 'awaiting-confirmation')->assertJsonCount(0, 'options');
         $this->patchJson("$url/$id/customer", ['action' => 'accept', 'version' => 2, 'option' => 0])
             ->assertConflict();
         $this->patchJson("$url/$id/staff", [
             'action' => 'propose', 'version' => 3,
-            'options' => [['date' => $date, 'time' => '16:00']],
+            'options' => [['date' => $date, 'time' => '16:00'], ['date' => $date, 'time' => '17:00']],
         ])->assertOk();
         $this->patchJson("$url/$id/customer", ['action' => 'accept', 'version' => 4, 'option' => 0])
             ->assertOk()->assertJsonPath('status', 'confirmed')->assertJsonPath('confirmedTime', '16:00');
         $this->getJson($url)->assertJsonPath('0.confirmedDate', $date);
+    }
+
+    public function test_turning_down_suggested_times_returns_the_request_to_the_team_to_confirm(): void
+    {
+        config(['demo.enabled' => true]);
+        $this->signInStaff();
+        $this->freezeTime();
+        $url = '/api/demo/consultations';
+        $id = (string) Str::uuid();
+        $date = now('Africa/Accra')->addDays(5)->toDateString();
+        $this->postJson($url, ['id' => $id, 'method' => 'in-person', 'purpose' => 'Bespoke', 'preferredDate' => $date, 'preferredTime' => '11:00'])->assertCreated();
+        $this->patchJson("$url/$id/staff", ['action' => 'propose', 'version' => 1, 'options' => [['date' => $date, 'time' => '15:00'], ['date' => $date, 'time' => '16:00']]])->assertOk();
+        $this->patchJson("$url/$id/customer", ['action' => 'decline', 'version' => 2])->assertOk();
+
+        $this->patchJson("$url/$id/staff", ['action' => 'confirm', 'version' => 3])
+            ->assertOk()->assertJsonPath('status', 'confirmed')->assertJsonPath('confirmedTime', '11:00');
     }
 
     public function test_staff_can_confirm_the_requested_time_and_demo_routes_are_disabled_by_default(): void

@@ -27,7 +27,7 @@ class PublicShopCatalogue
                 'section' => in_array($product['section'] ?? null, ['men', 'women', 'accessories'], true) ? $product['section'] : null,
                 'priceMinor' => $priceMinor,
                 'offerPriceMinor' => $offerMinor !== null && $offerMinor > 0 && $offerMinor < $priceMinor ? $offerMinor : null,
-                'isNew' => ($product['isNew'] ?? false) === true,
+                'isNew' => $this->isNewArrival($product),
                 'sizing' => array_values(array_intersect($product['sizing'] ?? [], ['shirt', 'trousers'])),
                 'photos' => $this->photos($product['gallery'] ?? [], $product['photo'] ?? null),
                 'colours' => [],
@@ -82,6 +82,10 @@ class PublicShopCatalogue
                 'cover' => $photos[0] ?? null,
                 'photos' => $photos,
                 'featuredOn' => $this->featuredOn($collection),
+                // The featured hero: the campaign photos as a carousel, or a launch video (a link to an MP4/WebM file).
+                'heroVideo' => ($collection['heroMode'] ?? 'photos') === 'video' ? $this->videoUrl($collection['heroVideo'] ?? null) : null,
+                // The story under the pieces: why the collection is unique, with close-up shots.
+                'story' => $this->story($collection),
                 'order' => is_int($collection['order'] ?? null) ? $collection['order'] : PHP_INT_MAX,
                 'productIds' => array_values(array_filter($collection['productIds'] ?? [], fn ($id): bool => isset($products[$id]))),
             ];
@@ -101,7 +105,45 @@ class PublicShopCatalogue
         }
         unset($entry);
 
-        return ['revision' => $revision, 'currency' => 'GHS', 'products' => array_values($products), 'collections' => $collections, 'promotions' => []];
+        return ['revision' => $revision, 'currency' => 'GHS', 'products' => array_values($products), 'collections' => $collections, 'heroes' => $this->heroes($payload['heroes'] ?? []), 'promotions' => []];
+    }
+
+    /**
+     * The custom heroes for the website home, the RTW Store and Services. A site set to "default" (or with nothing
+     * to show) is left out, so it keeps its built-in hero (the RTW Store's is the featured collection).
+     *
+     * @return array<string, array{style: string, media: list<string>, eyebrow: ?string, title: ?string, text: ?string, button: ?array{label: string, to: string}}>
+     */
+    private function heroes(mixed $heroes): array
+    {
+        $result = [];
+        foreach (['website', 'rtw', 'services'] as $site) {
+            $hero = is_array($heroes) ? ($heroes[$site] ?? null) : null;
+            if (! is_array($hero) || ($hero['use'] ?? 'default') !== 'custom') {
+                continue;
+            }
+            $style = ($hero['style'] ?? 'photos') === 'video' ? 'video' : 'photos';
+            $items = array_slice(is_array($hero['media'] ?? null) ? $hero['media'] : [], 0, 8);
+            // "site:/…" is a file already on the website (its own photos and films); the sites load it from there.
+            $media = array_values(array_filter(array_map(fn ($url): ?string => match (true) {
+                is_string($url) && preg_match('#^site:/[A-Za-z0-9/_.-]+\.(jpe?g|png|webp|avif|mp4|webm)$#i', $url) === 1 && ! str_contains($url, '..') => $url,
+                $style === 'video' => $this->videoUrl($url),
+                default => $this->photos([$url], null)[0]['src'] ?? null,
+            }, $items)));
+            if ($media === []) {
+                continue;
+            }
+            $text = fn (string $key): ?string => is_string($hero[$key] ?? null) && trim($hero[$key]) !== '' ? trim($hero[$key]) : null;
+            $label = $text('buttonLabel');
+            $to = $text('buttonTo');
+            $result[$site] = [
+                'style' => $style, 'media' => $media,
+                'eyebrow' => $text('eyebrow'), 'title' => $text('title'), 'text' => $text('text'),
+                'button' => $label && $to && preg_match('/^(services|rtw|appointment|featured|collection:[A-Za-z0-9_-]+)$/', $to) ? ['label' => $label, 'to' => $to] : null,
+            ];
+        }
+
+        return $result;
     }
 
     /**
@@ -122,6 +164,20 @@ class PublicShopCatalogue
         return array_combine(self::SITES, array_map(fn (string $site): bool => ($flags[$site] ?? false) === true, self::SITES));
     }
 
+    /**
+     * A piece ticked "Show as a new arrival" stays new until its "New until" day (inclusive), then drops out by
+     * itself. Pieces ticked before the date existed stay new until someone unticks them.
+     */
+    private function isNewArrival(array $product): bool
+    {
+        if (($product['isNew'] ?? false) !== true) {
+            return false;
+        }
+        $until = $product['newUntil'] ?? null;
+
+        return ! is_string($until) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $until) || $until >= now('Africa/Accra')->toDateString();
+    }
+
     private function photos(array $gallery, ?string $photo): array
     {
         $urls = array_unique(array_filter([...$gallery, $photo], fn ($url): bool => is_string($url) && ((str_starts_with($url, '/') && ! str_starts_with($url, '//')) || str_starts_with($url, 'https://'))));
@@ -131,5 +187,48 @@ class PublicShopCatalogue
         $portal = rtrim((string) config('staff.portal_url'), '/');
 
         return array_map(fn ($url): array => ['src' => str_starts_with($url, '/') ? $portal.$url : $url, 'alt' => ''], array_values($urls));
+    }
+
+    /** Only an HTTPS link to a video file the browser can play. */
+    private function videoUrl(mixed $url): ?string
+    {
+        if (! is_string($url) || strlen($url) > 2000) {
+            return null;
+        }
+        // A video kept on NY Team itself (a path like /videos/launch.mp4) becomes a full portal address.
+        if (preg_match('#^/[A-Za-z0-9/_.-]+$#', $url) && ! str_contains($url, '..')) {
+            $url = rtrim((string) config('staff.portal_url'), '/').$url;
+        } elseif (! str_starts_with($url, 'https://')) {
+            return null;
+        }
+
+        return preg_match('/\.(mp4|webm)$/i', (string) parse_url($url, PHP_URL_PATH)) ? $url : null;
+    }
+
+    /**
+     * The story under the pieces: up to three chapters, each a heading, text and close-up shots.
+     * Older records held a single chapter as one object.
+     *
+     * @return list<array{title: ?string, text: string, photos: list<array{src: string, alt: string}>}>
+     */
+    private function story(array $collection): array
+    {
+        $story = $collection['story'] ?? null;
+        $chapters = is_array($story) && array_is_list($story) ? $story : (is_array($story) ? [$story] : []);
+        $result = [];
+        foreach (array_slice($chapters, 0, 3) as $chapter) {
+            if (! is_array($chapter)) {
+                continue;
+            }
+            $text = is_string($chapter['text'] ?? null) ? trim($chapter['text']) : '';
+            $photos = array_slice($this->photos(is_array($chapter['photos'] ?? null) ? $chapter['photos'] : [], null), 0, 6);
+            if ($text === '' && $photos === []) {
+                continue;
+            }
+            $title = is_string($chapter['title'] ?? null) ? trim($chapter['title']) : '';
+            $result[] = ['title' => $title !== '' ? $title : null, 'text' => $text, 'photos' => $photos];
+        }
+
+        return $result;
     }
 }

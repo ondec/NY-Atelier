@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, MapPin, Pause, Play, Ruler, Scissors, SlidersHorizontal, Truck } from 'lucide-react';
-import { ArrowLeft, ArrowRight, ArrowUpRight, Check, Heart, Menu, Minus, Plus, Search, ShoppingBag, X } from './NyIcons.jsx';
+import { ChevronLeft, ChevronRight, Pause, Play, Ruler, Scissors, SlidersHorizontal, Truck, UserRound } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, Check, Heart, Menu, Minus, Plus, Search, ShoppingBag, X } from './NyIcons.jsx';
 import { SocialIcons } from './SocialSection.jsx';
 import { SizeGuide } from './SizeGuide.jsx';
 import { publishedCharts, usePublishedSizing } from './published-sizing.js';
@@ -13,15 +13,16 @@ import { mainSite } from './sites.js';
 const StoreContext = createContext(null);
 const fallbackImage = '/images/editorial-fallback.svg';
 
-/** Store menu: the app's shop sections, then Bespoke, which belongs to the main website. */
+/** Shop sections, shown in the RTW Store mega menu and the phone menu. */
 const NAV = [
-  { label: 'New Arrivals', to: '/shop/new' },
-  { label: 'Men', to: '/shop/men' },
-  { label: 'Women', to: '/shop/women' },
-  { label: 'Accessories', to: '/shop/accessories' },
+  { label: 'New Arrivals', to: '/new' },
+  { label: 'Men', to: '/men' },
+  { label: 'Women', to: '/women' },
+  { label: 'Accessories', to: '/accessories' },
   { label: 'Collections', to: '/collections' },
 ];
-const BESPOKE = { label: 'Bespoke', href: mainSite('/services') };
+/** The main menu, the same as on the website. KEEP IN SYNC with navItems in website/src/App.jsx. */
+const MAIN_NAV = [['Services', '/services'], ['RTW Store', '/shop'], ['Appointment', '/appointment'], ['Contact', '/contact']];
 
 function useStoredState(key, initial) {
   const [state, setState] = useState(() => {
@@ -92,7 +93,7 @@ function StoreProvider({ children }) {
   // Prices come from this catalogue when the piece is here, otherwise from the line's snapshot.
   const total = useMemo(() => bagTotal(bag.map(line => ({ ...line, price: stockFor(line) ? findProduct(line.id)?.price ?? 0 : 0 }))), [bag, catalogue.revision]);
   const value = { bag, saved, bagOpen, setBagOpen, searchOpen, setSearchOpen, toast, addToBag, updateLine, removeLine, toggleSaved, total };
-  if (catalogue.status !== 'ready') return <div className="catalogue-status" role={catalogue.status === 'error' ? 'alert' : 'status'}><span className="eyebrow">THE RTW STORE</span><h1>{catalogue.status === 'loading' ? 'Opening the collection.' : 'The collection is unavailable.'}</h1><p>{catalogue.status === 'loading' ? 'Loading pieces from NY Atelier…' : 'We could not reach the NY Atelier catalogue. Please try again shortly.'}</p>{catalogue.status === 'error' && <a className="button button-solid" href={mainSite('/contact')}>CONTACT THE ATELIER <ArrowUpRight size={16}/></a>}</div>;
+  if (catalogue.status !== 'ready') return <div className="catalogue-status" role={catalogue.status === 'error' ? 'alert' : 'status'}><span className="eyebrow">THE SHOP</span><h1>{catalogue.status === 'loading' ? 'Opening the collection.' : 'The collection is unavailable.'}</h1><p>{catalogue.status === 'loading' ? 'Loading pieces from NY Atelier…' : 'We could not reach the NY Atelier catalogue. Please try again shortly.'}</p>{catalogue.status === 'error' && <a className="button button-solid" href={mainSite('/contact')}>CONTACT THE ATELIER <ArrowRight size={16}/></a>}</div>;
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 const useStore = () => useContext(StoreContext);
@@ -144,50 +145,94 @@ function Header() {
   };
 
   return <header className={`site-header ${heroPage ? 'site-header--home' : ''} ${heroPage && !scrolled ? 'site-header--transparent' : ''} ${scrolled ? 'site-header--scrolled' : ''} ${hidden ? 'site-header--hidden' : ''}`}>
-    <nav className="site-nav container" aria-label="Store navigation">
+    <nav className="site-nav container" aria-label="Main navigation">
       <button type="button" className="icon-btn mobile-only" aria-label="Open menu" aria-expanded={mobileOpen} onClick={() => { setMobileOpen(open => !open); }}>{mobileOpen ? <X/> : <Menu/>}</button>
-      <Link to="/" className={`wordmark ${returningHome ? 'is-returning-home' : ''}`} aria-label="NY Atelier ready-to-wear home" onClick={handleHomeClick}><span className="brand-mark" aria-hidden="true"><span className="brand-wreath"/><span className="brand-letters"/></span><span className="wordmark-line"/><span>NY ATELIER</span><span className="rtw-badge">RTW</span></Link>
+      <a href={mainSite('/')} className={`wordmark ${returningHome ? 'is-returning-home' : ''}`} aria-label="NY Atelier home" onClick={handleHomeClick}><span className="brand-mark" aria-hidden="true"><span className="brand-wreath"/><span className="brand-letters"/></span><span className="wordmark-line"/><span>NY ATELIER</span><span className="rtw-badge">RTW</span></a>
       <div className="nav-links">
-        {NAV.map(item => <NavLink key={item.to} to={item.to} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>{item.label}</NavLink>)}
-        <a href={BESPOKE.href} className="nav-link rtw-nav-bespoke">{BESPOKE.label}<ArrowUpRight size={12}/></a>
+        {MAIN_NAV.map(([label, href]) => href === '/shop' ? <MegaMenu key={href} label={label}/> : <a key={href} href={mainSite(href)} className="nav-link">{label}</a>)}
       </div>
       <div className="nav-actions">
-        <button className="icon-btn" type="button" aria-label="Search the store" onClick={() => { setSearchOpen(true); }}><Search/></button>
+        <button className="icon-btn" type="button" aria-label="Search the shop" onClick={() => { setSearchOpen(true); }}><Search/></button>
         <Link className="icon-btn rtw-saved-link" to="/saved" aria-label="Saved pieces"><Heart/></Link>
+        <a className="icon-btn account-button" href={mainSite('/account')} aria-label="Your account or sign in" title="Your account"><UserRound/></a>
         <button className="icon-btn bag-button" type="button" aria-label={`Open shopping bag with ${count} items`} onClick={() => { setBagOpen(true); }}><ShoppingBag/>{count > 0 && <span className="bag-count">{count}</span>}</button>
       </div>
     </nav>
-    {mobileOpen && <nav className="mobile-menu" aria-label="Mobile store navigation">
+    {mobileOpen && <nav className="mobile-menu" aria-label="Mobile navigation">
+      {MAIN_NAV.map(([label, href]) => href === '/shop' ? <Link key={href} to="/">{label}<ArrowRight size={15}/></Link> : <a key={href} href={mainSite(href)}>{label}<ArrowRight size={15}/></a>)}
+      <a href={mainSite('/account')}>Your account<ArrowRight size={15}/></a>
+      <span className="mobile-menu-heading">IN THE RTW STORE</span>
+      <NavLink to="/" end>Featured Collection<ArrowRight size={15}/></NavLink>
       {NAV.map(item => <NavLink key={item.to} to={item.to}>{item.label}<ArrowRight size={15}/></NavLink>)}
       <NavLink to="/saved">Saved pieces<ArrowRight size={15}/></NavLink>
-      <a href={BESPOKE.href}>Bespoke<ArrowUpRight size={15}/></a>
-      <a href={mainSite('/contact')}>Contact<ArrowUpRight size={15}/></a>
       <span>READY TO WEAR. DISTINCTLY NY.</span>
     </nav>}
   </header>;
+}
+
+/**
+ * RTW Store in the main menu: hovering (or focusing) it opens a panel with the shop's sections and two
+ * featured tiles. KEEP IN SYNC with MegaMenu in website/src/App.jsx (there the links are page loads).
+ */
+const MEGA_LINKS = [{ label: 'Featured Collection', to: '/' }, ...NAV, { label: 'All pieces', to: '/all' }];
+const megaImage = name => mainSite(`/${'images'}/home/${name}`); // website images, same address
+function MegaMenu({ label }) {
+  const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const timer = useRef(null);
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+  useEffect(() => () => { clearTimeout(timer.current); }, []);
+  const show = () => { clearTimeout(timer.current); setOpen(true); };
+  const hide = () => { clearTimeout(timer.current); timer.current = setTimeout(() => { setOpen(false); }, 120); };
+  return <div className={`nav-mega ${open ? 'is-open' : ''}`} onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }} onKeyDown={event => { if (event.key === 'Escape') setOpen(false); }}>
+    <Link to="/" className="nav-link active" aria-current="page" aria-expanded={open} aria-haspopup="true">{label}</Link>
+    <div className="mega-panel" hidden={!open}>
+      <div className="container mega-inner">
+        <div className="mega-links"><p className="eyebrow">THE RTW STORE</p>
+          {MEGA_LINKS.map(item => <Link key={item.to} to={item.to}>{item.label}<ArrowRight size={14}/></Link>)}
+        </div>
+        <Link to="/men" className="mega-tile"><img src={megaImage('for-him.webp')} alt="" loading="lazy"/><span>For <em>him.</em></span></Link>
+        <Link to="/women" className="mega-tile"><img src={megaImage('for-her.webp')} alt="" loading="lazy"/><span>For <em>her.</em></span></Link>
+      </div>
+    </div>
+  </div>;
+}
+
+/** On every store page: the sections, top left under the header (over the hero on the store home), to switch between them. */
+function SectionLinks() {
+  const { pathname } = useLocation();
+  const row = useRef(null);
+  // On phones the row scrolls sideways; keep the current section in view.
+  useEffect(() => {
+    const active = row.current?.querySelector('a.active');
+    if (active) row.current.scrollTo({ left: active.offsetLeft - row.current.offsetLeft - 18, behavior: 'instant' });
+  }, [pathname]);
+  return <nav className={`container store-sections${pathname === '/' ? ' is-over-hero' : ''}`} aria-label="RTW Store sections" ref={row}>
+    {MEGA_LINKS.map(item => <NavLink key={item.to} to={item.to} end className={({ isActive }) => isActive ? 'active' : ''}>{item.label}</NavLink>)}
+  </nav>;
 }
 
 function Footer() {
   return <footer className="site-footer"><div className="footer-content">
     <div className="container footer-main">
       <div className="footer-lead">
-        <Link to="/" className="footer-logo" aria-label="NY Atelier ready-to-wear home"><span className="brand-mark" aria-hidden="true"><span className="brand-wreath"/><span className="brand-letters"/></span><span className="footer-logo-line" aria-hidden="true"/><span className="footer-logo-name">NY ATELIER</span></Link>
-        <p className="eyebrow">THE READY-TO-WEAR STORE</p>
+        <Link to="/" className="footer-logo" aria-label="NY Atelier shop home"><span className="brand-mark" aria-hidden="true"><span className="brand-wreath"/><span className="brand-letters"/></span><span className="footer-logo-line" aria-hidden="true"/><span className="footer-logo-name">NY ATELIER</span></Link>
+        <p className="eyebrow">THE READY-TO-WEAR SHOP</p>
         <h2>Wear your <em>story.</em></h2>
         <p>Considered ready-to-wear from the house of NY, made in Accra.</p>
       </div>
       <div className="footer-columns rtw-footer-columns">
         <div><h3>SHOP</h3>{NAV.map(item => <Link key={item.to} to={item.to}>{item.label}</Link>)}</div>
         <div><h3>BESPOKE</h3>
-          <a href={mainSite('/services')}>Our services<ArrowUpRight size={13}/></a>
-          <a href={mainSite('/consultation')}>Book a consultation<ArrowUpRight size={13}/></a>
-          <a href={mainSite('/consultation?service=bespoke')}>Customise a piece<ArrowUpRight size={13}/></a>
+          <a href={mainSite('/services')}>Our services<ArrowRight size={13}/></a>
+          <a href={mainSite('/appointment')}>Book an appointment<ArrowRight size={13}/></a>
+          <a href={mainSite('/appointment?service=bespoke')}>Customise a piece<ArrowRight size={13}/></a>
         </div>
         <div><h3>THE HOUSE</h3>
-          <a href={mainSite('/')}>NY Atelier<ArrowUpRight size={13}/></a>
-          <a href={mainSite('/our-story')}>Our story<ArrowUpRight size={13}/></a>
-          <a href={mainSite('/contact')}>Contact<ArrowUpRight size={13}/></a>
-          <a href={mainSite('/contact#locations')}>Visit the store<ArrowUpRight size={13}/></a>
+          <a href={mainSite('/')}>NY Atelier<ArrowRight size={13}/></a>
+          <a href={mainSite('/our-story')}>Our story<ArrowRight size={13}/></a>
+          <a href={mainSite('/contact')}>Contact<ArrowRight size={13}/></a>
+          <a href={mainSite('/contact#locations')}>Visit the store<ArrowRight size={13}/></a>
           <SocialIcons className="footer-socials"/>
         </div>
       </div>
@@ -204,12 +249,13 @@ function ProductCard({ product }) {
   const badge = badgeOf(product);
   const soldOut = isSoldOut(product);
   const shown = product.colours.slice(0, 3);
-  return <article className={`product-card ${soldOut ? 'is-sold-out' : ''}`}>
+  // Hovering fades from the first photo to the second, when the piece has one.
+  const second = photosOf(product, product.colours[0])[1]?.src;
+  return <article className={`product-card ${soldOut ? 'is-sold-out' : ''}${second ? ' has-second-photo' : ''}`}>
     <div className="product-image-wrap">
-      <Link to={href} aria-label={`View ${product.name}${soldOut ? ', out of stock' : ''}`}><ProductImage src={coverOf(product)} alt={product.name}/></Link>
+      <Link to={href} aria-label={`View ${product.name}${soldOut ? ', out of stock' : ''}`}><ProductImage src={coverOf(product)} alt={product.name}/>{second && <ProductImage src={second} alt="" className="product-second-photo"/>}</Link>
       {badge && <span className={`rtw-badge-tag rtw-badge-tag--${badge.tone}`}>{badge.label}</span>}
       <button className={`wishlist ${active ? 'is-liked' : ''}`} type="button" aria-label={active ? `Remove ${product.name} from saved pieces` : `Save ${product.name}`} aria-pressed={active} onClick={() => { toggleSaved(product.id); }}><Heart size={19} fill={active ? 'currentColor' : 'none'}/></button>
-      <Link to={href} className="product-quick">VIEW DETAILS <ArrowRight size={15}/></Link>
       <span className="rtw-card-swatches" role="img" aria-label={`Colours: ${product.colours.map(colour => colour.name).join(', ')}`}>
         {shown.map(colour => <i key={colour.id} style={{ background: colour.swatch }}/>)}
         {product.colours.length > shown.length && <small>+{product.colours.length - shown.length}</small>}
@@ -230,20 +276,6 @@ function SectionHeading({ eyebrow, title, accent, action, to }) {
   return <div className="section-heading"><div><Eyebrow>{eyebrow}</Eyebrow><h2>{title} <em>{accent}</em></h2></div>{action && <Link className="text-link" to={to}>{action}<ArrowRight size={17}/></Link>}</div>;
 }
 
-function BespokeBand() {
-  return <section className="rtw-bespoke">
-    <div className="rtw-bespoke-image"><img src="/products/product-amani-cream-detail.webp" alt="" loading="lazy"/></div>
-    <div className="rtw-bespoke-copy">
-      <Eyebrow>MADE FOR YOU</Eyebrow>
-      <h2>Love a piece? <em>Make it yours.</em></h2>
-      <p>Any piece can begin a bespoke conversation: your measurements, your cloth, your details. The atelier will guide you from the first fitting to the final stitch.</p>
-      <div className="rtw-bespoke-actions">
-        <a href={mainSite('/consultation?service=bespoke')} className="button button-solid">BOOK A CONSULTATION <ArrowUpRight size={17}/></a>
-        <a href={mainSite('/services')} className="svc-link">EXPLORE BESPOKE SERVICES <ArrowUpRight size={16}/></a>
-      </div>
-    </div>
-  </section>;
-}
 
 /**
  * Home hero: the same promotion the app shows on its home screen (the featured collection,
@@ -255,26 +287,36 @@ function PromoHero() {
   const [playing, setPlaying] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const total = PROMOTIONS.length;
   const step = useCallback(by => { setIndex(current => (current + by + total) % total); }, [total]);
+  const promo = PROMOTIONS[index];
+  // Photos change every few seconds; a video plays to its end before the next slide.
   useEffect(() => {
-    if (!playing) return undefined;
+    if (!playing || total < 2 || promo?.video) return undefined;
     const timer = window.setTimeout(() => { step(1); }, 5500);
     return () => { window.clearTimeout(timer); };
-  }, [playing, index, step]);
-  const promo = PROMOTIONS[index];
+  }, [playing, index, step, total, promo]);
+  const videos = useRef([]);
+  useEffect(() => {
+    videos.current.forEach((element, i) => { if (!element) return; if (i === index && playing) { element.play().catch(() => {}); } else { element.pause(); if (i !== index) element.currentTime = 0; } });
+  }, [index, playing]);
   return <section className="rtw-hero" aria-roledescription="carousel" aria-label="Featured in the store">
-    {PROMOTIONS.map((item, i) => <img key={item.id} className={`rtw-hero-image ${i === index ? 'is-active' : ''}`} src={item.image} alt="" fetchPriority={i === 0 ? 'high' : 'low'} loading={i === 0 ? 'eager' : 'lazy'}/>)}
+    {PROMOTIONS.map((item, i) => item.video
+      ? <video key={item.id} ref={element => { videos.current[i] = element; }} className={`rtw-hero-image ${i === index ? 'is-active' : ''}`} src={item.video} poster={item.image ?? undefined} autoPlay={i === 0} muted loop={total === 1} playsInline preload="metadata" onEnded={() => { if (playing) step(1); }} aria-hidden="true"/>
+      : <img key={item.id} className={`rtw-hero-image ${i === index ? 'is-active' : ''}`} src={item.image} alt="" fetchPriority={i === 0 ? 'high' : 'low'} loading={i === 0 ? 'eager' : 'lazy'}/>)}
     <div className="rtw-hero-shade"/>
     <div className="container rtw-hero-content">
       <div key={promo.id} className="rtw-hero-copy" aria-live={playing ? 'off' : 'polite'}>
         <Eyebrow>{promo.eyebrow}</Eyebrow>
         <h1>{promo.title} <em>{promo.accent}</em></h1>
-        <p>{promo.copy}</p>
+        {promo.copy && <p>{promo.copy}</p>}
       </div>
-      <div className="rtw-hero-actions">
-        <Link to={promo.cta.to} className="button svc-button-light">{promo.cta.label} <ArrowRight size={17}/></Link>
-        <Link to="/shop" className="button button-outline">SHOP EVERYTHING <ArrowRight size={17}/></Link>
-      </div>
-      <div className="rtw-hero-foot">
+      {promo.cta && <div className="rtw-hero-actions">
+        {promo.cta.to.startsWith('#')
+          ? <a href={promo.cta.to} className="button svc-button-light">{promo.cta.label} <ArrowDown size={17}/></a>
+          : promo.cta.external
+            ? <a href={promo.cta.to} className="button svc-button-light">{promo.cta.label} <ArrowRight size={17}/></a>
+            : <Link to={promo.cta.to} className="button svc-button-light">{promo.cta.label} <ArrowRight size={17}/></Link>}
+      </div>}
+      {total > 1 && <div className="rtw-hero-foot">
         <span className="rtw-hero-count">{String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}</span>
         <div className="rtw-hero-dots">{PROMOTIONS.map((item, i) => <button key={item.id} type="button" aria-label={`Show slide ${i + 1}`} aria-current={i === index} className={i === index ? 'is-active' : ''} onClick={() => { setIndex(i); }}/>)}</div>
         <div className="svc-hero-buttons">
@@ -282,56 +324,49 @@ function PromoHero() {
           <button type="button" aria-label={playing ? 'Pause slides' : 'Play slides'} onClick={() => { setPlaying(value => !value); }}>{playing ? <Pause size={16}/> : <Play size={16}/>}</button>
           <button type="button" aria-label="Next slide" onClick={() => { step(1); }}><ChevronRight size={18}/></button>
         </div>
-      </div>
+      </div>}
     </div>
   </section>;
 }
 
+/** The collection the store opens with: the one featured in NY Office, else the most current one with pieces. */
+function featuredCollection() {
+  return COLLECTIONS.find(item => item.featured && item.productIds.length) ?? COLLECTIONS.find(item => item.productIds.length);
+}
+
+/** A collection's story and every piece in every colour; the store home and collection pages share it. */
+function CollectionLooks({ collection, id, breadcrumb = true }) {
+  const products = collection.productIds.map(findProduct).filter(Boolean);
+  const looks = products.flatMap(product => product.colours.map(colour => ({ product, colour })));
+  return <div id={id}>
+    <section className="page-intro container rtw-intro">{breadcrumb && <p className="rtw-breadcrumb"><Link to="/collections">COLLECTIONS</Link> / {collection.title.toUpperCase()}</p>}<Eyebrow>{breadcrumb ? collection.eyebrow : 'FEATURED COLLECTION'}</Eyebrow><h1>{collection.title}<em>.</em></h1><p>{collection.copy}</p></section>
+    <section className="container rtw-editions">{looks.map(({ product, colour }) => <Link key={`${product.id}-${colour.id}`} to={`/product/${product.id}?colour=${colour.id}`} className="rtw-edition">
+      <ProductImage src={photosOf(product, colour)[0].src} alt={`${product.name} in ${colour.name}`}/>
+      <span><i style={{ background: colour.swatch }}/><strong>{colour.name}</strong><small>{formatGHS(product.price)}</small><ArrowRight size={15}/></span>
+    </Link>)}</section>
+    {collection.story?.length > 0 && <CollectionStory collection={collection}/>}
+  </div>;
+}
+
+/** What makes the collection unique: up to three chapters (set in NY Office), each beside its close-up shots, alternating sides. */
+function CollectionStory({ collection }) {
+  return <section className="container rtw-story" aria-label={`The story of ${collection.title}`}>
+    {collection.story.map((chapter, index) => <article key={index} className={`rtw-chapter${chapter.photos.length ? '' : ' is-text-only'}${index % 2 ? ' is-reversed' : ''}`}>
+      <div className="rtw-story-copy"><Eyebrow>{String(index + 1).padStart(2, '0')} / THE STORY</Eyebrow><h2>{chapter.title ?? <>Inside <em>{collection.title}.</em></>}</h2>{chapter.text.split(/\n{2,}/).filter(Boolean).map(part => <p key={part}>{part}</p>)}</div>
+      {chapter.photos.length > 0 && <div className={`rtw-story-photos is-${Math.min(chapter.photos.length, 4)}`}>{chapter.photos.map((src, i) => <ProductImage key={src} src={src} alt={`${collection.title} close-up ${i + 1}`}/>)}</div>}
+    </article>)}
+  </section>;
+}
+
+/** The store home is the featured collection: its campaign photos in the hero, then its story and pieces. */
 function Home() {
-  const newIn = productsIn('new');
-  const collection = COLLECTIONS.find(item => item.productIds.length);
-  // Featured collection first, then NY Office display order; show up to three on Home.
-  const homeCollections = [...COLLECTIONS.filter(item => item.featured), ...COLLECTIONS.filter(item => !item.featured)].filter(item => item.productIds.length).slice(0, 3);
-  const tiles = [
-    { label: 'All pieces', to: '/shop', image: PRODUCTS[0] ? coverOf(PRODUCTS[0]) : fallbackImage, title: 'The', accent: 'edit.' },
-    ...(newIn.length ? [{ label: 'New arrivals', to: '/shop/new', image: coverOf(newIn[0]), title: 'Just', accent: 'in.' }] : []),
-    ...(collection ? [{ label: 'Collections', to: `/collections/${collection.id}`, image: collection.cover, title: 'In', accent: 'series.' }] : []),
-  ];
+  const featured = featuredCollection();
   return <main id="main">
     <PromoHero/>
     <div className="rtw-after-hero">
-      <section className="section container">
-        <SectionHeading eyebrow="EXPLORE" title="Find your" accent="expression."/>
-        <div className="rtw-tiles">{tiles.map((tile, i) => <Link key={tile.to} to={tile.to} className="rtw-tile">
-          <ProductImage src={tile.image} alt=""/>
-          <span className="rtw-tile-copy"><small>{String(i + 1).padStart(2, '0')} / {tile.label.toUpperCase()}</small><strong>{tile.title} <em>{tile.accent}</em></strong><span>SHOP {tile.label.toUpperCase()} <ArrowRight size={15}/></span></span>
-        </Link>)}</div>
-      </section>
-      {newIn.length > 0 && <section className="section featured-section"><div className="container">
-        <SectionHeading eyebrow="JUST IN" title="New" accent="arrivals." action="VIEW ALL NEW PIECES" to="/shop/new"/>
-        <ProductGrid products={newIn}/>
-      </div></section>}
-      {homeCollections.length > 0 && <section className="section container rtw-home-collections">
-        <SectionHeading eyebrow="THE COLLECTIONS" title="Shop the" accent="collections." action={COLLECTIONS.length > homeCollections.length ? 'VIEW ALL COLLECTIONS' : undefined} to="/collections"/>
-        {homeCollections.map((item, i) => <div key={item.id} className={`rtw-feature${i % 2 ? ' is-reversed' : ''}`}>
-          <Link to={`/collections/${item.id}`} className="rtw-feature-image"><img src={item.cover} alt="" loading="lazy"/></Link>
-          <div className="rtw-feature-copy">
-            <Eyebrow>{item.featured ? 'FEATURED COLLECTION' : 'THE COLLECTION'}</Eyebrow>
-            <h2>{item.title}<em>.</em></h2>
-            <p>{item.copy}</p>
-            <Link to={`/collections/${item.id}`} className="svc-link">EXPLORE THE COLLECTION <ArrowRight size={16}/></Link>
-          </div>
-        </div>)}
-      </section>}
-      <section className="section container">
-        <SectionHeading eyebrow="THE RTW EDIT" title="Every" accent="piece." action="SHOP EVERYTHING" to="/shop"/>
-        <ProductGrid products={PRODUCTS.filter(product => !product.isNew).slice(0, 4)} empty={<p className="empty-results">No pieces are listed yet.</p>}/>
-      </section>
-      <div className="container"><BespokeBand/></div>
-      <section className="rtw-visit container">
-        <div><MapPin size={22}/><div><Eyebrow>VISIT THE STORE</Eyebrow><h3>Try it on in Haatso, Accra.</h3><p>See the pieces in person at the NY Atelier RTW store.</p></div></div>
-        <a href={mainSite('/contact#locations')} className="svc-link">FIND THE STORE <ArrowUpRight size={16}/></a>
-      </section>
+      {featured
+        ? <CollectionLooks collection={featured} id="featured" breadcrumb={false}/>
+        : <section className="section container" id="featured"><SectionHeading eyebrow="THE RTW EDIT" title="Every" accent="piece."/><ProductGrid products={PRODUCTS.slice(0, 8)} empty={<p className="empty-results">No pieces are listed yet.</p>}/></section>}
     </div>
   </main>;
 }
@@ -380,11 +415,6 @@ function ShopPage() {
     </section>
     <section className="container store-section">
       <div className="shop-toolbar">
-        <div className="category-tabs" role="group" aria-label="Shop sections">
-          <Link to="/shop" className={section === 'all' ? 'active' : ''} aria-current={section === 'all' ? 'page' : undefined}>All</Link>
-          {SECTIONS.map(item => <Link key={item.id} to={`/shop/${item.id}`} className={section === item.id ? 'active' : ''} aria-current={section === item.id ? 'page' : undefined}>{item.label}</Link>)}
-          <Link to="/collections">Collections</Link>
-        </div>
         <div className="sort-controls">
           {base.length > 0 && <div className="rtw-filter" ref={filterRef}>
             <button type="button" className={`rtw-filter-button ${activeCount ? 'is-active' : ''}`} aria-expanded={filterOpen} aria-controls="shop-filter-panel" onClick={() => { setFilterOpen(open => !open); }}>
@@ -414,7 +444,7 @@ function ShopPage() {
 }
 
 function EmptySection({ section }) {
-  return <p className="empty-results">No pieces are assigned to this section in the shared catalogue yet. <Link to="/shop">See every piece</Link>.</p>;
+  return <p className="empty-results">No pieces are assigned to this section in the shared catalogue yet. <Link to="/all">See every piece</Link>.</p>;
 }
 
 function CollectionsPage() {
@@ -431,15 +461,7 @@ function CollectionPage() {
   const { id } = useParams();
   const collection = COLLECTIONS.find(item => item.id === id);
   if (!collection) return <NotFound/>;
-  const products = collection.productIds.map(findProduct).filter(Boolean);
-  const looks = products.flatMap(product => product.colours.map(colour => ({ product, colour })));
-  return <main id="main">
-    <section className="page-intro container rtw-intro"><p className="rtw-breadcrumb"><Link to="/collections">COLLECTIONS</Link> / {collection.title.toUpperCase()}</p><Eyebrow>{collection.eyebrow}</Eyebrow><h1>{collection.title}<em>.</em></h1><p>{collection.copy}</p></section>
-    <section className="container rtw-editions">{looks.map(({ product, colour }) => <Link key={`${product.id}-${colour.id}`} to={`/product/${product.id}?colour=${colour.id}`} className="rtw-edition">
-      <ProductImage src={photosOf(product, colour)[0].src} alt={`${product.name} in ${colour.name}`}/>
-      <span><i style={{ background: colour.swatch }}/><strong>{colour.name}</strong><small>{formatGHS(product.price)}</small><ArrowRight size={15}/></span>
-    </Link>)}</section>
-  </main>;
+  return <main id="main"><CollectionLooks collection={collection}/></main>;
 }
 
 function ProductPage() {
@@ -472,7 +494,7 @@ function ProductPage() {
   function add() { if (!size) { setError(true); return; } addToBag(product, colour, size, Math.min(qty, remaining)); setQty(1); setError(false); }
 
   return <main id="main" className="product-page">
-    <div className="container product-breadcrumb"><Link to="/shop">SHOP</Link><span>/</span>{section && <><Link to={`/shop/${section.id}`}>{section.label.toUpperCase()}</Link><span>/</span></>}<span>{product.name.toUpperCase()}</span></div>
+    <div className="container product-breadcrumb"><Link to="/all">SHOP</Link><span>/</span>{section && <><Link to={`/${section.id}`}>{section.label.toUpperCase()}</Link><span>/</span></>}<span>{product.name.toUpperCase()}</span></div>
     <section className="container product-layout">
       <div className="rtw-gallery">
         <div className="product-gallery">
@@ -509,13 +531,13 @@ function ProductPage() {
         <button type="button" className="favourite-inline" onClick={() => { toggleSaved(product.id); }}><Heart size={16} fill={isSaved ? 'currentColor' : 'none'}/>{isSaved ? 'SAVED' : 'SAVE FOR LATER'}</button>
         <div className="rtw-perks">
           <div><Truck size={18}/><span><strong>Delivery or pickup</strong>Delivery across Ghana, or collect from the Haatso store.</span></div>
-          <a href={mainSite('/consultation?service=fit')}><Ruler size={18}/><span><strong>Not sure of your size?</strong>Ask the atelier for fit advice before you order.</span><ArrowUpRight size={14}/></a>
-          <a href={mainSite('/consultation?service=bespoke')}><Scissors size={18}/><span><strong>Make it yours</strong>Have this piece made to your measurements.</span><ArrowUpRight size={14}/></a>
+          <a href={mainSite('/appointment?service=fit')}><Ruler size={18}/><span><strong>Not sure of your size?</strong>Ask the atelier for fit advice before you order.</span><ArrowRight size={14}/></a>
+          <a href={mainSite('/appointment?service=bespoke')}><Scissors size={18}/><span><strong>Make it yours</strong>Have this piece made to your measurements.</span><ArrowRight size={14}/></a>
         </div>
         <p className="product-note">Price and stock status come from the NY Atelier catalogue. Availability can change; checkout is still a local preview and takes no payment.</p>
       </div>
     </section>
-    <section className="section container"><SectionHeading eyebrow="YOU MAY ALSO LIKE" title="Considered" accent="choices." action="BACK TO SHOP" to="/shop"/><ProductGrid products={PRODUCTS.filter(item => item.id !== product.id && item.gender === product.gender).slice(0, 4)}/></section>
+    <section className="section container"><SectionHeading eyebrow="YOU MAY ALSO LIKE" title="Considered" accent="choices." action="BACK TO SHOP" to="/all"/><ProductGrid products={PRODUCTS.filter(item => item.id !== product.id && item.gender === product.gender).slice(0, 4)}/></section>
   </main>;
 }
 
@@ -524,7 +546,7 @@ function SavedPage() {
   const products = saved.map(findProduct).filter(Boolean);
   return <main id="main">
     <section className="page-intro container rtw-intro"><Eyebrow>SAVED PIECES</Eyebrow><h1>Your <em>shortlist.</em></h1><p>Pieces you have saved on this device.</p></section>
-    <section className="container store-section"><ProductGrid products={products} empty={<p className="empty-results">Nothing saved yet. Tap the heart on any piece to keep it here. <Link to="/shop">Start browsing</Link>.</p>}/></section>
+    <section className="container store-section"><ProductGrid products={products} empty={<p className="empty-results">Nothing saved yet. Tap the heart on any piece to keep it here. <Link to="/all">Start browsing</Link>.</p>}/></section>
   </main>;
 }
 
@@ -637,15 +659,16 @@ function AppContent() {
     <ScrollToTop/>
     <a href="#main" className="skip-link">Skip to content</a>
     <Header/>
+    <SectionLinks/>
     <Routes>
       <Route path="/" element={<Home/>}/>
-      <Route path="/shop" element={<ShopPage/>}/>
-      <Route path="/shop/:section" element={<ShopPage/>}/>
+      <Route path="/all" element={<ShopPage/>}/>
+      <Route path="/:section" element={<ShopPage/>}/>
       <Route path="/collections" element={<CollectionsPage/>}/>
       <Route path="/collections/:id" element={<CollectionPage/>}/>
       <Route path="/product/:id" element={<ProductPage/>}/>
       <Route path="/saved" element={<SavedPage/>}/>
-      <Route path="/rtw-store" element={<Navigate to="/shop" replace/>}/>
+      <Route path="/rtw-store" element={<Navigate to="/all" replace/>}/>
       <Route path="*" element={<NotFound/>}/>
     </Routes>
     <Footer/>

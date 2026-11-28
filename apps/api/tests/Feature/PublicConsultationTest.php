@@ -84,7 +84,7 @@ class PublicConsultationTest extends TestCase
         $this->signInStaff();
         $this->patchJson('/api/demo/consultations/'.$data['id'].'/staff', [
             'action' => 'propose', 'version' => 1,
-            'options' => [['date' => $data['preferredDate'], 'time' => '12:00']],
+            'options' => [['date' => $data['preferredDate'], 'time' => '12:00'], ['date' => $data['preferredDate'], 'time' => '13:00']],
         ])->assertOk();
         $this->patchJson('/api/demo/consultations/'.$data['id'].'/customer', ['action' => 'accept', 'version' => 2, 'option' => 0])->assertNotFound();
     }

@@ -13,7 +13,7 @@ export type Delivery = {
   customer: { name: string; phone: string | null }; recipient_name: string | null; phone: string | null;
   address: string | null; area: string | null; gps_code: string | null; directions: string | null;
   latitude: number | null; longitude: number | null; instructions: string | null; garments: string[];
-  category: string; courier: { id: number; name: string } | null; zone: string | null; due_from: string | null; due_by: string | null;
+  category: string; claimable?: boolean; pickup_from?: { name: string; address: string; map: string } | null; courier: { id: number; name: string } | null; zone: string | null; due_from: string | null; due_by: string | null;
 };
 export type StartPoint = { id: number; name: string; address: string | null; latitude: number; longitude: number };
 type Shop = StartPoint;
@@ -54,7 +54,8 @@ const name = (delivery: Delivery) => delivery.recipient_name || delivery.custome
  * and tells each customer. On the way: the stops in route order, each with call, navigate and delivered.
  */
 export default function CourierDeliveries({ deliveries, startPoints, onChanged }: { deliveries: Delivery[]; startPoints: StartPoint[]; onChanged: () => Promise<void> }) {
-  const ready = useMemo(() => deliveries.filter((delivery) => delivery.ready && !delivery.delivered_at), [deliveries]);
+  const waiting = useMemo(() => deliveries.filter((delivery) => delivery.claimable), [deliveries]);
+  const ready = useMemo(() => deliveries.filter((delivery) => delivery.ready && !delivery.claimable && !delivery.delivered_at), [deliveries]);
   const onRoad = useMemo(() => deliveries.filter((delivery) => delivery.can_deliver), [deliveries]);
   const done = useMemo(() => deliveries.filter((delivery) => delivery.delivered_at), [deliveries]);
   const coming = useMemo(() => deliveries.filter((delivery) => !delivery.ready && !delivery.can_deliver && !delivery.delivered_at), [deliveries]);
@@ -62,9 +63,10 @@ export default function CourierDeliveries({ deliveries, startPoints, onChanged }
 
   return <>
     <nav className="courier-tabs" aria-label="Deliveries">
-      {([["plan", "Plan", ready.length], ["road", "On the way", onRoad.length], ["done", "Done", done.length]] as const).map(([id, label, count]) =>
+      {([["plan", "Plan", ready.length + waiting.length], ["road", "On the way", onRoad.length], ["done", "Done", done.length]] as const).map(([id, label, count]) =>
         <button key={id} type="button" aria-pressed={tab === id} onClick={() => setTab(id)}>{label}{count > 0 && <span>{count}</span>}</button>)}
     </nav>
+    {tab === "plan" && waiting.length > 0 && <WaitingAtStore deliveries={waiting} startOpen={!ready.length} onClaimed={onChanged} />}
     {tab === "plan" && <PlanRoute ready={ready} onRoad={onRoad} coming={coming} startPoints={startPoints} onStarted={async () => { await onChanged(); setTab("road"); }} />}
     {tab === "road" && <OnTheWay deliveries={onRoad} startPoints={startPoints} onChanged={onChanged} onAddStops={() => setTab("plan")} readyCount={ready.length} />}
     {tab === "done" && (done.length ? <ul className="courier-list">{done.map((delivery) => <li key={delivery.reference} className="courier-stop is-done">
@@ -72,6 +74,32 @@ export default function CourierDeliveries({ deliveries, startPoints, onChanged }
         <small>Delivered {delivery.delivered_at ? new Date(delivery.delivered_at).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : ""}</small></div></div>
     </li>)}</ul> : <p className="courier-empty">Nothing delivered in the last week yet.</p>)}
   </>;
+}
+
+/** Packed delivery orders waiting at a store that no courier has taken yet. "I'll collect it" makes it yours. */
+function WaitingAtStore({ deliveries, startOpen, onClaimed }: { deliveries: Delivery[]; startOpen: boolean; onClaimed: () => Promise<void> }) {
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  async function claim(reference: string) {
+    setBusy(reference); setError("");
+    try {
+      const response = await fetch(`/api/staff-deliveries/${encodeURIComponent(reference)}/claim`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message ?? "Could not take this delivery.");
+      await onClaimed();
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not take this delivery."); } finally { setBusy(""); }
+  }
+  // Folded when there is already a route to plan, so the route stays near the top on a phone.
+  return <details className="courier-waiting" aria-label="Waiting for a courier" open={startOpen || undefined}>
+    <summary><h2>Waiting for a courier <span>{deliveries.length}</span></h2><ChevronDown size={17} aria-hidden="true" /></summary>
+    {error && <p className="collection-error" role="alert">{error}</p>}
+    <ul className="courier-list">{deliveries.map((delivery) => <li key={delivery.reference} className="courier-stop" data-reference={delivery.reference}>
+      <div className="courier-stop-main"><div><strong>{name(delivery)}</strong><small><b className="courier-type">{orderType(delivery)}</b> {delivery.garments.join(" · ")}</small>
+        {delivery.pickup_from && <small>Collect from {delivery.pickup_from.name}, {delivery.pickup_from.address}</small>}
+        {delivery.area && <small>To {delivery.area}</small>}</div></div>
+      <button type="button" className="courier-primary" disabled={Boolean(busy)} onClick={() => void claim(delivery.reference)}>{busy === delivery.reference ? "Taking…" : "I’ll collect it"}</button>
+    </li>)}</ul>
+  </details>;
 }
 
 function PlanRoute({ ready, onRoad, coming, startPoints, onStarted }: { ready: Delivery[]; onRoad: Delivery[]; coming: Delivery[]; startPoints: StartPoint[]; onStarted: () => Promise<void> }) {

@@ -1,4 +1,5 @@
 import { COLOUR_GROUPS, SECTIONS, formatGHS } from './catalog-ui.js';
+import { mainSite } from './sites.js';
 
 export { COLOUR_GROUPS, SECTIONS, formatGHS };
 
@@ -35,25 +36,46 @@ export function setLiveCatalogue(data) {
     id: item.id, title: item.title, eyebrow: 'THE COLLECTION', copy: item.copy ?? '',
     cover: item.cover?.src ?? fallbackImage, productIds: item.productIds ?? [],
     photos: photoList(item.photos).map(photo => photo.src), featured: item.featuredOn?.rtw === true,
+    video: typeof item.heroVideo === 'string' ? item.heroVideo : null,
+    story: (Array.isArray(item.story) ? item.story : []).map(chapter => ({ title: chapter.title ?? null, text: chapter.text ?? '', photos: photoList(chapter.photos).map(photo => photo.src) })),
   })));
   // "Feature on RTW store" in NY Office: that collection's campaign photos become the hero slides.
   const featured = COLLECTIONS.find(item => item.featured && item.photos.length);
   const words = featured ? featured.title.trim().split(/\s+/) : [];
-  const featuredSlides = featured ? featured.photos.map((image, index) => ({
+  // A launch video replaces the photo carousel (the cover shows while it loads).
+  const featuredSlides = featured ? (featured.video ? [featured.cover] : featured.photos).map((image, index) => ({
     id: `${featured.id}-${index}`, eyebrow: 'FEATURED COLLECTION',
     title: words.length > 1 ? words.slice(0, -1).join(' ') : 'The', accent: `${words.at(-1)}.`,
-    copy: featured.copy, image, cta: { label: 'SHOP THE COLLECTION', to: `/collections/${featured.id}` },
+    copy: featured.copy, image, video: featured.video, cta: { label: 'SEE THE COLLECTION', to: '#featured' }, // the store home shows it right below
   })) : [];
-  const promotions = featuredSlides.length ? featuredSlides : data.promotions.map(item => ({
+  // A custom hero set in the catalogue manager (Site heroes → RTW Store) replaces the featured collection's.
+  const custom = data.heroes?.rtw;
+  const customWords = (custom?.title ?? '').trim().split(/\s+/);
+  const customSlides = custom?.media?.length ? custom.media.map(file => file.startsWith('site:/') ? mainSite(file.slice(5)) : file).map((src, index) => ({
+    id: `custom-${index}`, eyebrow: custom.eyebrow ?? '', title: customWords.slice(0, -1).join(' '), accent: customWords.at(-1) ?? '',
+    copy: custom.text ?? '', image: custom.style === 'video' ? null : src, video: custom.style === 'video' ? src : null,
+    cta: custom.button ? { label: custom.button.label, to: heroTarget(custom.button.to), external: ['services', 'appointment'].includes(custom.button.to) } : null,
+  })) : [];
+  const promotions = customSlides.length ? customSlides : featuredSlides.length ? featuredSlides : data.promotions.map(item => ({
     id: item.id, eyebrow: item.eyebrow, title: item.title, accent: item.accent, copy: item.copy,
-    image: item.image, cta: { label: item.cta.label, to: item.cta.target.kind === 'collection' ? `/collections/${item.cta.target.id}` : item.cta.target.kind === 'product' ? `/product/${item.cta.target.id}` : `/shop/${item.cta.target.id}` },
+    image: item.image, cta: { label: item.cta.label, to: item.cta.target.kind === 'collection' ? `/collections/${item.cta.target.id}` : item.cta.target.kind === 'product' ? `/product/${item.cta.target.id}` : `/${item.cta.target.id}` },
   }));
   PROMOTIONS.splice(0, PROMOTIONS.length, ...(promotions.length ? promotions : [{
     id: 'shop-edit', eyebrow: 'THE READY-TO-WEAR EDIT', title: 'Explore the', accent: 'collection.',
     copy: 'Pieces from the NY Atelier catalogue, selected for the way you dress.',
-    image: '/products/red-clover-olive-campaign-front.webp', cta: { label: 'SHOP ALL PIECES', to: '/shop' },
+    image: '/products/red-clover-olive-campaign-front.webp', cta: { label: 'SHOP ALL PIECES', to: '/all' },
   }]));
   return data.revision;
+}
+
+/** Where a hero button goes, from the store: its own pages, or the main website (an absolute address). */
+function heroTarget(to) {
+  if (to === 'featured') return '#featured';
+  if (to === 'rtw') return '/all';
+  if (to === 'services') return mainSite('/services');
+  if (to === 'appointment') return mainSite('/appointment');
+  if (typeof to === 'string' && to.startsWith('collection:')) return `/collections/${to.slice(11)}`;
+  return '/all';
 }
 
 export async function loadLiveCatalogue(signal) {

@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Check, ClipboardCheck, LockKeyhole, Plus, RefreshCw, Search, Send, UserRoundCog, X } from "@/components/icons";
 import { InventoryDrawer } from "./catalogue-editor";
-import { changeTeamRole, getTeam, inviteTeamMember, reinviteTeamMember, roleSummaries, setTeamAccess, type InvitableRole, type InvitationResult, type TeamMember } from "@/lib/team";
+import { changeTeamRole, getTeam, inviteTeamMember, reinviteTeamMember, roleSummaries, setTeamAccess, storeLabels, type InvitableRole, type InvitationResult, type StoreLocation, type TeamMember } from "@/lib/team";
 import type { StaffRole } from "@/lib/staff-permissions";
 
 const statusLabels: Record<TeamMember["status"], string> = { active: "Active", invited: "Invitation sent", expired: "Invitation expired", deactivated: "Deactivated", none: "Not set up" };
@@ -30,6 +30,7 @@ function InvitationNotice({ result, onClose }: { result: InvitationResult; onClo
 
 function ManageMember({ member, roles, onClose, onChanged, onReinvite }: { member: TeamMember; roles: InvitableRole[]; onClose: () => void; onChanged: (member: TeamMember, notice: string) => void; onReinvite: (member: TeamMember) => Promise<void> }) {
   const [role, setRole] = useState<StaffRole>(member.role ?? "records");
+  const [store, setStore] = useState<StoreLocation>(member.location ?? "atelier");
   const [busy, setBusy] = useState<"role" | "access" | "invite">();
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState("");
@@ -44,8 +45,8 @@ function ManageMember({ member, roles, onClose, onChanged, onReinvite }: { membe
   }
 
   const saveRole = () => run("role", async () => {
-    const { member: updated } = await changeTeamRole(member.id, role);
-    onChanged(updated, `${member.name} now has ${updated.role_label} access.`);
+    const { member: updated } = await changeTeamRole(member.id, role, role === "receptionist" ? store : undefined);
+    onChanged(updated, `${member.name} now has ${updated.role_label} access${updated.location ? ` at the ${storeLabels[updated.location]}` : ""}.`);
   });
   const toggleAccess = () => run("access", async () => {
     const { member: updated } = await setTeamAccess(member.id, deactivated ? "reactivate" : "deactivate");
@@ -65,7 +66,8 @@ function ManageMember({ member, roles, onClose, onChanged, onReinvite }: { membe
           <input type="radio" name="team-role" value={item.id} checked={role === item.id} onChange={() => setRole(item.id)} />
           <span><strong>{item.label}</strong>{roleSummaries[item.id] && <small>{roleSummaries[item.id]}</small>}</span>
         </label>)}</div>
-        <div className="team-manage-actions"><span>{deactivated ? "The new role applies if the account is reactivated." : "Takes effect immediately, including on devices they’re signed in on."}</span><button type="button" className="team-manage-primary" disabled={role === member.role || Boolean(busy)} onClick={saveRole}>{busy === "role" ? "Saving…" : "Save role"}</button></div>
+        {role === "receptionist" && <label className="team-store-select">Store<select value={store} onChange={event => setStore(event.target.value as StoreLocation)}>{(Object.keys(storeLabels) as StoreLocation[]).map(key => <option key={key} value={key}>{storeLabels[key]}</option>)}</select></label>}
+        <div className="team-manage-actions"><span>{deactivated ? "The new role applies if the account is reactivated." : "Takes effect immediately, including on devices they’re signed in on."}</span><button type="button" className="team-manage-primary" disabled={(role === member.role && (role !== "receptionist" || store === (member.location ?? "atelier"))) || Boolean(busy)} onClick={saveRole}>{busy === "role" ? "Saving…" : "Save role"}</button></div>
       </fieldset>
 
       {member.can_reinvite && <section className="team-manage-section">
@@ -100,6 +102,7 @@ export default function TeamWorkspace() {
   const [revision, setRevision] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [role, setRole] = useState<StaffRole>("records");
+  const [store, setStore] = useState<StoreLocation>("atelier");
   const [busy, setBusy] = useState<"new">();
   const [formError, setFormError] = useState("");
   const [result, setResult] = useState<InvitationResult>();
@@ -128,7 +131,7 @@ export default function TeamWorkspace() {
     const form = event.currentTarget; const data = new FormData(form);
     setBusy("new"); setFormError(""); setResult(undefined);
     try {
-      applied(await inviteTeamMember({ name: String(data.get("name") ?? ""), email: String(data.get("email") ?? ""), role }));
+      applied(await inviteTeamMember({ name: String(data.get("name") ?? ""), email: String(data.get("email") ?? ""), role, ...(role === "receptionist" ? { location: store } : {}) }));
       form.reset(); setFormOpen(false);
     } catch (failure) { setFormError(failure instanceof Error ? failure.message : "Could not send the invitation."); }
     finally { setBusy(undefined); }
@@ -147,7 +150,7 @@ export default function TeamWorkspace() {
     {formOpen && <section className="panel bill-form-panel team-invite-panel"><div className="eyebrow">NEW STAFF ACCOUNT</div><h2>Invite someone to NY Atelier</h2>
       <p className="portal-form-help">{emailDelivery ? "They will receive an email with a one-use link to choose their own password." : "Invitation emails are not switched on yet, so you will get a one-use setup link to share with them privately."}</p>
       <form onSubmit={invite}>
-        <div className="bill-form-grid"><label>Full name<input name="name" autoComplete="off" required minLength={2} maxLength={120} /></label><label>Email<input name="email" type="email" autoComplete="off" required maxLength={255} /></label><label>Access<select name="role" value={role} onChange={event => setRole(event.target.value as StaffRole)}>{roles.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label></div>
+        <div className="bill-form-grid"><label>Full name<input name="name" autoComplete="off" required minLength={2} maxLength={120} /></label><label>Email<input name="email" type="email" autoComplete="off" required maxLength={255} /></label><label>Access<select name="role" value={role} onChange={event => setRole(event.target.value as StaffRole)}>{roles.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>{role === "receptionist" && <label className="team-store-select">Store<select value={store} onChange={event => setStore(event.target.value as StoreLocation)}>{(Object.keys(storeLabels) as StoreLocation[]).map(key => <option key={key} value={key}>{storeLabels[key]}</option>)}</select></label>}</div>
         {roleSummaries[role] && <p className="team-role-summary">{roleSummaries[role]}</p>}
         {formError && <p className="collection-error" role="alert">{formError}</p>}
         <div className="bill-form-actions"><span>Existing active accounts are never changed by an invitation.</span><button type="submit" disabled={busy === "new"}><Send size={16} />{busy === "new" ? "Sending…" : emailDelivery ? "Send invitation" : "Create setup link"}</button></div>
@@ -160,7 +163,7 @@ export default function TeamWorkspace() {
     <section className="panel team-register"><div className="panel-heading"><div><div className="eyebrow">THE NY TEAM</div><h2>Team members <span className="heading-count">{visible.length}</span></h2></div></div>
       {!loaded ? <div className="empty-state" role="status">Loading team members…</div> : visible.length ? <div className="table-wrap"><table className="order-table"><thead><tr><th>Name</th><th>Role</th><th>Sign-in account</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{visible.map(member => <tr key={member.id}>
         <td><strong>{member.name}</strong>{member.email && <small className="team-member-email">{member.email}</small>}</td>
-        <td>{member.role_label ?? member.job_title}</td>
+        <td>{member.role_label ?? member.job_title}{member.location && <small className="team-store-label">{storeLabels[member.location]}</small>}</td>
         <td><span className={`team-account-note is-${member.status}`}>{statusLabels[member.status]}</span>{member.status === "invited" && member.invitation_expires_at && <small className="team-member-email">Expires {expiry(member.invitation_expires_at)}</small>}</td>
         <td>{member.manageable ? <button type="button" className="inventory-quiet-button team-reinvite" onClick={() => { setManaging(member); setNotice(""); }}><UserRoundCog size={15} />Manage</button> : member.is_self ? <span className="team-account-note">You</span> : null}</td>
       </tr>)}</tbody></table></div> : !error && <div className="empty-state">{members.length ? "No team members match this search." : "No team members recorded yet."}</div>}

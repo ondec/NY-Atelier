@@ -47,3 +47,10 @@ next-env.d.ts
 
 # Website and RTW store builds, copied in when the Render image is built
 /public/_sites/
+
+# hero photos and videos uploaded while testing locally
+/public/uploads/
+
+# Playwright end-to-end output
+/e2e-report/
+/e2e-results/
