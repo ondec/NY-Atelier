@@ -8,7 +8,7 @@ test('only the website address serves the public site, with the shop at /shop', 
   assert.deepEqual(siteForHost('THENYATELIER.com', '/shop', env), { site: 'store', inner: '/' });
   assert.deepEqual(siteForHost('thenyatelier.com', '/shop/product/x', env), { site: 'store', inner: '/product/x' });
   assert.deepEqual(siteForHost('thenyatelier.com', '/shopping', env), { site: 'website', inner: '/shopping' });
-  assert.equal(siteForHost('team.thenyatelier.com', '/', env), null);
+  assert.equal(siteForHost('workspace.thenyatelier.com', '/', env), null);
   assert.equal(siteForHost('thenyatelier.com', '/', {}), null);
   assert.throws(() => siteForHost('x', '/', { NY_WEBSITE_ORIGIN: 'http://thenyatelier.com' }));
 });

@@ -3,7 +3,7 @@ type Environment = Record<string, string | undefined>;
 type HeaderSource = Pick<Headers, 'get'>;
 type Workspace = 'office' | 'studio';
 
-// Separate Studio and Office subdomains are opt-in (superseded by the single NY Team address, which needs none
+// Separate Studio and Office subdomains are opt-in (superseded by the single NY Workspace address, which needs none
 // of these). Without them everything is on one host with a host-only session.
 export function workspaceHosts(env: Environment = process.env) {
   const values = [env.NY_OFFICE_ORIGIN, env.NY_STUDIO_ORIGIN, env.NY_STAFF_COOKIE_DOMAIN];
@@ -62,7 +62,7 @@ export function staffCookieSettings(headers: HeaderSource, requestUrl: string, e
 
 const loopbackHost = /^(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i;
 
-/** The one staff address (NY Team, e.g. https://team.thenyatelier.com), when configured. */
+/** The one staff address (NY Workspace, e.g. https://workspace.thenyatelier.com), when configured. */
 export function teamHost(env: Environment = process.env) {
   if (!env.NY_TEAM_ORIGIN) return undefined;
   const url = new URL(env.NY_TEAM_ORIGIN);
@@ -70,7 +70,7 @@ export function teamHost(env: Environment = process.env) {
   return url.host.toLowerCase();
 }
 
-// Office catalogue drafts publish to the shared Studio catalogue from the developer's Mac, the NY Team address
+// Office catalogue drafts publish to the shared Studio catalogue from the developer's Mac, the NY Workspace address
 // or the configured HTTPS Office host. Other hosts (for example a LAN address used to preview on a phone) never publish.
 export function catalogueSyncAllowed(headers: HeaderSource, env: Environment = process.env) {
   const host = publicHost(headers);

@@ -29,23 +29,24 @@ services:
         value: "1"
       - key: NY_DEMO_API_ENABLED
         value: "false"
-      # NY Team: every staff role signs in at one address and lands in their own space. Cloudflare CNAME
-      # team -> ny-atelier-preview.onrender.com (DNS only), added as a custom domain in Render.
+      # NY Workspace: every staff role signs in at one address and lands in their own space. Cloudflare CNAME
+      # workspace -> ny-atelier-preview.onrender.com (DNS only), added as a custom domain in Render.
+      # (The variable keeps its old name, NY_TEAM_ORIGIN.)
       # ny-atelier-preview.onrender.com keeps working too. Invitation, password-reset links and the email logo use it.
       - key: NY_TEAM_ORIGIN
-        value: https://team.thenyatelier.com
+        value: https://workspace.thenyatelier.com
       - key: NY_STAFF_PORTAL_URL
-        value: https://team.thenyatelier.com
-      # The public website, with the RTW shop inside it at /shop (portal src/proxy.ts). On approval, point the
-      # thenyatelier.com records at this service, add it as Render's second custom domain, set
-      # NY_PUBLIC_SITES_PREVIEW_PATHS to "0" and remove NY_PUBLIC_SITES_NOINDEX.
+        value: https://workspace.thenyatelier.com
+      # The public website, with the RTW shop inside it at /shop (portal src/proxy.ts), on its own address:
+      # Cloudflare CNAME site -> ny-atelier-preview.onrender.com, Render's second custom domain.
+      # At launch: change this to https://thenyatelier.com and remove NY_PUBLIC_SITES_NOINDEX.
       - key: NY_WEBSITE_ORIGIN
-        value: https://thenyatelier.com
+        value: https://site.thenyatelier.com
       - key: NY_PUBLIC_SITES_NOINDEX
         value: "1"
-      # Until then the website is a preview at https://ny-atelier-preview.onrender.com/home (shop: /home/shop).
+      # "1" serves the website under /home on the onrender.com address instead (old preview).
       - key: NY_PUBLIC_SITES_PREVIEW_PATHS
-        value: "1"
+        value: "0"
       - key: LOG_CHANNEL
         value: stderr
       - key: LOG_LEVEL
